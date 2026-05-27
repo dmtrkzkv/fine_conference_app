@@ -268,7 +268,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('los alamos national lab', 'LANL'),
     ('lawrence livermore', 'LLNL'),
     ('lawrence berkeley', 'LBNL'),
-    ('oak ridge national lab', 'ORNL'),
+    ('oak ridge national lab', 'Oak Ridge'),
     ('pacific northwest national', 'PNNL'),
     ('brookhaven', 'Brookhaven'),
     ('argonne', 'Argonne'),
@@ -1798,16 +1798,22 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of adelaide', 'Adelaide University'),
     ('adelaide university', 'Adelaide University'),
     ('macquarie', 'Macquarie'),
-    ('swinburne', 'Swinburne'),
-    # COMBS Centre: ground truth is inconsistent. Order matters:
-    # - "Australian Research Council (ARC) Centre of Excellence in Optical Microcombs ..." → verbatim
-    # - "ARC Centre of Excellence in Optical Microcombs ..." → COMBS Australia
-    # - bare "COMBS Centre of Excellence" string → COMBS Centre of Excellence
-    ('australian research council (arc) centre of excellence in optical microcombs', 'COMBS Australia'),
-    ('arc centre of excellence in optical microcombs', 'COMBS Australia'),
-    ('optical microcombs for breakthrough science', 'COMBS Australia'),
-    ('combs centre of excellence', 'COMBS Centre of Excellence'),
+    # COMBS Centre (ARC Centre of Excellence in Optical Microcombs for
+    # Breakthrough Science): a distributed centre with no single host university
+    # (members span Sydney, Monash, Swinburne, Adelaide, ANU), so every spelling
+    # canonicalizes to the centre's own short label "COMBS Australia" rather than
+    # any one university. Covers the British/American "Centre/Center", "in/for",
+    # the "COMBS and Optical Sciences Centre" and bare "COMBS Centre of
+    # Excellence" variants, and the "(COMBS)" acronym form. MUST precede the
+    # bare-university anchors below (e.g. "swinburne"): a string like
+    # "…Microcombs… (COMBS), Swinburne University…" should resolve to the centre,
+    # not to whichever member university happens to appear in the same line.
+    ('optical microcombs', 'COMBS Australia'),
+    ('microcombs and breakthrough science', 'COMBS Australia'),
+    ('combs and optical sciences centre', 'COMBS Australia'),
+    ('combs centre of excellence', 'COMBS Australia'),
     ('combs australia', 'COMBS Australia'),
+    ('swinburne', 'Swinburne'),
     ('ozgrav', 'OzGrav'),
     ('centre of excellence for gravitational wave', 'OzGrav'),
     ('victoria university of wellington', 'Victoria U Wellington'),
@@ -2385,6 +2391,53 @@ def _strip_legal_suffix(s: str) -> str:
     return s
 
 
+_TRAILING_ACRONYM_RE = re.compile(
+    r'^(?P<name>.+?)\s*\(\s*'
+    r'(?P<acr>[A-Z][A-Za-z0-9]*[A-Z](?:-[A-Z0-9]+)?)'
+    r'\s*\)\.?$'
+)
+
+
+def _trailing_acronym(raw: str) -> str | None:
+    """If `raw` is a single clean 'Long Institution Name (ACRONYM)' string,
+    return the ACRONYM; otherwise None.
+
+    Fires only for the unambiguous whole-string shape, with guards so it can't
+    mangle addresses or splice two organizations together:
+      - the acronym is >=3 chars and mostly uppercase, and shorter than the
+        name it abbreviates (rejects "(USA)"-style country tails and ordinary
+        words);
+      - the name part has no comma, no second '(' (a second parenthetical means
+        the real unit lives elsewhere, e.g.
+        "National Research Council of Italy (CNR) -The Institute…(ISOF)"), and
+        no " - " clause splice joining two distinct bodies.
+    Internal word hyphens ("Hamburg-Eppendorf", "Technology-Hellas") are fine.
+    """
+    s = (raw or '').strip()
+    m = _TRAILING_ACRONYM_RE.match(s)
+    if not m:
+        return None
+    acr = m.group('acr')
+    name = m.group('name').strip()
+    if len(acr) < 3:
+        return None
+    if sum(c.isupper() for c in acr) < 3:
+        return None
+    if len(acr) >= len(name):
+        return None
+    # A parenthetical country ("(USA)", "(UK)") is an address tail, not an
+    # institution acronym — never treat it as the short label.
+    if acr in COUNTRY_TOKENS or acr.upper() in {t.upper() for t in COUNTRY_TOKENS}:
+        return None
+    if ',' in name or '(' in name:
+        return None
+    # Reject a spaced-dash clause join (" - ", " – ") that splices two orgs;
+    # tolerate tight intra-word hyphens like "Hamburg-Eppendorf".
+    if re.search(r'\s[-\u2013\u2014]\s', name):
+        return None
+    return acr
+
+
 def fallback_shorten(raw: str) -> str:
     """Algorithmic short name for affiliation strings no anchor matched.
 
@@ -2392,6 +2445,18 @@ def fallback_shorten(raw: str) -> str:
     leading department-like pieces, then take the first remaining segment as
     the institution.  Apply "University of X -> U X" if it fits.
     """
+    # Self-declared acronym: when the WHOLE string is a single clean
+    # "Long Institution Name (ACRONYM)" — e.g.
+    # "Foundation for Research and Technology-Hellas (FORTH)",
+    # "University Medical Center Hamburg-Eppendorf (UKE)" — the parenthetical
+    # acronym is a far better short label than the long name the comma-based
+    # logic below would otherwise return verbatim. This only runs after every
+    # ANCHOR/LATE_ANCHOR/override has missed (canonicalize() calls
+    # fallback_shorten last), so curated short names are never overridden.
+    acr = _trailing_acronym(raw)
+    if acr:
+        return acr
+
     raw = _strip_legal_suffix(raw)
     parts = [p.strip() for p in raw.split(',') if p.strip()]
 
@@ -2477,6 +2542,14 @@ RAW_OVERRIDES: dict[str, str] = {
     # some named university. Exact-match override so it pins ONLY this string
     # and can never grab "Institute of Physics, <University>" forms.
     'Institute of Physics': 'CAS IOP Beijing',
+    # The Quantum Science Center is a DOE center headquartered at and led by
+    # Oak Ridge National Laboratory, so it canonicalizes to "Oak Ridge" like the
+    # spelled-out variants do. Most QSC strings already resolve to Oak Ridge via
+    # the Oak Ridge anchor; these two carry no "Oak Ridge National Laboratory"
+    # text (so the anchor misses) and would otherwise surface the bare "QSC"
+    # acronym or the full string. Pin them to Oak Ridge for consistency.
+    'Quantum Science Center (QSC)': 'Oak Ridge',
+    'Quantum Science Center (QSC), Oak Ridge, TN, United States': 'Oak Ridge',
 }
 
 

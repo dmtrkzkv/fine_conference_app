@@ -1,0 +1,159 @@
+Alaire Technologies (USA)	Alaire Technologies
+Alcatel-Thales III-V Lab (France)	III-V Lab
+Amentum, Hanover (USA)	Amentum
+Austrian Institute of Technology (Austria)	AIT
+CEA, CNRS, Université Grenoble Alpes, Grenoble INP, IRIG‐Spintec (France)	Grenoble Alpes
+CEA-LETI, Univ. Grenoble Alpes (France)	Grenoble Alpes
+CNR, Institute for Photonics and Nanotechnologies (Italy)	CNR Italy
+CNR-INO – Istituto Nazionale di Ottica & LENS (Italy)	CNR-INO
+CSEM (Switzerland)	CSEM
+Celare Quantum Communications ApS (Denmark)	Celare
+Center for Integrated Nanotechnologies, Sandia National Laboratories (USA)	Sandia
+Center for Micro-and Nanostructures, TU Wien (Austria)	TU Vienna
+Center of Materials Science and Optoelectronics Engineering, University of Chinese Academy of Sciences (China)	UCAS
+Center of nanosciences and nanotechnologies, CNRS, Univ. Paris Saclay (France)	CNRS
+Centre de Nanosciences et de Nanotechnologies, CNRS, Univ. Paris Saclay (France)	CNRS
+Centre de Nanosciences et de Nanotechnologies, Université Paris-Saclay, CNRS (France)	U Paris-Saclay
+Centre d’Optique Photonique et Lasers, Université Laval (Canada)	Laval
+Centre for Micro- and Nanostructures, TU Wien, (Austria)	TU Vienna
+Centre for OptoElectronics and Biophotonics, School of Electrical and Electronic Engineering & The Photonics Institute, Nanyang Technological University (Singapore)	NTU Singapore
+Currently with Trumpf Photonics Inc. (USA)	Trumpf
+DOTA, ONERA, Université Paris-Saclay (France)	U Paris-Saclay
+De Vinci Higher Education (France)	De Vinci
+Department of Electrical Engineering and Information Technology, TU Darmstadt (Germany)	TU Darmstadt
+Department of Electrical Engineering, Technion-Israel Institute of Technology (Israel) : 3. Univ. Grenoble-Alpes, CEA, INAC, PHELIQS (France)	CEA
+Department of Electrical and Computer Engineering, Princeton University (USA)	Princeton
+Department of Electrical and Computer Engineering, Technical University of Munich (Germany)	TU Munich
+Department of Electrical and Computer Engineering, University of Waterloo (Canada)	Waterloo
+Department of Electrical and Electronic Engineering, Ariel University (Israel)	Ariel U
+Department of Electronic and Electrical Engineering, University College London (UK)	UCL
+Department of Electronics and Telecommunications, Politecnico di Torino (Italy)	Politecnico di Torino
+Department of Materials Science and Engineering, University of Delaware (USA)	Delaware
+Department of Physics, Humboldt University (Germany)	Humboldt
+Department of Physics, Konstanz University (Germany)	Konstanz
+Dipartimento di Fisica “E. Fermi”, Università di Pisa (Italy)	U Pisa
+Dipartimento di Fisica, Politecnico di Milano (Italy)	Politecnico di Milano
+Dipartimento di Fisica, Universitá di Pisa (Italy)	U Pisa
+Dipartimento di Scienze, Università degli Studi Roma (Italy)	Roma Tre
+ETH Zurich (Switzerland)	ETH Zurich
+Ernst Ruska-Centre for Microscopy and Spectroscopy with Electrons (Germany)	Ernst Ruska Centre
+European Laboratory for Non-linear Spectroscopy (LENS) (Italy)	LENS
+Faculty of Engineering and Institute of Nanotechnology and Advanced Materials, Bar-Ilan University (Israel)	Bar-Ilan
+Faculty of Engineering, Bar-Ilan University (Israel)	Bar-Ilan
+Faculty of Physics, Warsaw University of Technology (Poland)	Warsaw UT
+Fraunhofer Heinrich-Hertz Institute (Germany)	Fraunhofer
+IEMN – France	IEMN
+IEMN, Univ. Lille, CNRS (France)	CNRS
+IES, Univ. Montpellier, CNRS (France)	CNRS
+IES, University of Montpellier, CNRS (France)	CNRS
+IES, Université de Montpellier, CNRS (France)	CNRS
+IHP GmbH, Frankfurt am Oder (Germany)	IHP
+IHP-Leibniz Institut für Innovative Mikroelektronik (Germany)	IHP
+III-V Lab (France)	III-V Lab
+III-V Lab, Palaiseau (France)	III-V Lab
+INL-Ecole Centrale de Lyon (France)	Ecole Centrale de Lyon
+INSA (France)	INSA
+Infineon Technologies (Austria)	Infineon Technologies
+Institut Prime, Université de Poitiers (France)	Institut Prime
+Institut Universitaire de France – IUF (France)	IUF
+Institut für Biophysik, Goethe Universität Frankfurt (Germany)	Institut für Biophysik
+Institut für Halbleiter und Festkörperphysik, Johannes Kepler Universität (Austria)	Johannes Kepler University
+Institute for Quantum Electronics and Quantum Center, ETH Zürich (Switzerland)	ETH Zurich
+Institute for Quantum Electronics, Department pf Physics, ETH Zürich (Switzerland)	ETH Zurich
+Institute for Quantum Electronics, ETH Zurich (Switzerland)	ETH Zurich
+Institute for Quantum Electronics, ETH Zürich (Switzerland)	ETH Zurich
+Institute of Electronics and Systems, University of Montpellier, CNRS (France)	CNRS
+Institute of Electronics, Microelectronics and Nanotechnology, CNRS, Univ. Lille, Univ. Polytechnique Hauts-de-France (France)	CNRS
+Institute of Photonics and Optical Science (IPOS), School of Physics, University of Sydney (Australia)	Sydney
+Institute of Quantum Electronics Zurich (ETHZ) – Switzerland	ETH Zurich
+Institute of Quantum Electronics, ETH Zurich (Switzerland)	ETH Zurich
+Institute of Quantum Electronics, ETH Zürich (Switzerland)	ETH Zurich
+Institute of Solid State Electronics & Center for Micro- & Nanostructures, TU Wien (Austria)	TU Vienna
+Institute of Solid State Electronics, TU Wien (Austria)	TU Vienna
+Institute of Solid-State Electronics, TU Wien (Austria)	TU Vienna
+Institute of Space Research, German Aerospace Center – DLR (Germany)	DLR
+Istituto Nanoscienze-CNR and Scuola Normale Superiore (NEST) (Italy)	NEST
+Istituto Nazionale di Ottica – CNR-INO (Italy)	CNR-INO
+John A. Paulson School of Engineering and Applied Sciences, Harvard University (USA)	Harvard
+Johns Hopkins University (USA)	Johns Hopkins
+L-NESS laboratory, Physics Department, Politecnico di Milano (Italy)	Politecnico di Milano
+L-NESS, Politecnico di Milano, Dipartimento di Fisica (Italy)	Politecnico di Milano
+LTCI Télécom Paris, Institut Polytechnique de Paris (France)	IP Paris
+Laboratoire Albert Fert, CNRS, Thales Université Paris-Saclay (France)	U Paris-Saclay
+Laboratoire Pierre Aigrain, Univ. Pierre et Marie Curie – Paris 6, Univ. Paris Diderot – Paris 7, ENS Paris- France	ENS Paris
+Laboratoire de Chimie de la Matière Condensée de Paris, Sorbonne Université (France)	Sorbonne
+Laboratoire de Physique de l’ENS, Université Paris Cité, Ecole normale supérieure, Université PSL, Sorbonne Université, CNRS (France)	ENS Paris
+Laboratoire de Physique de l’ENS, Université Paris Cité, École Normale Supérieure, Université PSL, Sorbonne Université, CNRS (France)	ENS Paris
+Laboratoire de Physique de l’Ecole Normale Supérieure (France)	ENS Paris
+Laboratoire de Physique de l’Ecole Normale Supérieure (LPENS), ENS, Université PSL, CNRS, Sorbonne Université, Université Paris Cité (France)	ENS Paris
+Laboratoire de Physique de l’Ecole Normale Supérieure – LPENS (France)	ENS Paris
+Laboratoire de Physique de l’Ecole Normale Supérieure, ENS Université PSL, CNRS, Sorbonne Université (France)	ENS Paris
+Laboratoire de Physique de l’Ecole Normale Supérieure, ENS, Université PSL, CNRS, Sorbonne Université, Université Paris Cité (France)	ENS Paris
+Laboratoire de Physique de l’Ecole normale supérieure, ENS, Université PSL, CNRS (France)	ENS Paris
+Laboratoire de Physique de l’École normale supérieure, ENS, Université PSL, CNRS, Sorbonne Université, Université Paris Cité (France)	ENS Paris
+Laboratoire de Physique des Lasers – CNRS, Université Sorbonne Paris nord (France)	Sorbonne
+Laboratoire de physique de L’École normale supérieure de Paris, Université Paris Cité, CNRS, ENS & Université PSL, Sorbonne Université (France)	ENS Paris
+Laboratoire de physique de l’ENS, Université Paris Cité, Ecole Normale Supérieure, Université PSL, Sorbonne Université, CNRS (France)	ENS Paris
+Laboratoire d’ondes et traitement du signal (OTS), Thales Research and Technology, Thales Research and Technology (France)	Thales
+Laser Components Germany GmbH (Germany)	Laser Components
+Materials Science and Engineering, Pennsylvania State University (USA)	Penn State
+Mirsense (France)	Mirsense
+NEST CNR-Istituto Nanoscienze and Scuola Normale Superiore (Italy)	NEST
+NEST, CNR – Istituto Nanoscienze and Scuola Normale Superiore (Italy)	NEST
+NEST, CNR-Istituto Nanoscienze and Scuola Normale Superiore (Italy)	NEST
+NRC post-doctoral research associate residing at NRL (USA)	NRL
+Nanoplus Nanosystems and Technologies GmbH (Germany)	Nanoplus Nanosystems and Technologies
+Naval Research Laboratory (USA)	NRL
+ONERA (France)	ONERA
+Paul Drude Institute for Solid State Electronics (Germany)	Paul Drude Institute
+Paul-Drude-Institut für Festkörperelektronik (Germany)	Paul Drude Institute
+Peter Gruenberg Institute 9 (PGI 9) (Germany)	Forschungszentrum Jülich
+Photonics Institute & Center for Micro- and Nanostructures, TU Wien (Austria)	TU Vienna
+Photonics Institute, TU Wien (Austria)	TU Vienna
+Politecnico di Torino (Italy)	Politecnico di Torino
+Pollard Institute, University of Leeds (UK)	Leeds
+Quantum Optoelectronics Group, Institute of Quantum Electronics, ETH Zurich, 8093 Zürich, Switzerland	ETH Zurich
+Quantum and Nanotechnologies Research Center, National Research Council Canada (Canada)	NRC Canada
+Sandia National Laboratories, Center of Integrated Nanotechnologies (USA)	Sandia
+Sapienza Univ. of Rome, Department of Physics (Italy)	Sapienza
+School of Applied and Engineering Physics, Mohammed VI Polytechnic University (Morocco)	Mohammed VI
+School of Electronic and Electrical Engineering, University of Leeds (UK)	Leeds
+School of Engineering, RMIT University (Australia)	RMIT
+School of Physics and Astronomy, The University of Nottingham (UK)	U Nottingham
+Scientific IT Services, ETH Zurich (Switzerland)	ETH Zurich
+Shanghai Institute of Microsystem and Information Technology, Chinese Academy of Sciences (China)	SIMIT
+Silicon Austria Labs (Austria)	Silicon Austria Labs
+State Key Laboratory of Luminescence Science and Technology, Changchun Institute of Optics, Fine Mechanics and Physics, Chinese Academy of Sciences (China)	CAS
+TU Wien (Austria)	TU Vienna
+TUM School of Computation, Information and Technology, Technical University of Munich (Germany)	TU Munich
+Tampere University (Finland)	Tampere
+Technical Univeristy of Dresden, Institute of Applied Physics (Germany)	TU Dresden
+Technical University Vienna (Austria)	TU Vienna
+Technische Physik, Physikalisches Institut, University Würzburg (Germany)	Technische Physik
+Technische Universität München, Walter Schottky Institut	TU Munich
+Technische Universität Wien (Austria)	TU Vienna
+Thales Research and Technology (France)	Thales
+Thorlabs Quantum Electronics (USA)	Thorlabs
+Unité Mixte de Physique, CNRS, Thales, Université Paris‐Saclay (France)	U Paris-Saclay
+Univ. Grenoble Alpes, CEA, CNRS Grenoble INP, IRIG-SPINTEC (France)	Grenoble Alpes
+Univ. Grenoble Alpes, CEA, IRIG-MEM (France)	Grenoble Alpes
+University College London, Electronic and Electrical Engineering (UK)	UCL
+University of California Los Angeles – USA	UCLA
+University of California Los Angeles, Department of Electrical and Computer Engineering (USA)	UCLA
+University of Chinese Academy of Sciences (China)	UCAS
+University of Leeds – School of Electronic and Electrical Engineering (UK)	Leeds
+University of Regensburg (Germany)	Regensburg
+University of Würzburg (Germany)	Würzburg
+University of Würzburg, Physikalisches Institut, Lehrstuhl für Technische Physik (Germany)	Würzburg
+Università Roma Tre, Department of Sciences (Italy)	Roma Tre
+Università di Pisa, Department of Physics (Italy)	U Pisa
+Université Laval – Canada & Télécom Paris – France	Laval
+Université Paris-Saclay, CNRS, Centre de Nanosciences et de Nanotechnologies (France)	U Paris-Saclay
+Vigo Photonics SA (Poland)	Vigo Photonics
+Walter Schottky Institute, Technical University of Munich (Germany)	TU Munich
+Wroclaw Universityof Science & Technology (Poland)	Wroclaw
+mirSense (France)	mirSense
+mirSense – France	mirSense
+nanoplus Advanced Photonics Gerbrunn GmbH (Germany)	nanoplus Advanced Photonics Gerbrunn
+nextnano GmbH (Germany)	nextnano
+nextnano Lab (France)	nextnano
