@@ -1327,6 +1327,63 @@ def enrich_affiliations(data: dict) -> dict:
             return ""  # tie -> ambiguous, don't guess
         return ranked[0][0]
 
+    # 3a. Backfill missing TALK speaker affiliations from the same author index.
+    #     A speaker can have no resolvable affiliation on one paper (their own
+    #     institution wasn't listed) yet appear with a clear affiliation on other
+    #     papers in the program — e.g. an invited speaker whose "Title coming
+    #     soon" placeholder carries no institutions. When a talk's speaker_aff is
+    #     empty, fill it with that speaker's most-common short affiliation across
+    #     the conference (skipping ambiguous ties), exactly as for presiders.
+    #     We set speaker_aff (the byline chip) AND, when the talk has no
+    #     institution backing that speaker, inject a matching institution + link
+    #     it to the speaker, so the affiliation also appears in the detail page's
+    #     "Institutions" list (not just the byline).
+    n_talk_aff_backfilled = 0
+    for t in talks:
+        if t.get("speaker_aff"):
+            continue
+        speaker = t.get("speaker", "")
+        if not speaker:
+            continue
+        aff = _best_author_aff(speaker)
+        if not aff:
+            continue
+        t["speaker_aff"] = aff
+        n_talk_aff_backfilled += 1
+
+        # Mirror it into the structured institution list so the detail page's
+        # Institutions section shows it too. Only add when the speaker has no
+        # institution of their own already (an empty/blank speaker membership);
+        # find or create an institution whose short form equals the backfilled
+        # affiliation, then point the speaker's author entry at it.
+        authors = t.get("authors") or []
+        institutions = t.get("institutions") or []
+        inst_shorts = t.get("inst_shorts") or []
+        spk_entry = next(
+            (a for a in authors
+             if _name_key(a.get("name", "")) == _name_key(speaker)), None)
+        spk_has_inst = bool(spk_entry and spk_entry.get("insts"))
+        if spk_has_inst:
+            continue
+        # Reuse an existing institution that already shortens to `aff`, else add.
+        target_n = None
+        for inst, short in zip(institutions, inst_shorts):
+            if (short or "").strip() == aff:
+                target_n = inst.get("n")
+                break
+        if target_n is None:
+            existing_ns = [i.get("n") for i in institutions
+                           if isinstance(i.get("n"), int)]
+            target_n = (max(existing_ns) + 1) if existing_ns else 1
+            institutions.append({"n": target_n, "name": aff, "alt_names": []})
+            inst_shorts.append(aff)
+            t["institutions"] = institutions
+            t["inst_shorts"] = inst_shorts
+        if spk_entry is not None:
+            spk_entry["insts"] = [target_n]
+    print(f"[affil]   talk speaker affiliations backfilled from other papers: "
+          f"{n_talk_aff_backfilled}")
+
     n_backfilled = 0
     n_unresolved = 0
     for s in sessions:
