@@ -13,3 +13,4 @@ __pycache__/
 
 # Exceptions
 !scripts/test2026/test2026_app.html
+!scripts/tests/fixtures/*.affiliation_sources.json

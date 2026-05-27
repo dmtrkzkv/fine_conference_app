@@ -1,0 +1,23 @@
+Albis Optoelectronics	Albis Optoelectronics
+Aylight AG	Aylight
+CCRAFT	CCRAFT
+COMSOL Multiphysics GmbH	Comsol Multiphysics
+Coherent	Coherent
+CyberRidge	CyberRidge
+ETH Zurich	ETH Zürich
+FEMTOPRINT SA	FEMTOPRINT SA
+IHP	IHP
+IST Austria	IST Austria
+LIGENTEC SA	Ligentec
+Lightium AG	Lightium AG
+Luceda Photonics	Luceda Photonics
+Luxtelligence SA	Luxtelligence SA
+Marvell Technologies (formerly Polariton Technologies AG)	Marvell Technologies (formerly Polariton Technologies AG)
+Menhir Photonics AG	Menhir Photonics
+Point Cloud	Point Cloud
+Politechnico di Milano	Politechnico di Milano
+QuEra	QuEra
+UCLA	UCLA
+Vario-Optics AG	Vario-Optics
+Xanadu	Xanadu
+Zurich Instruments	Zurich Instruments

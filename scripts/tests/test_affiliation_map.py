@@ -14,6 +14,8 @@ from __future__ import annotations
 import contextlib
 import difflib
 import io
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -28,9 +30,18 @@ FIXTURES = discover_fixtures()
 
 
 def _build_quiet(builder, sources: dict) -> dict[str, str]:
-    """Run build() with its chatty stdout suppressed and no .txt side-effect."""
-    with contextlib.redirect_stdout(io.StringIO()):
-        return builder.build(sources, out_txt=None)
+    """Run build() with its chatty stdout suppressed and its .txt side-effect
+    directed to a throwaway temp file.
+
+    build() always writes a text dump of the mapping. Passing out_txt=None
+    means "use the default path" (affiliation_map.txt in the cwd) — NOT "skip
+    the write" — so without redirection every test run would leave an
+    affiliation_map.txt behind in the working directory. We point it at a
+    file inside a TemporaryDirectory that vanishes on the way out.
+    """
+    with contextlib.redirect_stdout(io.StringIO()), \
+         tempfile.TemporaryDirectory() as td:
+        return builder.build(sources, out_txt=Path(td) / "affiliation_map.txt")
 
 
 # A repo with no fixtures yet shouldn't look "green" — that would hide the fact
