@@ -60,15 +60,18 @@ What a run does, for the chosen subdirectory <sub>:
      now present in <sub>/data/. If any are missing, stop with an error.
   3. Decide whether to process (see FORCE_PROCESS below). Processing is skipped
      when the contents of <sub>/data/ are unchanged since the last run (verified
-     against a hash stored in <sub>/data/) and a <sub>/conference_data.json
-     already exists; otherwise run <sub>/process_* to produce
-     <sub>/conference_data.json from the files in <sub>/data/ (pure local
-     processing; no browser). Either way, the current data/ hash is (re)stored
-     in <sub>/data/ for next time.
-  4. Copy that conference_data.json up to the ROOT directory, where the shared
-     build_conference_app.py expects its input (the builder resolves
-     conference_data.json and build_affiliation_map.py relative to its OWN
-     location, so the JSON must live beside it).
+     against a hash stored in <sub>/data/) and a <sub>/conference_data_<sub>.json
+     already exists; otherwise run <sub>/process_* to produce the conference's
+     JSON from the files in <sub>/data/ (pure local processing; no browser). The
+     processor writes a plainly-named <sub>/conference_data.json, which this
+     script then renames to the per-conference <sub>/conference_data_<sub>.json
+     (e.g. conference_data_cleo2025.json) — the durable, stored artifact. Either
+     way, the current data/ hash is (re)stored in <sub>/data/ for next time.
+  4. Copy that conference_data_<sub>.json up to the ROOT directory AS
+     conference_data.json, where the shared build_conference_app.py expects its
+     input (the builder resolves conference_data.json and build_affiliation_map.py
+     relative to its OWN location, so the JSON must live beside it under that
+     generic name).
   5. Run build_conference_app.py in ROOT (it writes conference_app.html there).
   6. Move that conference_app.html into <sub>/, renamed to <sub>_app.html
      (e.g. cleo2026_app.html), move the affiliation_map.txt the builder wrote
@@ -84,11 +87,13 @@ Assumed layout:
     |   |-- fetch_program_cleo2025.py
     |   |-- process_program_cleo2025.py
     |   |-- data_requirements_cleo2025.txt
+    |   |-- conference_data_cleo2025.json   <- stored, per-conference JSON
     |   `-- data/
     `-- cleo2026/
         |-- fetch_program_cleo2026.py
         |-- process_program_cleo2026.py
         |-- data_requirements_cleo2026.txt
+        |-- conference_data_cleo2026.json   <- stored, per-conference JSON
         `-- data/
 
 FORCE_DOWNLOAD:
@@ -107,9 +112,9 @@ FORCE_DOWNLOAD:
 FORCE_PROCESS:
   - False (default): before processing, hash the contents of <sub>/data/ and
     compare against the hash stored there from the previous run. If they match
-    AND <sub>/conference_data.json already exists, SKIP the processor and reuse
-    that JSON. Otherwise (hash differs, no stored hash, or no JSON yet) run the
-    processor. The data/ hash is (re)written to <sub>/data/ in every case.
+    AND <sub>/conference_data_<sub>.json already exists, SKIP the processor and
+    reuse that JSON. Otherwise (hash differs, no stored hash, or no JSON yet) run
+    the processor. The data/ hash is (re)written to <sub>/data/ in every case.
   - True: ALWAYS run the processor, regardless of the stored hash.
   The hash ignores the stored-hash file itself and the affiliation map the
   builder later writes into data/, so neither perturbs the cache.
@@ -143,6 +148,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 BUILDER = ROOT / "build_conference_app.py"
+# The builder always reads a plainly-named conference_data.json from beside
+# itself in ROOT. Each conference, however, STORES its JSON in its own
+# subdirectory under a name that carries the conference, e.g.
+# conference_data_cleo2025.json (see _conference_json_name()). Step 4 copies the
+# stored, named file into ROOT under DATA_JSON_NAME so the builder finds it.
 DATA_JSON_NAME = "conference_data.json"
 BUILT_HTML_NAME = "conference_app.html"
 # The builder runs build_affiliation_map.py, which writes this map file next to
@@ -163,6 +173,17 @@ DATA_HASH_NAME = ".data_hash"
 def _requirements_name(subdir_name: str) -> str:
     """Per-conference requirements filename, e.g. 'data_requirements_cleo2026.txt'."""
     return f"data_requirements_{subdir_name}.txt"
+
+
+def _conference_json_name(subdir_name: str) -> str:
+    """Per-conference stored-JSON filename, e.g. 'conference_data_cleo2026.json'.
+
+    This is the name each conference's data is kept under INSIDE its own
+    subdirectory. The builder still wants a plain DATA_JSON_NAME in ROOT, so
+    step 4 copies this named file into ROOT under that generic name."""
+    stem, dot, ext = DATA_JSON_NAME.rpartition(".")
+    # DATA_JSON_NAME is "conference_data.json" -> "conference_data_<sub>.json".
+    return f"{stem}_{subdir_name}{dot}{ext}"
 
 
 def _die(msg: str, code: int = 1) -> "None":
@@ -504,7 +525,16 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
     downloader = _find_one(subdir, "fetch", "downloader")
     processor = _find_one(subdir, "process", "processor")
 
-    processor_json = subdir / DATA_JSON_NAME
+    # The stored, per-conference JSON kept in the subdirectory, e.g.
+    # cleo2025/conference_data_cleo2025.json. This is the durable artifact we
+    # look for to decide whether processing can be skipped, and the file we
+    # stage into ROOT for the builder.
+    conference_json_name = _conference_json_name(subdir.name)
+    conference_json = subdir / conference_json_name
+    # The processor itself may still emit a plainly-named conference_data.json in
+    # the subdirectory (it doesn't know about the per-conference name). After it
+    # runs we normalize that output to `conference_json` above.
+    processor_plain_json = subdir / DATA_JSON_NAME
     root_json = ROOT / DATA_JSON_NAME
     root_html = ROOT / BUILT_HTML_NAME
     final_html = subdir / final_html_name
@@ -577,11 +607,11 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
 
     # ------------------------------------------------------------- 3. process
     # Decide whether we can skip the processor. We can skip when: FORCE_PROCESS
-    # is off, a conference_data.json already exists in the subdirectory, a hash
-    # was stored on a previous run, and a fresh hash of data/ matches it (i.e.
-    # the inputs are byte-for-byte unchanged). Otherwise we run the processor.
-    # In ALL cases we (re)store the data/ hash afterwards so the next run can
-    # use it.
+    # is off, the per-conference conference_data_<sub>.json already exists in the
+    # subdirectory, a hash was stored on a previous run, and a fresh hash of
+    # data/ matches it (i.e. the inputs are byte-for-byte unchanged). Otherwise
+    # we run the processor. In ALL cases we (re)store the data/ hash afterwards
+    # so the next run can use it.
     print(f"[make] === Step 3/5: processing with {processor.name} ===",
           flush=True)
 
@@ -591,9 +621,9 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
     if FORCE_PROCESS:
         do_process = True
         print("[make] FORCE_PROCESS is on — processing.", flush=True)
-    elif not processor_json.exists():
+    elif not conference_json.exists():
         do_process = True
-        print(f"[make] no existing {DATA_JSON_NAME} in {subdir.name}/ — "
+        print(f"[make] no existing {conference_json_name} in {subdir.name}/ — "
               "processing.", flush=True)
     elif stored_hash is None:
         do_process = True
@@ -605,13 +635,22 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
               flush=True)
     else:
         do_process = False
-        print(f"[make] data/ unchanged and {DATA_JSON_NAME} present — "
+        print(f"[make] data/ unchanged and {conference_json_name} present — "
               "SKIPPING processing, reusing existing JSON.", flush=True)
 
     if do_process:
         _run_script(processor, cwd=subdir)
-        if not processor_json.exists():
-            _die(f"processor finished but {processor_json} was not produced.")
+        # The processor writes a plainly-named conference_data.json (it has no
+        # notion of the per-conference name); some processors might instead
+        # write directly to the named file. Accept either, then normalize to the
+        # stored, per-conference name conference_data_<sub>.json.
+        if processor_plain_json.exists():
+            if conference_json.exists():
+                conference_json.unlink()
+            shutil.move(str(processor_plain_json), str(conference_json))
+        if not conference_json.exists():
+            _die(f"processor finished but neither {processor_plain_json.name} "
+                 f"nor {conference_json_name} was produced in {subdir.name}/.")
         # The processor may have rewritten files in data/; recompute so the
         # stored hash reflects the post-processing state of the inputs.
         current_hash = _hash_data_dir(data_dir)
@@ -623,15 +662,18 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
     _write_stored_hash(data_dir, current_hash)
 
     # --------------------------------------------- 4. stage JSON + build
-    print(f"[make] === Step 4/5: staging {DATA_JSON_NAME} into root and "
-          f"building with {BUILDER.name} ===", flush=True)
+    # The builder reads a plainly-named conference_data.json from ROOT, so copy
+    # the stored, per-conference conference_data_<sub>.json up to ROOT under that
+    # generic name (backing up any pre-existing root copy first).
+    print(f"[make] === Step 4/5: staging {conference_json_name} into root as "
+          f"{DATA_JSON_NAME} and building with {BUILDER.name} ===", flush=True)
     backup_json = None
     if root_json.exists():
         backup_json = ROOT / (DATA_JSON_NAME + ".make_bak")
         print(f"[make] a {DATA_JSON_NAME} already exists in root; "
               f"backing it up to {backup_json.name}", flush=True)
         shutil.move(str(root_json), str(backup_json))
-    shutil.copy2(str(processor_json), str(root_json))
+    shutil.copy2(str(conference_json), str(root_json))
 
     try:
         # The builder reads conference_data.json at IMPORT time, so the JSON

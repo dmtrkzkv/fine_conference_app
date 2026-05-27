@@ -2202,9 +2202,12 @@ function legacyTalkByline(item) {
   const speaker = item.speaker      || "";
   const pos     = (item.speaker_pos == null ? -1 : item.speaker_pos);
 
+  const sameFirstLast = !last || _norm(last) === _norm(first);
+  const effLast = sameFirstLast ? "" : last;
+
   const isFirstSpeaker = pos === 0 || _norm(speaker) === _norm(first);
-  const isLastSpeaker  = last && (_norm(speaker) === _norm(last));
-  const speakerIsMiddle = speaker && !isFirstSpeaker && !isLastSpeaker && last;
+  const isLastSpeaker  = effLast && (_norm(speaker) === _norm(effLast));
+  const speakerIsMiddle = speaker && !isFirstSpeaker && !isLastSpeaker && effLast;
 
   const fmt = (name, isSpeaker) => isSpeaker
     ? `<span class="speaker">${esc(name)}</span>`
@@ -2213,7 +2216,7 @@ function legacyTalkByline(item) {
   const parts = [];
   if (first) parts.push(fmt(first, isFirstSpeaker));
   if (speakerIsMiddle) parts.push(fmt(speaker, true));
-  if (last) parts.push(fmt(last, isLastSpeaker));
+  if (effLast) parts.push(fmt(effLast, isLastSpeaker));
   let html = parts.join("…");
 
   const aff = item.speaker_aff || item.last_aff || "";
@@ -3702,6 +3705,20 @@ function renderTopbarExtras(tab, top) {
       "aria-label": "Copy sync code",
       onclick: doCopy,
     }, "⧉"));
+  } else if (tab === "sessions" && top.view === "list"
+             && !canResetTab(tab) && expandableSessionIds().length) {
+
+    slot.appendChild(el("button", {
+      class: "icon-btn",
+      title: "Expand all sessions",
+      "aria-label": "Expand all sessions",
+      html: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" '
+          + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+          + 'stroke-linejoin="round" aria-hidden="true">'
+          + '<path d="M5 8.5 12 14l7-5.5"></path>'
+          + '<path d="M5 14.5 12 20l7-5.5"></path></svg>',
+      onclick: expandAllSessions,
+    }));
   } else if (canResetTab(tab)) {
 
     slot.appendChild(el("button", {
@@ -4710,7 +4727,7 @@ function canResetTab(tab) {
   const stack = state.tabStacks[tab];
   if (tab === "me") return !!(stack && stack.length > 1);
   if (stack && stack.length > 1) return true;
-  if ((state.expandedSessions || []).length) return true;
+  if (tab === "sessions" && (state.expandedSessions || []).length) return true;
   if (tab === "search" && (state.searchQuery || "").trim()) return true;
   return false;
 }
@@ -4793,14 +4810,41 @@ function resetTab() {
 
   const stack = state.tabStacks[tab];
   stack.length = 1;
-  
-  if ((state.expandedSessions || []).length) state.expandedSessions = [];
+
+  if (tab === "sessions" && (state.expandedSessions || []).length) {
+    state.expandedSessions = [];
+  }
   
   if (tab === "search") state.searchQuery = "";
 
   stack[0].scrollY = leftScrollTop();
   stack[0].scrollAnchor = anchor || null;
 
+  saveState();
+  render();
+
+  if (anchor) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      restoreListAnchor(anchor);
+      updateScrollIndicator();
+    }));
+  }
+}
+
+function expandableSessionIds() {
+  return DATA.sessions
+    .map(s => s.id)
+    .filter(isExpandableSession);
+}
+
+function expandAllSessions() {
+  const ids = expandableSessionIds();
+  if (!ids.length) return;
+
+  const anchor = captureListAnchor();
+
+  snapshotScroll();
+  state.expandedSessions = ids;
   saveState();
   render();
 
