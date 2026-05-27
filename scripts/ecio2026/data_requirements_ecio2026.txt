@@ -50,3 +50,94 @@ manual: Open https://www.ecio-conference.org/programme-26/ and click the
   https://www.ecio-conference.org/wp-content/uploads/2026/05/ECIO_FinalProgram_Concise_13_05.pdf
   but the date suffix changes when the organisers re-issue the overview, so
   always re-derive the link from the programme page rather than hard-coding it.)
+
+[file: ECIO26_InvitedSpeakers.html]
+required: yes
+produced_by: fetch
+description: Invited-speakers page HTML — lists every invited speaker as a
+  (Name, Affiliation, Talk Title) triple grouped under SC1..SC7 sub-committee
+  headers. The detailed-schedule PDF prints only speaker names in each talk
+  cell, with no affiliation; the processor parses this HTML to fill the
+  matching talks' institutions in the final JSON. Missing this file does not
+  fail the processor, but the resulting JSON loses all invited-speaker
+  affiliations, so the build pipeline treats it as required.
+manual: Open https://www.ecio-conference.org/invited-speakers-2/ in a browser.
+  Use "Save Page As…" (Ctrl/Cmd-S) and choose the "Webpage, HTML Only" option
+  (NOT "Webpage, Complete"), saving into this folder's data/ subdirectory as
+  exactly ECIO26_InvitedSpeakers.html . The URL is stable across re-issues —
+  unlike the PDFs above it carries no date suffix — so no link re-derivation
+  is needed.
+
+# The six entries below are *enrichment* HTML pages. None is strictly required
+# — the processor still emits a usable conference_data.json without them,
+# falling back to whatever the detailed-schedule PDF provides for each session.
+# But when present, each adds detail the PDF doesn't render: plenary abstracts
+# and bios, workshop chairs, student-event panellists, cleaner industry-talk
+# metadata, and short descriptions for social and lab-tour events.
+# The manual instructions are identical in shape: visit the URL in a browser,
+# Save Page As… "Webpage, HTML Only" into data/ under the exact filename below.
+
+[file: ECIO26_PlenarySpeakers.html]
+required: no
+produced_by: fetch
+description: Plenary-speakers page HTML — gives each plenary speaker's proper
+  talk title, affiliation, abstract, and bio. The detailed-schedule PDF prints
+  only the speaker name on a meta-row with no talk title or abstract, so this
+  page is the only source for plenary talk content.
+manual: Open https://www.ecio-conference.org/plenary-speakers/ in a browser
+  and Save Page As… "Webpage, HTML Only" into this folder's data/ subdirectory
+  as exactly ECIO26_PlenarySpeakers.html .
+
+[file: ECIO26_Workshops.html]
+required: no
+produced_by: fetch
+description: Workshops page HTML — names the workshop chair and lists each
+  panellist's affiliation and (where announced) talk title. Adds detail the
+  PDF doesn't render, including panellists not printed in the wide grid.
+manual: Open https://www.ecio-conference.org/workshops/ in a browser and
+  Save Page As… "Webpage, HTML Only" into data/ as exactly ECIO26_Workshops.html .
+
+[file: ECIO26_StudentEvent.html]
+required: no
+produced_by: fetch
+description: Sunday-student-event page HTML — gives the proper title of the
+  scientific-communication workshop, lists each Bench-to-Business panellist's
+  name + affiliation (the processor attaches them as multiple authors on a
+  single Bench-to-Business talk), and carries the most up-to-date times and
+  per-talk locations.
+manual: Open https://www.ecio-conference.org/sunday-student-event/ in a
+  browser and Save Page As… "Webpage, HTML Only" into data/ as exactly
+  ECIO26_StudentEvent.html .
+
+[file: ECIO26_IndustryTalks.html]
+required: no
+produced_by: fetch
+description: Industry-talks page HTML — lists each industry session's six
+  talks as clean (Company, Talk Title, Speaker) triples. Much more reliable
+  to parse than the cramped PDF cells, so this file's contents OVERRIDE the
+  PDF harvest for those three sessions when present.
+manual: Open https://www.ecio-conference.org/industry-talks/ in a browser and
+  Save Page As… "Webpage, HTML Only" into data/ as exactly
+  ECIO26_IndustryTalks.html .
+
+[file: ECIO26_SocialEvents.html]
+required: no
+produced_by: fetch
+description: Social-events page HTML — short description per event (Welcome
+  Reception, Zurich City Tour, Gala Dinner) including the venue and a 1-2
+  sentence blurb. Used to populate a description for those sessions.
+manual: Open https://www.ecio-conference.org/social-events/ in a browser and
+  Save Page As… "Webpage, HTML Only" into data/ as exactly
+  ECIO26_SocialEvents.html .
+
+[file: ECIO26_LabTours.html]
+required: no
+produced_by: fetch
+description: Lab-and-company-visit page HTML — lists each lab tour and
+  company visit (ETH Lab Tour with the Optical Nanomaterial Group + Institute
+  for Quantum Electronics, Menhir Photonics Company Visit, Lightium Company
+  Visit) with a description per visit option. Used to fill talk entries
+  under the Wednesday-afternoon lab-tours session.
+manual: Open https://www.ecio-conference.org/lab-and-company-visit/ in a
+  browser and Save Page As… "Webpage, HTML Only" into data/ as exactly
+  ECIO26_LabTours.html .

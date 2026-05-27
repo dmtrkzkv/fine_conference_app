@@ -73,10 +73,12 @@ Output:
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 
@@ -87,6 +89,17 @@ def log(msg: str) -> None:
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = SCRIPT_DIR / "data"
 INPUT_PDF = DATA_DIR / "ECIO26_DetailedSchedule.pdf"
+INPUT_INVITED_HTML = DATA_DIR / "ECIO26_InvitedSpeakers.html"
+# Optional web-enrichment HTML pages (all under data/, all `required: no` in
+# data_requirements_ecio2026.txt). Each adds detail the detailed-schedule PDF
+# doesn't render; the processor uses what's there and falls back when any is
+# missing. See `_load_web_enrichment` for how each is wired in.
+INPUT_PLENARY_HTML  = DATA_DIR / "ECIO26_PlenarySpeakers.html"
+INPUT_WORKSHOPS_HTML = DATA_DIR / "ECIO26_Workshops.html"
+INPUT_STUDENT_HTML  = DATA_DIR / "ECIO26_StudentEvent.html"
+INPUT_INDUSTRY_HTML = DATA_DIR / "ECIO26_IndustryTalks.html"
+INPUT_SOCIAL_HTML   = DATA_DIR / "ECIO26_SocialEvents.html"
+INPUT_LABS_HTML     = DATA_DIR / "ECIO26_LabTours.html"
 OUTPUT_JSON = SCRIPT_DIR / "conference_data.json"
 
 
@@ -197,23 +210,39 @@ TALK_TYPES = [
 # =============================================================================
 SKELETON: list[dict] = [
     # ---- Sunday June 14 — student day ---------------------------------------
-    # These three have no PDF row of their own (they're listed in the Sunday
-    # banner only), so keep titles hardcoded.
-    {"id": "S-sun-student-workshop", "day": "sun",
-     "start": "13:00", "end": "16:30",
-     "title": "Student Workshop", "type": "Student Event",
-     "color": "orange", "room": PLENARY_ROOM},
-    {"id": "S-sun-bench-to-business", "day": "sun",
-     "start": "15:30", "end": "16:30",
-     "title": "Bench to Business Symposium", "type": "Symposium",
-     "color": "orange", "room": PLENARY_ROOM},
-    {"id": "S-sun-pizza", "day": "sun",
-     "start": "17:00", "end": "19:30",
-     "title": "Networking Pizza Dinner", "type": "Social Event",
-     "color": "orange", "room": "Venue to be announced"},
+    # The entire Sunday programme is one logical "Student Event" session that
+    # runs in the Plenary Auditorium (with the pizza dinner moving to a
+    # to-be-announced venue at the end). Its three components are emitted as
+    # three talks under this single session, so the schedule UI shows them as
+    # an expandable group:
+    #   1. The workshop on scientific communication (the website is the only
+    #      source for its full title; the PDF prints just "Student Workshop").
+    #   2. The Bench-to-Business Symposium, which has multiple panellists and
+    #      is therefore emitted as a single talk with all panellists listed as
+    #      authors. The website carries the panellist roster; if the
+    #      enrichment HTML is missing, this talk is emitted with no authors.
+    #   3. The Networking Pizza Dinner.
+    # Default start/end times here match the PDF's day-block headers; the
+    # student-event web page (when present) overrides them with more precise
+    # values.
+    {"id": "sun-student-event", "day": "sun",
+     "start": "13:30", "end": "20:00",
+     "title": "Sunday Student Event", "type": "Student Event",
+     "color": "orange", "room": PLENARY_ROOM,
+     "talks": [
+        {"title": "Student Workshop",
+         "speaker": "", "speaker_aff": "", "color": "rose",
+         "start": "13:30", "end": "15:20"},
+        {"title": "Bench to Business Symposium",
+         "speaker": "", "speaker_aff": "", "color": "rose",
+         "start": "15:30", "end": "16:30"},
+        {"title": "Networking Pizza Dinner",
+         "speaker": "", "speaker_aff": "", "color": "rose",
+         "start": "17:00", "end": "19:30"},
+     ]},
 
     # ---- Monday June 15 -----------------------------------------------------
-    {"id": "S-mon-opening", "day": "mon",
+    {"id": "mon-opening", "day": "mon",
      "start": "08:00", "end": "08:15",
      "title": "Opening Ceremony", "type": "Ceremony",
      "color": "orange", "room": PLENARY_ROOM},
@@ -221,45 +250,45 @@ SKELETON: list[dict] = [
     # Tech-track sessions. Title omitted -> read from the PDF topic-header row
     # above the column. talks parsed from the wide title-vs-speaker grid as
     # before.
-    {"id": "S-mon-M1A", "day": "mon", "start": "08:30", "end": "10:15",
+    {"id": "M1A", "day": "mon", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "M1A", "column": 1},
-    {"id": "S-mon-M1B", "day": "mon", "start": "08:30", "end": "10:15",
+    {"id": "M1B", "day": "mon", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "M1B", "column": 2},
-    {"id": "S-mon-M1C", "day": "mon", "start": "08:30", "end": "10:15",
+    {"id": "M1C", "day": "mon", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "M1C", "column": 3},
 
-    {"id": "S-mon-M2A", "day": "mon", "start": "10:45", "end": "12:30",
+    {"id": "M2A", "day": "mon", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "M2A", "column": 1},
-    {"id": "S-mon-M2B", "day": "mon", "start": "10:45", "end": "12:30",
+    {"id": "M2B", "day": "mon", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "M2B", "column": 2},
-    {"id": "S-mon-M2C", "day": "mon", "start": "10:45", "end": "12:30",
+    {"id": "M2C", "day": "mon", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "M2C", "column": 3},
 
-    {"id": "S-mon-M3A", "day": "mon", "start": "13:30", "end": "15:15",
+    {"id": "M3A", "day": "mon", "start": "13:30", "end": "15:15",
      "type": "Technical Session",
      "color": "blue", "track": "M3A", "column": 1},
-    {"id": "S-mon-M3B", "day": "mon", "start": "13:30", "end": "15:15",
+    {"id": "M3B", "day": "mon", "start": "13:30", "end": "15:15",
      "type": "Technical Session",
      "color": "blue", "track": "M3B", "column": 2},
-    {"id": "S-mon-M3C", "day": "mon", "start": "13:30", "end": "15:15",
+    {"id": "M3C", "day": "mon", "start": "13:30", "end": "15:15",
      "type": "Technical Session",
      "color": "blue", "track": "M3C", "column": 3},
 
-    {"id": "S-mon-poster-blitz-1-1", "day": "mon",
+    {"id": "mon-poster-blitz-1-1", "day": "mon",
      "start": "15:25", "end": "15:40",
      "title": "Poster Blitz 1.1", "type": "Poster Blitz",
      "color": "amber", "room": ROOM_COL1},
-    {"id": "S-mon-poster-blitz-1-2", "day": "mon",
+    {"id": "mon-poster-blitz-1-2", "day": "mon",
      "start": "15:40", "end": "15:55",
      "title": "Poster Blitz 1.2", "type": "Poster Blitz",
      "color": "amber", "room": ROOM_COL2},
-    {"id": "S-mon-poster-1", "day": "mon",
+    {"id": "mon-poster-1", "day": "mon",
      "start": "15:55", "end": "16:55",
      "title": "Coffee + Poster Session 1", "type": "Poster Session",
      "color": "amber", "room": "Foyers in front of Plenary Auditorium"},
@@ -269,26 +298,26 @@ SKELETON: list[dict] = [
     # straight from the PDF (cells x ≈ 55-415 / 415-770 / 770-1100, header
     # row y ≈ 319.1). _harvest_block_cells parses the "Title. Speaker,
     # Affiliation" run packed inside each cell.
-    {"id": "S-mon-industry-1", "day": "mon",
+    {"id": "mon-industry-1", "day": "mon",
      "start": "16:55", "end": "17:55",
      "type": "Industry Talks", "color": "amber", "room": ROOM_COL1,
      "pdf_title": {"source": "row_text", "column": 1, "y": 319.1},
      "harvest": {"column": 1, "talk_color": "rose",
                  "slot_mode": "per_slot", "slot_minutes": 10}},
-    {"id": "S-mon-industry-2", "day": "mon",
+    {"id": "mon-industry-2", "day": "mon",
      "start": "16:55", "end": "17:55",
      "type": "Industry Talks", "color": "amber", "room": ROOM_COL2,
      "pdf_title": {"source": "row_text", "column": 2, "y": 319.1},
      "harvest": {"column": 2, "talk_color": "rose",
                  "slot_mode": "per_slot", "slot_minutes": 10}},
-    {"id": "S-mon-industry-3", "day": "mon",
+    {"id": "mon-industry-3", "day": "mon",
      "start": "16:55", "end": "17:55",
      "type": "Industry Talks", "color": "amber", "room": ROOM_COL3,
      "pdf_title": {"source": "row_text", "column": 3, "y": 319.1},
      "harvest": {"column": 3, "talk_color": "rose",
                  "slot_mode": "per_slot", "slot_minutes": 10}},
 
-    {"id": "S-mon-plenary-1", "day": "mon",
+    {"id": "mon-plenary-1", "day": "mon",
      "start": "18:05", "end": "18:50",
      "title": "Plenary Session 1", "type": "Plenary",
      "color": "violet", "room": PLENARY_ROOM,
@@ -296,32 +325,32 @@ SKELETON: list[dict] = [
         # Plenary "talks" are speaker-only — the PDF prints only the lecturer
         # name on a meta-row, no extractable talk title.
         {"title": "Plenary Lecture", "speaker": "Peter Seitz",
-         "speaker_aff": "", "color": "teal"},
+         "speaker_aff": "EPFL", "color": "teal"},
      ]},
-    {"id": "S-mon-welcome", "day": "mon",
+    {"id": "mon-welcome", "day": "mon",
      "start": "18:50", "end": "20:30",
      "title": "Welcome Reception", "type": "Social Event",
      "color": "orange",
      "room": "Foyers in front of Session Rooms"},
 
     # ---- Tuesday June 16 ----------------------------------------------------
-    {"id": "S-tue-T1A", "day": "tue", "start": "08:30", "end": "10:15",
+    {"id": "T1A", "day": "tue", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "T1A", "column": 1},
-    {"id": "S-tue-T1B", "day": "tue", "start": "08:30", "end": "10:15",
+    {"id": "T1B", "day": "tue", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "T1B", "column": 2},
-    {"id": "S-tue-T1C", "day": "tue", "start": "08:30", "end": "10:15",
+    {"id": "T1C", "day": "tue", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "T1C", "column": 3},
 
-    {"id": "S-tue-T2A", "day": "tue", "start": "10:45", "end": "12:30",
+    {"id": "T2A", "day": "tue", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "T2A", "column": 1},
-    {"id": "S-tue-T2B", "day": "tue", "start": "10:45", "end": "12:30",
+    {"id": "T2B", "day": "tue", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "T2B", "column": 2},
-    {"id": "S-tue-T2C", "day": "tue", "start": "10:45", "end": "12:30",
+    {"id": "T2C", "day": "tue", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "T2C", "column": 3},
 
@@ -329,31 +358,31 @@ SKELETON: list[dict] = [
     # y ≈ 508.6, talk cells scattered through y 508..555 inside the column).
     # slot_mode "session" because workshop cells don't line up with the
     # time-slot rows — they're free-form panellist entries.
-    {"id": "S-tue-W1", "day": "tue", "start": "13:30", "end": "15:20",
+    {"id": "tue-W1", "day": "tue", "start": "13:30", "end": "15:20",
      "type": "Workshop", "color": "emerald", "room": ROOM_COL1,
      "pdf_title": {"source": "row_text", "column": 1, "y": 508.6},
      "harvest": {"column": 1, "talk_color": "rose",
                  "slot_mode": "session"}},
-    {"id": "S-tue-W2", "day": "tue", "start": "13:30", "end": "15:20",
+    {"id": "tue-W2", "day": "tue", "start": "13:30", "end": "15:20",
      "type": "Workshop", "color": "emerald", "room": ROOM_COL2,
      "pdf_title": {"source": "row_text", "column": 2, "y": 508.6},
      "harvest": {"column": 2, "talk_color": "rose",
                  "slot_mode": "session"}},
 
-    {"id": "S-tue-poster-blitz-2-1", "day": "tue",
+    {"id": "tue-poster-blitz-2-1", "day": "tue",
      "start": "15:30", "end": "16:00",
      "title": "Poster Blitz 2.1", "type": "Poster Blitz",
      "color": "amber", "room": ROOM_COL1},
-    {"id": "S-tue-poster-blitz-2-2", "day": "tue",
+    {"id": "tue-poster-blitz-2-2", "day": "tue",
      "start": "15:30", "end": "16:00",
      "title": "Poster Blitz 2.2", "type": "Poster Blitz",
      "color": "amber", "room": ROOM_COL2},
-    {"id": "S-tue-poster-2", "day": "tue",
+    {"id": "tue-poster-2", "day": "tue",
      "start": "16:00", "end": "17:00",
      "title": "Coffee + Poster Session 2", "type": "Poster Session",
      "color": "amber", "room": "Foyers in front of Plenary Auditorium"},
 
-    {"id": "S-tue-plenary-2", "day": "tue",
+    {"id": "tue-plenary-2", "day": "tue",
      "start": "17:00", "end": "17:45",
      "title": "Plenary Session 2", "type": "Plenary",
      "color": "violet", "room": PLENARY_ROOM,
@@ -362,45 +391,45 @@ SKELETON: list[dict] = [
          "speaker_aff": "UCLA", "color": "teal"},
      ]},
 
-    {"id": "S-tue-city-tour", "day": "tue",
+    {"id": "tue-city-tour", "day": "tue",
      "start": "18:00", "end": "19:00",
      "title": "Zurich City Tour", "type": "Social Event",
      "color": "orange", "room": "Meet at venue"},
-    {"id": "S-tue-gala", "day": "tue",
+    {"id": "tue-gala", "day": "tue",
      "start": "19:00", "end": "23:00",
      "title": "Gala Dinner", "type": "Social Event",
      "color": "orange", "room": "MS Panta Rhei"},
 
     # ---- Wednesday June 17 --------------------------------------------------
-    {"id": "S-wed-W1A", "day": "wed", "start": "08:30", "end": "10:15",
+    {"id": "W1A", "day": "wed", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "W1A", "column": 1},
-    {"id": "S-wed-W1B", "day": "wed", "start": "08:30", "end": "10:15",
+    {"id": "W1B", "day": "wed", "start": "08:30", "end": "10:15",
      "type": "Technical Session",
      "color": "blue", "track": "W1B", "column": 2},
 
-    {"id": "S-wed-W2A", "day": "wed", "start": "10:45", "end": "12:30",
+    {"id": "W2A", "day": "wed", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "W2A", "column": 1},
-    {"id": "S-wed-W2B", "day": "wed", "start": "10:45", "end": "12:30",
+    {"id": "W2B", "day": "wed", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "W2B", "column": 2},
-    {"id": "S-wed-W2C", "day": "wed", "start": "10:45", "end": "12:30",
+    {"id": "W2C", "day": "wed", "start": "10:45", "end": "12:30",
      "type": "Technical Session",
      "color": "blue", "track": "W2C", "column": 3},
 
-    {"id": "S-wed-W3A", "day": "wed", "start": "13:30", "end": "15:15",
+    {"id": "W3A", "day": "wed", "start": "13:30", "end": "15:15",
      "type": "Technical Session",
      "color": "blue", "track": "W3A", "column": 1},
-    {"id": "S-wed-W3B", "day": "wed", "start": "13:30", "end": "15:15",
+    {"id": "W3B", "day": "wed", "start": "13:30", "end": "15:15",
      "type": "Technical Session",
      "color": "blue", "track": "W3B", "column": 2},
 
-    {"id": "S-wed-closing", "day": "wed",
+    {"id": "wed-closing", "day": "wed",
      "start": "15:25", "end": "15:40",
      "title": "Closing Ceremony", "type": "Ceremony",
      "color": "orange", "room": ROOM_COL1},
-    {"id": "S-wed-labs", "day": "wed",
+    {"id": "wed-labs", "day": "wed",
      "start": "16:45", "end": "18:00",
      "title": "Lab Tours and Company Visits", "type": "Other",
      "color": "orange", "room": "ETH Zurich"},
@@ -1168,19 +1197,712 @@ def _harvest_session_talks(
 
 
 # =============================================================================
+# Invited-speakers HTML cross-reference
+#
+# The detailed-schedule PDF prints only the speaker name in each talk cell.
+# The conference's public Invited Speakers page is the one source that ties
+# each invited speaker to an affiliation, laid out as
+#
+#   <p><strong>Name</strong></p>
+#   <p><em>Affiliation</em></p>
+#   <p><strong>"Talk Title"</strong></p>
+#
+# triples grouped under SC1..SC7 <h2> section headers. We parse these triples
+# from the cached HTML and use them to fill `institutions` on the matching
+# PDF-harvested talks during emission.
+#
+# A small alias map covers the cases where the website name does not match
+# the PDF speaker name after normalization. These fall into two kinds:
+#   (a) PDF spelling drift / typos (e.g. "Hecklemann" vs "Heckelmann");
+#   (b) Deliberate substitutions — the talk was announced under one invited
+#       speaker but is being presented by a different group member (e.g.
+#       Stanford's "Quantum Transducers" talk, announced for Safavi-Naeini
+#       on the invited-speakers page, presented at the conference by Samuel
+#       Gyger). In those cases we still want the listed affiliation attached
+#       to the presenter's talk.
+# Keys and values are *unnormalized*; the lookup normalizes both sides.
+# =============================================================================
+
+# Curly + straight quote chars that wrap talk titles on the WP page.
+_INV_QUOTE_CHARS = "\u201c\u201d\u201e\u201f\u2033\u2036\"'"
+_INV_TITLE_QUOTE_RE = re.compile(f"[{_INV_QUOTE_CHARS}]")
+_INV_STRIP_QUOTES_RE = re.compile(
+    f"^[{_INV_QUOTE_CHARS}]+|[{_INV_QUOTE_CHARS}]+$")
+_INV_SECTION_HEADER_RE = re.compile(r"^SC\d+\b")
+
+
+# Maps Invited-Speakers-page-name -> PDF-schedule speaker name. The processor
+# attaches the page's affiliation to a talk whose speaker is *either* the
+# website name or this aliased target. Add an entry here whenever the curator
+# notices a name in the JSON without an affiliation but a clearly matching
+# entry on the invited-speakers page.
+INVITED_NAME_ALIASES: dict[str, str] = {
+    # PDF schedule prints "Hecklemann"; website spells "Heckelmann".
+    "Ina Heckelmann": "Ina Hecklemann",
+    # Talk announced under Safavi-Naeini on the invited-speakers page;
+    # actually presented by Samuel Gyger (Stanford LINQS).
+    "Amir Safavi-Naeini": "Samuel Gyger",
+}
+
+
+def _inv_strip_tags(s: str) -> str:
+    s = re.sub(r"<[^>]+>", "", s)
+    s = html.unescape(s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _inv_is_title(text: str) -> bool:
+    return bool(_INV_TITLE_QUOTE_RE.search(text))
+
+
+def _inv_strip_title_quotes(s: str) -> str:
+    return _INV_STRIP_QUOTES_RE.sub("", s).strip()
+
+
+def _norm_name(n: str) -> str:
+    """Normalize a name for matching: strip accents, lowercase, collapse
+    whitespace, drop punctuation. The canonical name (with accents) stays in
+    its original form everywhere else."""
+    s = unicodedata.normalize("NFKD", n)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip().lower()
+    return s
+
+
+def _parse_invited_html(html_text: str) -> list[dict]:
+    """Return [{"name": str, "affiliation": str, "title": str}, ...] for every
+    Name/Affiliation/Title triple on the invited-speakers page. Tolerant of
+    nested spans, named/numeric entities, curly vs straight quotes, and the
+    SC1..SC7 section headers (which we strip before scanning so they can't
+    leak in as ghost "name" tokens)."""
+    # Drop heading-level wrappers so SC1.. section headers don't appear as
+    # bold runs in our token stream.
+    body = re.sub(r"<h[1-6]\b[^>]*>.*?</h[1-6]>", "", html_text,
+                  flags=re.IGNORECASE | re.DOTALL)
+
+    # Pull every <strong>...</strong> and <em>...</em> run, in document order.
+    pat = re.compile(r"<(strong|em)\b[^>]*>(.*?)</\1>",
+                     re.IGNORECASE | re.DOTALL)
+    tokens: list[tuple[str, str]] = []  # kind ∈ {"name","title","aff"}
+    for m in pat.finditer(body):
+        tag = m.group(1).lower()
+        text = _inv_strip_tags(m.group(2))
+        if not text:
+            continue
+        if _INV_SECTION_HEADER_RE.match(text):
+            continue
+        if tag == "em":
+            tokens.append(("aff", text))
+        else:  # strong
+            tokens.append(("title" if _inv_is_title(text) else "name", text))
+
+    # Walk tokens and group into (name, aff, title) records. A new "name"
+    # token starts a new record; intervening stray tokens are tolerated.
+    records: list[dict] = []
+    i = 0
+    while i < len(tokens):
+        if tokens[i][0] != "name":
+            i += 1
+            continue
+        name = tokens[i][1]
+        j = i + 1
+        aff = ""
+        title = ""
+        while j < len(tokens) and tokens[j][0] != "name":
+            if tokens[j][0] == "aff" and not aff:
+                aff = tokens[j][1]
+            elif tokens[j][0] == "title" and not title:
+                title = _inv_strip_title_quotes(tokens[j][1])
+            j += 1
+        if aff or title:
+            records.append({"name": name, "affiliation": aff, "title": title})
+        i = j
+    return records
+
+
+def _load_invited_affiliations(path: Path) -> dict[str, str]:
+    """Build a {normalized_speaker_name: affiliation} lookup from the cached
+    invited-speakers HTML. Returns an empty dict (with a warning) if the file
+    is missing — the pipeline still produces useful JSON, just without
+    affiliations on the invited talks."""
+    if not path.exists():
+        log(f"[warn] invited-speakers HTML not found at {path}; "
+            f"talks will be emitted without invited-speaker affiliations.")
+        return {}
+    records = _parse_invited_html(path.read_text(encoding="utf-8"))
+    log(f"[info] parsed {len(records)} entries from {path.name}.")
+
+    lookup: dict[str, str] = {}
+    for r in records:
+        aff = r["affiliation"]
+        if not aff:
+            continue
+        # Index under the website name itself, plus any curated alias target
+        # (so we hit the PDF-printed name too).
+        keys = [r["name"]]
+        if r["name"] in INVITED_NAME_ALIASES:
+            keys.append(INVITED_NAME_ALIASES[r["name"]])
+        for k in keys:
+            lookup[_norm_name(k)] = aff
+    return lookup
+
+
+# =============================================================================
+# Web enrichment: optional HTML pages from the ECIO website that fill in detail
+# the detailed-schedule PDF doesn't render. Each parser is tolerant of small
+# WordPress-block markup drift (extra spans, attribute reordering, &-entities)
+# and returns a small typed struct. _load_web_enrichment() ties them together
+# into a single `enrichment` dict that main() consults by session_id and
+# speaker name. Every individual file is optional: when missing we just log a
+# note and leave the corresponding enrichment empty.
+# =============================================================================
+
+# Shared HTML helpers ---------------------------------------------------------
+
+# Block-level tags we replace with whitespace when flattening text. The
+# explicit inclusion of <br> is what keeps phrasing like `for AI<br>datacenters`
+# from collapsing into the single token `AIdatacenters` after tag-strip — the
+# WP block editor sometimes wraps inside a single <strong> across a <br>, so
+# adjacent text nodes that visibly appear on two lines arrive in our parser
+# with no whitespace between them.
+_HTML_BLOCK_TAGS = ("p", "div", "li", "br", "h1", "h2", "h3", "h4", "h5", "h6")
+_HTML_BLOCK_TAG_RE = re.compile(
+    r"</?(?:" + "|".join(_HTML_BLOCK_TAGS) + r")\b[^>]*>",
+    re.IGNORECASE,
+)
+
+
+def _html_collapse_whitespace(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _html_strip_to_text(fragment: str) -> str:
+    """Return plain text for an HTML fragment: drop tags (block-level tags
+    become a space first, so adjacent text nodes that visibly appeared on
+    separate lines keep their word boundary), decode entities, normalise
+    whitespace."""
+    s = _HTML_BLOCK_TAG_RE.sub(" ", fragment)
+    s = re.sub(r"<[^>]+>", "", s)
+    s = html.unescape(s)
+    return _html_collapse_whitespace(s)
+
+
+def _html_strip_quote_chars(s: str) -> str:
+    """Strip curly/straight quote chars from the ends of a title string."""
+    return _INV_STRIP_QUOTES_RE.sub("", s).strip()
+
+
+def _html_extract_main(html_text: str) -> str:
+    """Focus parsing on the page body: when a <main>…</main> wrapper is
+    present we return its inner content; otherwise we drop the obvious
+    non-content chrome (scripts, nav, headers, footers, asides)."""
+    m = re.search(r"<main\b[^>]*>(.*?)</main>",
+                  html_text, re.IGNORECASE | re.DOTALL)
+    if m:
+        return m.group(1)
+    s = html_text
+    for tag in ("script", "style", "nav", "header", "footer", "aside"):
+        s = re.sub(rf"<{tag}\b[^>]*>.*?</{tag}>", "",
+                   s, flags=re.IGNORECASE | re.DOTALL)
+    return s
+
+
+# Page parser: plenary speakers -----------------------------------------------
+
+def _parse_plenary_html(html_text: str) -> list[dict]:
+    """Return [{name, affiliation, title, abstract, bio}, …] for each plenary
+    speaker on the page. The structure is one <h2> per speaker followed by a
+    sequence of <p> blocks; we classify each <p> by content (a <p> opening
+    with a curly/straight quote char is the talk title; the first short
+    non-quoted <p> is the affiliation; the rest is prose). The first prose
+    paragraph that opens with the speaker's first name marks the start of
+    the bio; everything before is the abstract."""
+    body = _html_extract_main(html_text)
+    body = re.sub(r"<h1\b[^>]*>.*?</h1>", "",
+                  body, flags=re.IGNORECASE | re.DOTALL)
+    chunks = re.split(r"(<h2\b[^>]*>.*?</h2>)",
+                      body, flags=re.IGNORECASE | re.DOTALL)
+    out: list[dict] = []
+    for i in range(1, len(chunks), 2):
+        head = chunks[i]
+        rest = chunks[i + 1] if i + 1 < len(chunks) else ""
+        name = _html_strip_to_text(head)
+        # Drop a leading "Prof. Dr." / "Dr." / "Prof." honorific so the name
+        # matches what the PDF schedule prints in its speaker cells.
+        name = re.sub(r"^(?:Prof\.?\s+Dr\.?|Dr\.?|Prof\.?)\s+", "", name)
+        paras = re.findall(r"<p\b[^>]*>(.*?)</p>",
+                           rest, re.IGNORECASE | re.DOTALL)
+        aff = ""
+        title = ""
+        prose: list[str] = []
+        for raw in paras:
+            txt = _html_strip_to_text(raw)
+            if not txt:
+                continue
+            if not aff and not _INV_TITLE_QUOTE_RE.search(txt) and len(txt) < 200:
+                aff = txt
+                continue
+            if not title and txt.lstrip()[:1] in _INV_QUOTE_CHARS:
+                title = _html_strip_quote_chars(txt)
+                continue
+            prose.append(txt)
+        abstract = ""
+        bio = ""
+        if prose:
+            first_name = name.split()[0] if name else ""
+            bio_idx = None
+            for j, p in enumerate(prose):
+                if first_name and p.startswith(first_name):
+                    bio_idx = j
+                    break
+            if bio_idx is None:
+                abstract = "\n\n".join(prose)
+            else:
+                abstract = "\n\n".join(prose[:bio_idx])
+                bio = "\n\n".join(prose[bio_idx:])
+        out.append({
+            "name": name, "affiliation": aff, "title": title,
+            "abstract": abstract, "bio": bio,
+        })
+    # Defensive: drop records whose "name" doesn't look like a person name
+    # (contains a colon, is implausibly long, or matches the SC\d+ section
+    # header pattern used elsewhere on the ECIO site).
+    out = [r for r in out
+           if r["name"] and ":" not in r["name"] and len(r["name"]) <= 60
+           and not _INV_SECTION_HEADER_RE.match(r["name"])]
+    return out
+
+
+# Page parser: workshops ------------------------------------------------------
+
+_WORKSHOP_HEAD_RE = re.compile(r"\bworkshop\s*(\d+)?\b", re.IGNORECASE)
+_WORKSHOP_PLACEHOLDER_PHRASES = (
+    "workshop panelist", "coming soon", "coming soon..", "coming soon ..",
+    "coming soon ...",
+)
+
+
+def _parse_workshops_html(html_text: str) -> list[dict]:
+    """Return [{position, title, chair, panelists: [{name, aff, talk_title}]}, …]
+    for each workshop on the page. The page has 2 workshops, each opening
+    with a "WORKSHOP N" paragraph; the H2 immediately after carries the
+    workshop topic. Inside each block, panelists are laid out as:
+        <p><strong>Name</strong></p>
+        <p><em>Affiliation</em></p>
+        <p><strong>"Talk Title"</strong></p>     (optional)
+    Each row is one <p>; we walk paragraphs in document order and classify
+    them by content."""
+    body = _html_extract_main(html_text)
+    chunks: list[tuple[str, str, str]] = []
+    for m in re.finditer(r"<(h2|p)\b[^>]*>(.*?)</\1>",
+                         body, re.IGNORECASE | re.DOTALL):
+        kind = m.group(1).lower()
+        raw = m.group(2)
+        plain = _html_strip_to_text(raw)
+        if plain:
+            chunks.append((kind, raw, plain))
+
+    workshops: list[dict] = []
+    cur_workshop: dict | None = None
+    cur_panelist: dict | None = None
+
+    def _flush_panelist() -> None:
+        nonlocal cur_panelist
+        if cur_workshop is not None and cur_panelist is not None and (
+            cur_panelist["name"] or cur_panelist["aff"]
+        ):
+            cur_workshop["panelists"].append(cur_panelist)
+        cur_panelist = None
+
+    def _flush_workshop() -> None:
+        nonlocal cur_workshop
+        _flush_panelist()
+        if cur_workshop is not None:
+            workshops.append(cur_workshop)
+            cur_workshop = None
+
+    for kind, raw, plain in chunks:
+        plain_lower = plain.lower()
+
+        # Workshop-header paragraph: short, contains "WORKSHOP N", no chair /
+        # panelist keyword.
+        m_h = _WORKSHOP_HEAD_RE.search(plain)
+        if (kind == "p" and m_h
+                and "chair" not in plain_lower
+                and "panelist" not in plain_lower
+                and len(plain) < 40):
+            _flush_workshop()
+            pos_str = m_h.group(1)
+            position = int(pos_str) if pos_str else len(workshops) + 1
+            cur_workshop = {
+                "position": position, "title": "", "chair": "",
+                "panelists": [],
+            }
+            continue
+
+        if cur_workshop is None:
+            continue
+
+        # Workshop topic from the H2 following the header.
+        if kind == "h2" and not cur_workshop["title"]:
+            cur_workshop["title"] = plain
+            continue
+
+        # Chair line: name follows the colon in the same paragraph.
+        if "workshop chair" in plain_lower:
+            after = plain.split(":", 1)[1].strip() if ":" in plain else ""
+            cur_workshop["chair"] = after
+            _flush_panelist()
+            continue
+
+        # Placeholder: closes the current panelist without modifying fields.
+        if plain_lower in _WORKSHOP_PLACEHOLDER_PHRASES:
+            _flush_panelist()
+            continue
+
+        strong_texts = [_html_strip_to_text(m.group(1)) for m in re.finditer(
+            r"<strong\b[^>]*>(.*?)</strong>", raw,
+            re.IGNORECASE | re.DOTALL)]
+        em_texts = [_html_strip_to_text(m.group(1)) for m in re.finditer(
+            r"<em\b[^>]*>(.*?)</em>", raw,
+            re.IGNORECASE | re.DOTALL)]
+        strong_texts = [t for t in strong_texts if t]
+        em_texts = [t for t in em_texts if t]
+
+        # Affiliation paragraph: italic-only.
+        if em_texts and not strong_texts:
+            if cur_panelist is not None:
+                cur_panelist["aff"] = em_texts[0]
+            continue
+
+        # Talk-title paragraph: the plain text begins or ends with a quote.
+        stripped = plain.strip()
+        if (stripped[:1] in _INV_QUOTE_CHARS
+                or stripped[-1:] in _INV_QUOTE_CHARS):
+            if cur_panelist is not None:
+                cur_panelist["talk_title"] = _html_strip_quote_chars(stripped)
+            continue
+
+        # Panelist name: opens a new panelist record.
+        if strong_texts:
+            _flush_panelist()
+            if _WORKSHOP_HEAD_RE.fullmatch(strong_texts[0].strip()):
+                continue
+            cur_panelist = {
+                "name": " ".join(strong_texts).strip(),
+                "aff": "", "talk_title": "",
+            }
+            continue
+
+    _flush_workshop()
+    return workshops
+
+
+# Page parser: Sunday student event -------------------------------------------
+
+def _parse_student_event_html(html_text: str) -> dict:
+    """Return {workshop?, bench?, pizza?} dicts for the three sub-events on
+    the page. Each carries any of: title, location, start, end. The bench
+    record also carries `panelists: [{name, aff}, …]` parsed from the
+    <em>Name, Affiliation</em> paragraphs between the bench header and the
+    pizza header."""
+    body = _html_extract_main(html_text)
+    paras = re.findall(r"<p\b[^>]*>(.*?)</p>",
+                       body, re.IGNORECASE | re.DOTALL)
+    out: dict = {"workshop": {}, "bench": {}, "pizza": {}}
+    section: str | None = None
+    time_re = re.compile(
+        r"(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2})")
+    for raw in paras:
+        plain = _html_strip_to_text(raw)
+        if not plain:
+            continue
+        lower = plain.lower()
+        if "workshop on scientific communication" in lower:
+            section = "workshop"
+            out[section]["title"] = "Workshop on Scientific Communication"
+        elif "bench to business" in lower:
+            section = "bench"
+        elif "pizza dinner" in lower or "networking and pizza" in lower:
+            section = "pizza"
+        else:
+            # Continuation: bench panelists are <em>Name, Affiliation</em>.
+            if section == "bench" and "," in plain and len(plain) < 200:
+                name, _, aff = plain.partition(",")
+                out[section].setdefault("panelists", []).append(
+                    {"name": name.strip(), "aff": aff.strip()})
+            continue
+        m_t = time_re.search(plain)
+        if m_t:
+            out[section]["start"] = m_t.group(1)
+            out[section]["end"] = m_t.group(2)
+        m_loc = re.search(r"<em\b[^>]*>(.*?)</em>",
+                          raw, re.IGNORECASE | re.DOTALL)
+        if m_loc:
+            loc = _html_strip_to_text(m_loc.group(1))
+            if loc and loc.lower() not in ("th",):
+                out[section]["location"] = loc
+    return out
+
+
+# Page parser: industry talks -------------------------------------------------
+
+_INDUSTRY_SECTION_RE = re.compile(
+    r"<h3\b[^>]*>\s*Session\s*(\d+)\s*:\s*([^<]*)</h3>",
+    re.IGNORECASE,
+)
+
+
+def _parse_industry_html(html_text: str) -> list[dict]:
+    """Return [{position, label, talks: [{company, name, title}]}, …]. The
+    page is laid out as three <h3>Session N: <label></h3> blocks; inside each
+    block, talks are introduced by <h4>company</h4> followed by <p>s with the
+    talk title (in curly quotes inside a <strong>) and a "Speaker: <name>"
+    line."""
+    body = _html_extract_main(html_text)
+    headers = list(_INDUSTRY_SECTION_RE.finditer(body))
+    if not headers:
+        return []
+    sessions: list[dict] = []
+    for i, m in enumerate(headers):
+        position = int(m.group(1))
+        label = m.group(2).strip()
+        block_start = m.end()
+        block_end = (headers[i + 1].start()
+                     if i + 1 < len(headers) else len(body))
+        block = body[block_start:block_end]
+
+        company_split = re.split(
+            r"<h4\b[^>]*>(.*?)</h4>", block, flags=re.IGNORECASE | re.DOTALL)
+        talks: list[dict] = []
+        for j in range(1, len(company_split), 2):
+            company = _html_strip_to_text(company_split[j])
+            sub = company_split[j + 1] if j + 1 < len(company_split) else ""
+            title = ""
+            for sm in re.finditer(r"<strong\b[^>]*>(.*?)</strong>",
+                                  sub, re.IGNORECASE | re.DOTALL):
+                txt = _html_strip_to_text(sm.group(1))
+                if not txt:
+                    continue
+                if _inv_is_title(txt) or txt.lower().startswith("coming soon"):
+                    title = _inv_strip_title_quotes(txt)
+                    break
+            plain = _html_strip_to_text(sub)
+            name = ""
+            sp = re.search(r"Speaker\s*:\s*([^\n,;.]+)", plain)
+            if sp:
+                cand = sp.group(1).strip()
+                if cand and not cand.lower().startswith("coming soon"):
+                    name = cand
+            talks.append({"company": company, "name": name, "title": title})
+        sessions.append({
+            "position": position, "label": label, "talks": talks,
+        })
+    return sessions
+
+
+# Page parser: social events --------------------------------------------------
+
+def _parse_social_html(html_text: str) -> list[dict]:
+    """Return [{heading, description}, …] for each <h3>-introduced social
+    event on the page."""
+    body = _html_extract_main(html_text)
+    body = re.sub(r"<h1\b[^>]*>.*?</h1>", "",
+                  body, flags=re.IGNORECASE | re.DOTALL)
+    chunks = re.split(r"(<h3\b[^>]*>.*?</h3>)",
+                      body, flags=re.IGNORECASE | re.DOTALL)
+    out: list[dict] = []
+    for i in range(1, len(chunks), 2):
+        heading = _html_strip_to_text(chunks[i])
+        sub = chunks[i + 1] if i + 1 < len(chunks) else ""
+        paras = re.findall(r"<p\b[^>]*>(.*?)</p>",
+                           sub, re.IGNORECASE | re.DOTALL)
+        text_paras = []
+        for p in paras:
+            t = _html_strip_to_text(p)
+            if not t:
+                continue
+            # Skip pure photo-credit paragraphs ("(© …)").
+            if t.startswith("(") and t.endswith(")") and "©" in t:
+                continue
+            text_paras.append(t)
+        description = "\n\n".join(text_paras)
+        if heading:
+            out.append({"heading": heading, "description": description})
+    return out
+
+
+# Page parser: lab tours ------------------------------------------------------
+
+def _parse_lab_tours_html(html_text: str) -> list[dict]:
+    """Return [{heading, description}, …] — one record per <h2>-introduced
+    visit on the page (ETH Lab Tour / Menhir / Lightium / …). The <p> body
+    that follows is the prose description; "Find out more:" footers are
+    dropped."""
+    body = _html_extract_main(html_text)
+    body = re.sub(r"<h1\b[^>]*>.*?</h1>", "",
+                  body, flags=re.IGNORECASE | re.DOTALL)
+    chunks = re.split(r"(<h2\b[^>]*>.*?</h2>)",
+                      body, flags=re.IGNORECASE | re.DOTALL)
+    out: list[dict] = []
+    for i in range(1, len(chunks), 2):
+        heading = _html_strip_to_text(chunks[i])
+        sub = chunks[i + 1] if i + 1 < len(chunks) else ""
+        paras = re.findall(r"<p\b[^>]*>(.*?)</p>",
+                           sub, re.IGNORECASE | re.DOTALL)
+        text_paras = []
+        for p in paras:
+            t = _html_strip_to_text(p)
+            if not t:
+                continue
+            if t.lower().startswith("find out more"):
+                continue
+            text_paras.append(t)
+        description = "\n\n".join(text_paras)
+        if heading:
+            out.append({"heading": heading, "description": description})
+    # Defensive: drop SC\d+-shaped headings (used on the invited-speakers
+    # page) and implausibly long headings.
+    out = [r for r in out
+           if not _INV_SECTION_HEADER_RE.match(r["heading"])
+           and len(r["heading"]) <= 100]
+    return out
+
+
+# Web-enrichment loader -------------------------------------------------------
+
+# Mapping of (workshop position) → SKELETON session_id.
+_WORKSHOP_POS_TO_SID = {1: "tue-W1", 2: "tue-W2"}
+
+# Mapping of (industry-session position) → SKELETON session_id.
+_INDUSTRY_POS_TO_SID = {
+    1: "mon-industry-1",
+    2: "mon-industry-2",
+    3: "mon-industry-3",
+}
+
+# Mapping of social-event heading prefix → SKELETON session_id. We match on a
+# lowercased prefix because the heading lines also carry a date and time we
+# don't want to re-parse.
+_SOCIAL_HEADING_TO_SID = {
+    "welcome reception": "mon-welcome",
+    "zurich city tour":  "tue-city-tour",
+    "gala dinner":       "tue-gala",
+}
+
+
+def _load_web_enrichment() -> dict:
+    """Read all six optional enrichment HTML files into one structured dict
+    that main() consults during emission. Any missing file leaves its branch
+    empty (with a warning) — emission falls back to whatever the PDF gives
+    us."""
+    enrich: dict = {
+        "plenary": {}, "workshops": {}, "student": {},
+        "industry": {}, "social": {}, "lab_tours": [],
+    }
+
+    if INPUT_PLENARY_HTML.exists():
+        recs = _parse_plenary_html(INPUT_PLENARY_HTML.read_text(encoding="utf-8"))
+        log(f"[info] plenary HTML       : {len(recs)} speaker(s) parsed.")
+        for r in recs:
+            if r["name"]:
+                enrich["plenary"][_norm_name(r["name"])] = r
+    else:
+        log(f"[warn] plenary HTML not found at {INPUT_PLENARY_HTML.name}; "
+            f"plenary talks will use PDF placeholder titles only.")
+
+    if INPUT_WORKSHOPS_HTML.exists():
+        recs = _parse_workshops_html(
+            INPUT_WORKSHOPS_HTML.read_text(encoding="utf-8"))
+        log(f"[info] workshops HTML     : {len(recs)} workshop(s) parsed.")
+        for r in recs:
+            sid = _WORKSHOP_POS_TO_SID.get(r["position"])
+            if sid:
+                enrich["workshops"][sid] = r
+    else:
+        log(f"[warn] workshops HTML not found; workshop sessions will use "
+            f"PDF-harvested titles + panellists only.")
+
+    if INPUT_STUDENT_HTML.exists():
+        rec = _parse_student_event_html(
+            INPUT_STUDENT_HTML.read_text(encoding="utf-8"))
+        present = [k for k, v in rec.items() if v]
+        log(f"[info] student-event HTML : sub-events parsed: {present}")
+        enrich["student"] = rec
+    else:
+        log(f"[warn] student-event HTML not found; Sunday student-event "
+            f"talks will use SKELETON defaults only (no Bench-to-Business "
+            f"panellists, no website-derived time overrides).")
+
+    if INPUT_INDUSTRY_HTML.exists():
+        recs = _parse_industry_html(
+            INPUT_INDUSTRY_HTML.read_text(encoding="utf-8"))
+        log(f"[info] industry HTML      : {len(recs)} session(s), "
+            f"{sum(len(r['talks']) for r in recs)} talk(s) parsed.")
+        for r in recs:
+            sid = _INDUSTRY_POS_TO_SID.get(r["position"])
+            if sid:
+                enrich["industry"][sid] = r
+    else:
+        log(f"[warn] industry-talks HTML not found; industry sessions will "
+            f"use the noisier PDF-harvested talk cells.")
+
+    if INPUT_SOCIAL_HTML.exists():
+        recs = _parse_social_html(
+            INPUT_SOCIAL_HTML.read_text(encoding="utf-8"))
+        log(f"[info] social-events HTML : {len(recs)} event(s) parsed.")
+        for r in recs:
+            lower = r["heading"].lower()
+            for prefix, sid in _SOCIAL_HEADING_TO_SID.items():
+                if lower.startswith(prefix):
+                    enrich["social"][sid] = r["description"]
+                    break
+    else:
+        log(f"[warn] social-events HTML not found; social-event sessions "
+            f"will be emitted without descriptions.")
+
+    if INPUT_LABS_HTML.exists():
+        recs = _parse_lab_tours_html(
+            INPUT_LABS_HTML.read_text(encoding="utf-8"))
+        log(f"[info] lab-tours HTML     : {len(recs)} visit option(s) parsed.")
+        enrich["lab_tours"] = recs
+    else:
+        log(f"[warn] lab-tours HTML not found; the lab-tours session will "
+            f"be emitted as a single SKELETON entry with no talk options.")
+
+    return enrich
+
+
+# =============================================================================
 # Driver
 # =============================================================================
 def main() -> None:
     _bootstrap_pdfplumber()
     log("=" * 72)
     log(f"[config] ECIO 2026 PROCESSOR")
-    log(f"[config]   input PDF : {INPUT_PDF}")
-    log(f"[config]   output    : {OUTPUT_JSON}")
+    log(f"[config]   input PDF       : {INPUT_PDF}")
+    log(f"[config]   invited HTML    : {INPUT_INVITED_HTML}")
+    log(f"[config]   enrichment HTML : {DATA_DIR} (6 optional files)")
+    log(f"[config]   output          : {OUTPUT_JSON}")
     log("=" * 72)
 
     if not INPUT_PDF.exists():
         log(f"[fatal] required input not found: {INPUT_PDF}")
         sys.exit(1)
+
+    # Load the {normalized_name -> affiliation} lookup from the cached
+    # invited-speakers page. Missing file is non-fatal: the pipeline still
+    # produces valid JSON, just without invited-speaker affiliations.
+    invited_aff = _load_invited_affiliations(INPUT_INVITED_HTML)
+
+    # Load the optional web-enrichment HTML pages. Each is independently
+    # optional; missing ones leave their branch of `enrich` empty and the
+    # session/talk pipeline falls back to whatever the PDF harvested.
+    log("-" * 72)
+    log("[info] loading optional web-enrichment pages …")
+    enrich = _load_web_enrichment()
 
     import pdfplumber
     log(f"[info] reading {INPUT_PDF.name} …")
@@ -1200,6 +1922,10 @@ def main() -> None:
     sessions_out: list[dict] = []
     talks_out: list[dict] = []
     affiliations_pool: set[str] = set()
+    # Telemetry: how many talks had their affiliation filled from the cached
+    # invited-speakers page (vs already-present from the PDF harvest).
+    invited_filled_count = 0
+    invited_filled_speakers: list[str] = []
 
     for sess in SKELETON:
         day_key = sess["day"]
@@ -1259,29 +1985,37 @@ def main() -> None:
         sessions_out.append(s_obj)
 
         # ---- Collect this session's talks
-        # Each entry is (title, speaker, aff, is_invited, color_override,
-        # talk_start_min, talk_end_min). For PDF-harvested talks, color
-        # follows the harvest directive ("rose" for industry/workshop) and
-        # is_invited stays False. For tech-grid harvested talks, color is
-        # decided downstream from is_invited.
-        talks_for_session: list[
-            tuple[str, str, str, bool, str | None, int | None, int | None]
-        ] = []
+        # Each entry is a dict with these keys (any may be empty/None):
+        #   title         : the talk title
+        #   speaker       : presenting-author name (becomes the first author)
+        #   aff           : presenting-author affiliation
+        #   is_invited    : True for "Invited:" tech-track talks
+        #   color         : color override (e.g. "rose" for industry/workshop)
+        #                   or None to derive from is_invited downstream
+        #   start_min/end_min: per-talk timing in minutes-since-midnight, or
+        #                   None to inherit the session's start/end
+        #   abstract      : optional abstract/bio prose
+        #   extra_authors : optional [{name, aff}, …] appended to the author
+        #                   list. Used for multi-author talks such as the
+        #                   Bench-to-Business symposium panellist roster.
+        talks_for_session: list[dict] = []
 
         if "talks" in sess:
-            # Hand-listed talks (plenary speakers only, in this skeleton).
+            # Hand-listed talks (plenary speakers + Sunday components).
             for t in sess["talks"]:
                 ts = t.get("start")
                 te = t.get("end")
-                t_start_min = _hhmm_to_minutes(ts) if ts else None
-                t_end_min = _hhmm_to_minutes(te) if te else None
-                talks_for_session.append((
-                    t.get("title", "").strip(),
-                    t.get("speaker", "").strip(),
-                    t.get("speaker_aff", "").strip(),
-                    False, t.get("color"),
-                    t_start_min, t_end_min,
-                ))
+                talks_for_session.append({
+                    "title": t.get("title", "").strip(),
+                    "speaker": t.get("speaker", "").strip(),
+                    "aff": t.get("speaker_aff", "").strip(),
+                    "is_invited": False,
+                    "color": t.get("color"),
+                    "start_min": _hhmm_to_minutes(ts) if ts else None,
+                    "end_min": _hhmm_to_minutes(te) if te else None,
+                    "abstract": "",
+                    "extra_authors": [],
+                })
         elif "harvest" in sess:
             # Non-grid harvest (industry talks + workshops). Walks the entire
             # band as a block, parsing "Title. Speaker, Affiliation" cells.
@@ -1310,11 +2044,17 @@ def main() -> None:
             for p in parsed:
                 if not (p["title"] or p["speaker"] or p["aff"]):
                     continue
-                talks_for_session.append((
-                    p["title"], p["speaker"], p["aff"],
-                    False, color_override,
-                    p["start_min"], p["end_min"],
-                ))
+                talks_for_session.append({
+                    "title": p["title"],
+                    "speaker": p["speaker"],
+                    "aff": p["aff"],
+                    "is_invited": False,
+                    "color": color_override,
+                    "start_min": p["start_min"],
+                    "end_min": p["end_min"],
+                    "abstract": "",
+                    "extra_authors": [],
+                })
         elif "column" in sess:
             # Tech-grid harvest (title left, right-aligned speaker chip).
             if not day_band:
@@ -1333,12 +2073,174 @@ def main() -> None:
                     continue
                 t_start, t_end = _talk_time_window(
                     y, slots, s_min, e_min, is_invited=is_invited)
-                talks_for_session.append(
-                    (t_title, speaker, "", is_invited, None, t_start, t_end))
+                talks_for_session.append({
+                    "title": t_title, "speaker": speaker, "aff": "",
+                    "is_invited": is_invited, "color": None,
+                    "start_min": t_start, "end_min": t_end,
+                    "abstract": "", "extra_authors": [],
+                })
+
+        # ---- Apply web enrichment overrides (when the corresponding HTML
+        # page was present and parsed). Each branch below either *augments*
+        # PDF-derived talks (e.g. attaching an abstract to a plenary lecture)
+        # or *replaces* them entirely (e.g. swapping in the website's clean
+        # industry-talk list for the noisy PDF cell harvest). The session
+        # object itself can also gain a `description` (social events) or
+        # `chair` note in its topic (workshops) here.
+        sid = sess["id"]
+
+        # Plenary: augment the hand-listed lecture with the website's title,
+        # affiliation, abstract, and bio.
+        if sess.get("type") == "Plenary" and enrich["plenary"]:
+            for tk in talks_for_session:
+                rec = enrich["plenary"].get(_norm_name(tk["speaker"]))
+                if not rec:
+                    continue
+                if rec.get("title"):
+                    tk["title"] = rec["title"]
+                if rec.get("affiliation") and not tk["aff"]:
+                    tk["aff"] = rec["affiliation"]
+                # Concatenate abstract + bio into one prose field (the talk
+                # schema only renders a single abstract block).
+                pieces = []
+                if rec.get("abstract"):
+                    pieces.append(rec["abstract"])
+                if rec.get("bio"):
+                    pieces.append(f"About the speaker:\n\n{rec['bio']}")
+                if pieces:
+                    tk["abstract"] = "\n\n".join(pieces)
+
+        # Workshops: swap PDF-harvested panellists for the website's clean
+        # (Name, Affiliation, Talk Title) triples; surface the website's
+        # topic title; surface the workshop chair in the topic line.
+        if sid in enrich["workshops"]:
+            w = enrich["workshops"][sid]
+            if w.get("title"):
+                s_obj["title"] = w["title"]
+            if w.get("chair"):
+                chair_note = f"Chair: {w['chair']}"
+                s_obj["topic"] = (
+                    f"{s_obj['topic']} · {chair_note}"
+                    if s_obj.get("topic") else chair_note
+                )
+            if w.get("panelists"):
+                talks_for_session = [{
+                    "title": p["talk_title"],
+                    "speaker": p["name"],
+                    "aff": p["aff"],
+                    "is_invited": False,
+                    "color": "rose",
+                    "start_min": None, "end_min": None,
+                    "abstract": "", "extra_authors": [],
+                } for p in w["panelists"]]
+
+        # Sunday Student Event: the session is a single hand-listed entry
+        # with three talks. The enrichment fills in (a) the proper title of
+        # the scientific-communication workshop, (b) the Bench-to-Business
+        # panellist roster — attached as multiple authors on that single
+        # talk rather than as separate talks — and (c) precise per-talk
+        # times that the website carries but the PDF doesn't.
+        if sid == "sun-student-event" and enrich["student"]:
+            student = enrich["student"]
+            # talks_for_session is in SKELETON order: workshop, bench, pizza.
+            # We index by title-prefix rather than position so reordering the
+            # SKELETON later doesn't silently swap content.
+            by_kind: dict[str, dict] = {}
+            for tk in talks_for_session:
+                low = tk["title"].lower()
+                if "workshop" in low or "scientific communication" in low:
+                    by_kind["workshop"] = tk
+                elif "bench" in low:
+                    by_kind["bench"] = tk
+                elif "pizza" in low or "networking" in low:
+                    by_kind["pizza"] = tk
+
+            for kind in ("workshop", "bench", "pizza"):
+                rec = student.get(kind)
+                tk = by_kind.get(kind)
+                if not (rec and tk):
+                    continue
+                if rec.get("title"):
+                    tk["title"] = rec["title"]
+                if rec.get("start") and rec.get("end"):
+                    tk["start_min"] = _hhmm_to_minutes(rec["start"])
+                    tk["end_min"] = _hhmm_to_minutes(rec["end"])
+                # Per-talk location override: the student-event page sometimes
+                # specifies a different room for an individual sub-event
+                # (e.g. "ETH HG, Audi Max" for the workshop, vs the session-
+                # level room "HG F30, Plenary Auditorium"). We carry this on
+                # the talk dict as `location` and the emit loop below picks
+                # it up to override the session-default location.
+                if rec.get("location"):
+                    tk["location"] = rec["location"]
+                # Bench-to-Business: the panellist list becomes co-authors
+                # on this single talk rather than separate talks.
+                if kind == "bench":
+                    tk["extra_authors"] = [
+                        {"name": p["name"], "aff": p["aff"]}
+                        for p in rec.get("panelists", [])
+                        if p.get("name")
+                    ]
+
+        # Industry talks: the PDF cells for these are notoriously hard to
+        # parse, so when the industry-talks page is available we *replace*
+        # the PDF harvest with its clean (Company, Talk Title, Speaker)
+        # triples.
+        if sid in enrich["industry"]:
+            ind = enrich["industry"][sid]
+            if ind.get("label"):
+                s_obj["title"] = f"Industry Talks · {ind['label']}"
+            new_talks: list[dict] = []
+            s_min = _hhmm_to_minutes(sess["start"])
+            e_min = _hhmm_to_minutes(sess["end"])
+            n = len(ind.get("talks", []))
+            slot = (e_min - s_min) // n if n else 0
+            for i, t in enumerate(ind["talks"]):
+                ts = s_min + i * slot
+                te = ts + slot if slot else e_min
+                new_talks.append({
+                    "title": t["title"] or "Industry Talk",
+                    "speaker": t["name"],
+                    "aff": t["company"],
+                    "is_invited": False,
+                    "color": "rose",
+                    "start_min": ts if slot else None,
+                    "end_min":   te if slot else None,
+                    "abstract": "", "extra_authors": [],
+                })
+            if new_talks:
+                talks_for_session = new_talks
+
+        # Social events: attach the website's description to the session
+        # object. No talks are synthesized — social events have no
+        # presenters in any meaningful sense; the description belongs on the
+        # session itself.
+        if sid in enrich["social"]:
+            s_obj["description"] = enrich["social"][sid]
+
+        # Lab tours: synthesize one talk per visit option, with the visit
+        # name as title and the description as abstract.
+        if sid == "wed-labs" and enrich["lab_tours"]:
+            talks_for_session = [{
+                "title": v["heading"],
+                "speaker": "", "aff": "",
+                "is_invited": False, "color": "rose",
+                "start_min": None, "end_min": None,
+                "abstract": v["description"],
+                "extra_authors": [],
+            } for v in enrich["lab_tours"]]
 
         # ---- Emit talks for this session
-        for i, (t_title, speaker, aff, is_invited, color_override,
-                t_start_min, t_end_min) in enumerate(talks_for_session, 1):
+        for i, tk in enumerate(talks_for_session, 1):
+            t_title = tk["title"]
+            speaker = tk["speaker"]
+            aff = tk["aff"]
+            is_invited = tk["is_invited"]
+            color_override = tk["color"]
+            t_start_min = tk["start_min"]
+            t_end_min = tk["end_min"]
+            t_abstract = tk.get("abstract", "")
+            extra_authors_in = tk.get("extra_authors", []) or []
             tid = _talk_id(sess["id"], i)
             if color_override:
                 color = color_override
@@ -1347,15 +2249,43 @@ def main() -> None:
 
             authors: list[dict] = []
             institutions: list[dict] = []
+            # Build the author + institution lists. The presenting speaker (if
+            # any) becomes the first author; extra_authors are appended after.
+            # Affiliations are deduplicated into a single institutions list and
+            # each author's `insts` field carries 1-based indices into it.
+            author_inputs: list[tuple[str, str]] = []  # (name, aff)
             if speaker:
-                a: dict = {"name": speaker}
-                if aff:
-                    a["insts"] = [1]
-                    institutions = [{"n": 1, "name": aff}]
-                    affiliations_pool.add(aff)
-                else:
-                    a["insts"] = []
-                authors = [a]
+                # Fall back to the invited-speakers cross-reference when the
+                # PDF cell didn't carry an affiliation. PDF-harvested talks
+                # from the tech-grid never do (the grid prints only speaker
+                # name + title), so this fill is what gives invited speakers
+                # their institution in the final JSON.
+                if not aff and invited_aff:
+                    looked_up = invited_aff.get(_norm_name(speaker), "")
+                    if looked_up:
+                        aff = looked_up
+                        invited_filled_count += 1
+                        invited_filled_speakers.append(speaker)
+                author_inputs.append((speaker, aff))
+            for ea in extra_authors_in:
+                nm = (ea.get("name") or "").strip()
+                af = (ea.get("aff") or "").strip()
+                if nm:
+                    author_inputs.append((nm, af))
+
+            if author_inputs:
+                inst_map: dict[str, int] = {}  # affiliation -> 1-based id
+                for nm, af in author_inputs:
+                    a: dict = {"name": nm}
+                    if af:
+                        if af not in inst_map:
+                            inst_map[af] = len(inst_map) + 1
+                            institutions.append({"n": inst_map[af], "name": af})
+                            affiliations_pool.add(af)
+                        a["insts"] = [inst_map[af]]
+                    else:
+                        a["insts"] = []
+                    authors.append(a)
             elif aff:
                 # Bare-affiliation sponsor slot (e.g. "LIGENTEC SA"): record
                 # the institution but emit no author.
@@ -1395,15 +2325,39 @@ def main() -> None:
                 "start_ts": t_start_iso,
                 "end_ts": t_end_iso,
             }
+            # Inherit the session's room as the talk's location. The schedule
+            # PDF prints rooms only at the session-block level (one column per
+            # room), so every talk in a session shares its parent's location.
+            # An enrichment branch above (e.g. the student-event integration)
+            # can override this for an individual talk by setting tk["location"];
+            # in that case we use the per-talk value.
+            t_location = tk.get("location") or room
+            if t_location:
+                talk_obj["location"] = t_location
+            # Author-display fields.
+            # - `speaker` / `speaker_pos` mark the presenting author (only set
+            #   when there is one; multi-author talks with no presenter, like
+            #   the Sunday Bench-to-Business panel, omit both).
+            # - `first_author` / `last_author` are taken from the authors list
+            #   and used by the legacy byline and the search indexer.
             if speaker:
                 talk_obj["speaker"] = speaker
                 talk_obj["speaker_pos"] = 0
+            if authors:
+                talk_obj["first_author"] = authors[0]["name"]
+                talk_obj["last_author"] = authors[-1]["name"]
+            elif speaker:
+                # Defensive: a `speaker` without a populated authors list
+                # shouldn't happen given the construction above, but keep the
+                # legacy fields populated either way.
                 talk_obj["first_author"] = speaker
                 talk_obj["last_author"] = speaker
             if authors:
                 talk_obj["authors"] = authors
             if institutions:
                 talk_obj["institutions"] = institutions
+            if t_abstract:
+                talk_obj["abstract"] = t_abstract
             talks_out.append(talk_obj)
             s_obj["talk_ids"].append(tid)
 
@@ -1433,6 +2387,11 @@ def main() -> None:
                            encoding="utf-8")
     log(f"[ok] wrote {OUTPUT_JSON.name}: "
         f"{len(sessions_out)} sessions, {len(talks_out)} talks.")
+    if invited_filled_count:
+        log(f"[ok]   filled affiliations on {invited_filled_count} talk(s) "
+            f"from cached invited-speakers page:")
+        for sp in invited_filled_speakers:
+            log(f"          - {sp}")
     log("=" * 72)
     log("DONE.")
     log("=" * 72)

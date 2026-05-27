@@ -2422,18 +2422,9 @@ body[data-active-view="session-detail"] .bubble[data-kind="talk"],
 .detail-head.clr-gold    { background: var(--c-gold-bg);    border-left-color: var(--c-gold-fg); }
 .detail-head.clr-orange  { background: var(--c-orange-bg);  border-left-color: var(--c-orange-fg); }
 
-/* The session/talk id rides inline on the meta row (it no longer gets its own
-   line above the title in either detail header — see buildSessionHead and
-   renderTalkDetail). Render it as a small monospace chip so it still reads as
-   an identifier label. */
-.dh-id-chip {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: calc(11px * var(--fs)); font-weight: 700;
-  letter-spacing: .04em;
-  color: var(--text);
-  opacity: .9;
-  margin-right: 2px;
-}
+/* The session/talk id is the page title in the top bar for detail views
+   (see pageTitleFor), so the detail head doesn't render it again — no chip
+   class is needed here. */
 .dh-title {
   margin: 0 0 6px;
   font-size: calc(18px * var(--fs)); line-height: 1.3; font-weight: 700;
@@ -3909,9 +3900,10 @@ function makeBubble(item, opts = {}) {
     : "";
   // The session/talk number (item.id) is intentionally NOT shown on bubbles:
   // it only adds clutter in the list/schedule/search/expansion views. The id
-  // still appears in the detail headers (see buildSessionHead / renderTalkDetail),
-  // which is where it's actually useful. The id remains on the element as the
-  // data-bubble-id attribute for connector lookups and click handling.
+  // is shown as the page title in the top bar when a detail view is open
+  // (see pageTitleFor), which is where it's actually useful. The id remains
+  // on the element as the data-bubble-id attribute for connector lookups and
+  // click handling.
   const titleHTML =
     `${locChip}${esc(displayTitle(item))}`;
   wrap.appendChild(el("div", { class: "bubble-title", html: titleHTML }));
@@ -3919,7 +3911,7 @@ function makeBubble(item, opts = {}) {
   // Subtitle (may contain <b>speaker</b>). An expanded session bubble looks
   // EXACTLY like its collapsed self — title + presider subtitle. Expanding
   // only reveals the talk bubbles beneath it; the bubble's own appearance is
-  // unchanged. (The full session detail — date, type, id, etc. — lives in the
+  // unchanged. (The full session detail — date, type, etc. — lives in the
   // standalone Session detail view, reached by press-and-hold.)
   const subHTML = subtitleFor(item);
   if (subHTML) {
@@ -4390,17 +4382,17 @@ function renderTalksList(c) {
 /* detail views                                                     */
 /* =============================================================== */
 
-/* Build the Session detail header card (the "detail-head" section with id,
+/* Build the Session detail header card (the "detail-head" section with
    title, date/time/location meta, type/topic, presider line, details, and
    the add/remove button). Extracted so both the standalone Session detail
    view and the inline expansion in the Sessions list render an identical
    header. */
-/* Append the session's meta rows (date/time/location, id + type/topic,
-   presider, details) to `container`. Shared by the standalone detail head
-   and the in-bubble inline expansion so they stay identical.
-   `opts.idInline` prepends the session id to the type/topic row (used by the
-   detail head, where the id no longer gets its own wasteful line). */
-function appendSessionMetaLines(s, container, opts = {}) {
+/* Append the session's meta rows (date/time/location, type/topic, presider,
+   details) to `container`. Shared by the standalone detail head and the
+   in-bubble inline expansion so they stay identical. The session id is
+   intentionally not rendered here — it's already the page title in the top
+   bar for session-detail views (see pageTitleFor). */
+function appendSessionMetaLines(s, container) {
   // Presider FIRST, so it sits on the line immediately after the title (in
   // both the standalone detail head and the in-bubble inline expansion). The
   // name(s) launch an initials-robust people search; the affiliation launches
@@ -4462,21 +4454,13 @@ function appendSessionMetaLines(s, container, opts = {}) {
   if (sd) container.appendChild(el("div", { class: "dh-meta" },
     `${dateLabel(sd)} · ${timeRange(s)}${s.location ? " · " + s.location : ""}`));
 
-  // ID + type/topic on one line. The id is shown as a monospace chip so it
-  // reads as a label rather than part of the prose. When there's no type we
-  // still emit the id on its own line so it isn't lost.
+  // Type/topic line. The session id is NOT shown here — it's already the
+  // page title in the top bar for session-detail views (see pageTitleFor),
+  // so repeating it inside the detail head was pure duplication.
   const typeText = s.type
     ? `${s.type}${s.topic ? " · " + s.topic : ""}`
     : "";
-  if (opts.idInline) {
-    const row = el("div", { class: "dh-meta dh-idmeta" });
-    row.appendChild(el("span", { class: "dh-id-chip" }, s.id));
-    if (typeText) {
-      row.appendChild(document.createTextNode(" "));
-      row.appendChild(document.createTextNode(typeText));
-    }
-    container.appendChild(row);
-  } else if (typeText) {
+  if (typeText) {
     container.appendChild(el("div", { class: "dh-meta" }, typeText));
   }
 
@@ -4487,11 +4471,11 @@ function appendSessionMetaLines(s, container, opts = {}) {
 function buildSessionHead(s) {
   const added = state.schedule.includes(s.id);
   const head = el("section", { class: `detail-head clr-${s.color}` });
-  // The session id used to sit on its own line above the title (wasteful).
-  // It now rides inline on the type/topic meta row instead — see
-  // appendSessionMetaLines({ idInline: true }).
+  // The session id is NOT shown in the head — it's already the page title
+  // in the top bar for session-detail views (see pageTitleFor), so putting
+  // it here again was pure duplication.
   head.appendChild(el("h2", { class: "dh-title" }, s.title || "(untitled)"));
-  appendSessionMetaLines(s, head, { idInline: true });
+  appendSessionMetaLines(s, head);
   head.appendChild(el("button", {
     class: `dh-add${added ? " added" : ""}`,
     "aria-label": added ? "Remove from schedule" : "Add to schedule",
@@ -4550,15 +4534,10 @@ function renderTalkDetail(c, tid) {
   const added = state.schedule.includes(t.id);
 
   const head = el("section", { class: `detail-head clr-${t.color}` });
-  // Title first, then the talk id riding inline on a meta row as a chip —
-  // mirroring Session detail (see buildSessionHead / appendSessionMetaLines
-  // idInline), where the id sits on the meta row after the title rather than
-  // on its own line above it. Reuses the same dh-idmeta / dh-id-chip classes
-  // so the two detail headers read consistently.
+  // The talk id is NOT shown here — it's already the page title in the top
+  // bar for talk-detail views (see pageTitleFor), so repeating it on a meta
+  // row inside the detail head was pure duplication.
   head.appendChild(el("h2", { class: "dh-title" }, displayTitle(t) || "(untitled)"));
-  const idRow = el("div", { class: "dh-meta dh-idmeta" });
-  idRow.appendChild(el("span", { class: "dh-id-chip" }, t.id));
-  head.appendChild(idRow);
   const sd = tsToDate(t.start_ts);
   if (sd) head.appendChild(el("div", { class: "dh-meta" },
     `${dateLabel(sd)} · ${timeRange(t)}${t.location ? " · " + t.location : ""}`));

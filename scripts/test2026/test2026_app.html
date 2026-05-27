@@ -576,14 +576,6 @@ body[data-active-view="session-detail"] .bubble[data-kind="talk"],
 .detail-head.clr-gold    { background: var(--c-gold-bg);    border-left-color: var(--c-gold-fg); }
 .detail-head.clr-orange  { background: var(--c-orange-bg);  border-left-color: var(--c-orange-fg); }
 
-.dh-id-chip {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: calc(11px * var(--fs)); font-weight: 700;
-  letter-spacing: .04em;
-  color: var(--text);
-  opacity: .9;
-  margin-right: 2px;
-}
 .dh-title {
   margin: 0 0 6px;
   font-size: calc(18px * var(--fs)); line-height: 1.3; font-weight: 700;
@@ -2413,7 +2405,7 @@ function renderTalksList(c) {
   renderTimeGrouped(c, DATA.talks);
 }
 
-function appendSessionMetaLines(s, container, opts = {}) {
+function appendSessionMetaLines(s, container) {
 
   if (s.presider) {
     const meta = el("div", { class: "dh-meta presider-meta" });
@@ -2472,15 +2464,7 @@ function appendSessionMetaLines(s, container, opts = {}) {
   const typeText = s.type
     ? `${s.type}${s.topic ? " · " + s.topic : ""}`
     : "";
-  if (opts.idInline) {
-    const row = el("div", { class: "dh-meta dh-idmeta" });
-    row.appendChild(el("span", { class: "dh-id-chip" }, s.id));
-    if (typeText) {
-      row.appendChild(document.createTextNode(" "));
-      row.appendChild(document.createTextNode(typeText));
-    }
-    container.appendChild(row);
-  } else if (typeText) {
+  if (typeText) {
     container.appendChild(el("div", { class: "dh-meta" }, typeText));
   }
 
@@ -2493,7 +2477,7 @@ function buildSessionHead(s) {
   const head = el("section", { class: `detail-head clr-${s.color}` });
 
   head.appendChild(el("h2", { class: "dh-title" }, s.title || "(untitled)"));
-  appendSessionMetaLines(s, head, { idInline: true });
+  appendSessionMetaLines(s, head);
   head.appendChild(el("button", {
     class: `dh-add${added ? " added" : ""}`,
     "aria-label": added ? "Remove from schedule" : "Add to schedule",
@@ -2541,9 +2525,6 @@ function renderTalkDetail(c, tid) {
   const head = el("section", { class: `detail-head clr-${t.color}` });
 
   head.appendChild(el("h2", { class: "dh-title" }, displayTitle(t) || "(untitled)"));
-  const idRow = el("div", { class: "dh-meta dh-idmeta" });
-  idRow.appendChild(el("span", { class: "dh-id-chip" }, t.id));
-  head.appendChild(idRow);
   const sd = tsToDate(t.start_ts);
   if (sd) head.appendChild(el("div", { class: "dh-meta" },
     `${dateLabel(sd)} · ${timeRange(t)}${t.location ? " · " + t.location : ""}`));

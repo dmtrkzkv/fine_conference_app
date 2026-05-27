@@ -35,12 +35,23 @@ There is no planner / Excel / abstract-book export. The two PDFs are:
     ECIO26_Concise.pdf            one-page program overview (session blocks
                                   only, no per-talk detail).
 
-This script fetches both into data/. The filenames on the website carry the
-re-issue date in their suffix (e.g. ECIO26_DetailedProgramSchedule_21_5.pdf),
-which changes whenever the organisers publish a refresh, so we do NOT hard-code
-those URLs. Instead we scrape the programme page itself and pick the most
-recent matching PDF link by the date encoded in its filename. This way the
-fetcher keeps working when ECIO publishes an updated version of either PDF.
+We also save a third artifact, the invited-speakers HTML page,
+
+    ECIO26_InvitedSpeakers.html   the public list of invited speakers laid out
+                                  as (Name, Affiliation, Talk Title) triples.
+
+The detailed schedule PDF prints only the speaker's name in each cell, with no
+affiliation; the invited-speakers page is the one public ECIO source that
+attaches an affiliation to those speaker names, so we cache it here for the
+processor to cross-reference when filling talk institutions.
+
+The PDF filenames on the website carry the re-issue date in their suffix
+(e.g. ECIO26_DetailedProgramSchedule_21_5.pdf), which changes whenever the
+organisers publish a refresh, so we do NOT hard-code those URLs. Instead we
+scrape the programme page itself and pick the most recent matching PDF link
+by the date encoded in its filename. This way the fetcher keeps working when
+ECIO publishes an updated version of either PDF. The invited-speakers page,
+in contrast, lives at a fixed URL and is fetched directly.
 
 Contacts the network only; launches no browser. The processor
 (process_program_ecio2026.py) runs entirely offline against what we save here.
@@ -60,8 +71,12 @@ DATA_DIR = SCRIPT_DIR / "data"
 
 PROGRAMME_URL = "https://www.ecio-conference.org/programme-26/"
 
-# The two artifacts we save into data/. Each picks the most-recent matching link
-# on the programme page by the trailing date in the filename.
+# Each artifact saved into data/ is one of:
+#   - "pattern" artifact: discovered on PROGRAMME_URL by regex, then downloaded.
+#     The pattern matches the rolling re-issue filenames the organisers publish.
+#   - "url" artifact: lives at a fixed URL on the conference site and is fetched
+#     directly. Used for HTML pages that don't carry rolling date suffixes.
+# All entries share the same "name" (saved filename) and "desc" (log label).
 ARTIFACTS = [
     {
         "name": "ECIO26_DetailedSchedule.pdf",
@@ -80,6 +95,51 @@ ARTIFACTS = [
             re.IGNORECASE,
         ),
         "desc": "concise program overview",
+    },
+    {
+        "name": "ECIO26_InvitedSpeakers.html",
+        # Fixed URL — the invited-speakers page is the only public ECIO source
+        # that ties each invited speaker's name to an affiliation.
+        "url": "https://www.ecio-conference.org/invited-speakers-2/",
+        "desc": "invited speakers page",
+    },
+    # The six pages below are *enrichment* sources. The detailed-schedule PDF
+    # already supplies enough information to build a usable program (session
+    # times, rooms, talk titles + presenters); each of these adds detail the
+    # PDF doesn't render — plenary abstracts and bios, workshop chairs, student-
+    # event panellists, cleaner industry-talk metadata (company, talk title,
+    # speaker as separate fields), and short descriptions for social and lab-
+    # tour events. The processor cross-references them by speaker name or
+    # session id and falls back gracefully when any one is missing.
+    {
+        "name": "ECIO26_PlenarySpeakers.html",
+        "url": "https://www.ecio-conference.org/plenary-speakers/",
+        "desc": "plenary speakers page",
+    },
+    {
+        "name": "ECIO26_Workshops.html",
+        "url": "https://www.ecio-conference.org/workshops/",
+        "desc": "workshops page",
+    },
+    {
+        "name": "ECIO26_StudentEvent.html",
+        "url": "https://www.ecio-conference.org/sunday-student-event/",
+        "desc": "Sunday student-event page",
+    },
+    {
+        "name": "ECIO26_IndustryTalks.html",
+        "url": "https://www.ecio-conference.org/industry-talks/",
+        "desc": "industry talks page",
+    },
+    {
+        "name": "ECIO26_SocialEvents.html",
+        "url": "https://www.ecio-conference.org/social-events/",
+        "desc": "social events page",
+    },
+    {
+        "name": "ECIO26_LabTours.html",
+        "url": "https://www.ecio-conference.org/lab-and-company-visit/",
+        "desc": "lab + company-visit page",
     },
 ]
 
@@ -132,24 +192,35 @@ def main() -> None:
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"[info] fetching programme page to discover PDF links …")
-    try:
-        html = _fetch_text(PROGRAMME_URL)
-    except urllib.error.URLError as e:
-        print(f"[fatal] could not fetch {PROGRAMME_URL}: {e}")
-        sys.exit(1)
-    print(f"[info]   fetched {len(html):,} chars of HTML.")
+    # Fetch the programme HTML once, lazily — only if at least one artifact is
+    # link-discovery (pattern) based.
+    needs_programme_html = any("pattern" in a for a in ARTIFACTS)
+    html = ""
+    if needs_programme_html:
+        print(f"[info] fetching programme page to discover PDF links …")
+        try:
+            html = _fetch_text(PROGRAMME_URL)
+        except urllib.error.URLError as e:
+            print(f"[fatal] could not fetch {PROGRAMME_URL}: {e}")
+            sys.exit(1)
+        print(f"[info]   fetched {len(html):,} chars of HTML.")
 
     saved_any = False
     failed: list[str] = []
     for art in ARTIFACTS:
         target = DATA_DIR / art["name"]
-        url = _pick_latest(html, art["pattern"])
-        if not url:
-            print(f"[warn] no link matching {art['desc']} found on the "
-                  f"programme page; cannot fetch {art['name']}.")
-            failed.append(art["name"])
-            continue
+        if "url" in art:
+            # Fixed-URL artifact: download directly.
+            url = art["url"]
+        else:
+            # Pattern artifact: find the freshest matching link on programme
+            # page and download that.
+            url = _pick_latest(html, art["pattern"])
+            if not url:
+                print(f"[warn] no link matching {art['desc']} found on the "
+                      f"programme page; cannot fetch {art['name']}.")
+                failed.append(art["name"])
+                continue
         print(f"[info] downloading {art['desc']} from {url}")
         try:
             body = _fetch_bytes(url)
