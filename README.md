@@ -15,7 +15,7 @@ The Fine Conference App is a lightweight planner that replaces the clunky apps c
 
 ## Why
 
-Conference organizers often ship a large app that requires an install, an account, and a network connection just to browse a program you could read on a single modern page. The Fine Conference App takes the same program data and turns it into one self-contained HTML file. Open it in any browser, and you have the whole conference! If you are organizing a conference, you can just host the page yourself and give your attendees a clean user experience at no cost to you.
+Conference organizers often ship a large app that requires an install, an account, and a network connection just to browse a program you could read on a single modern page. The Fine Conference App takes program data you have access to and turns it into one self-contained HTML file. Open it in any browser, and you have the whole conference. If you are organizing a conference, you can just host the page yourself and give your attendees a clean user experience at no cost to you.
 
 ## Features
 
@@ -28,9 +28,9 @@ Conference organizers often ship a large app that requires an install, an accoun
 
 ## Usage
 
-If your conference already has a subdirectory in `scripts`, building its app is a single command from the `scripts` directory:
+If your conference already has a subdirectory in `scripts`, building its app requires just a single command from the `scripts` directory:
 
-```
+```bash
 python make_app.py <conference_name>
 ```
 
@@ -38,28 +38,47 @@ That's all that's needed for any conference that's already set up. The command w
 
 Once built, `<conference_name>_app.html` is the whole app. Open it directly in a browser, host it anywhere as a static file, or (if you're an organizer) send it to attendees. There's nothing else to deploy.
 
-If your conference does **not** yet have a subdirectory, you'll need to set one up first. See [Adding a new conference](#adding-a-new-conference) below.
+If your conference does **not** yet have a subdirectory, it will need to be set up first. See [Curation: Adding a new conference](#curation-adding-a-new-conference) below.
 
 ## How it works
 
-The project is a small pipeline. Each conference lives in its own subdirectory and produces one self-contained HTML app. The two shared scripts in the root — `build_conference_app.py` and `build_affiliation_map.py` — are conference-agnostic and never need to change; everything specific to a given conference lives in its subdirectory.
+The project is a small pipeline. Each conference has its own subdirectory under `scripts/`, while the shared app builder is conference-agnostic.
 
-For a conference that already has a subdirectory, `make_app.py` runs the whole pipeline for you (see [Usage](#usage) above). If the subdirectory doesn't exist yet, two pieces have to be created for that conference before it can be built:
+For an already-supported conference, `make_app.py` runs the full pipeline: it obtains any needed program files, generates `conference_data.json`, and builds a single self-contained HTML app.
 
-1. **A way to download the program.** Each conference needs a downloader that fetches its raw source material (the program documents and schedule) and saves it into that conference's `data/` directory. This is different for every conference and can be done manually if needed.
-2. **A way to generate the conference JSON.** Each conference also needs a processor that turns those raw files into a single, clean `conference_data.json` (the data file representing all of the conference data). All conference-specific work (recovering full author and speaker names, classifying session and talk types, rendering abstract math, attaching presiders, and so on) happens here.
+For a new conference, see [Curation: Adding a new conference](#curation-adding-a-new-conference).
 
-Once those two exist and have produced a `conference_data.json`, the shared builder takes over: `build_conference_app.py` splices the JSON into the HTML template and writes the finished `conference_app.html`.
+## Curation: Adding a new conference
 
-## Adding a new conference
+If your conference doesn't have a subdirectory yet, you will need to create one. This is called curation, and you are credited for it.
 
-If your conference doesn't have a subdirectory yet, you will need to create one. This requires two scripts: a downloader and a processor.
+A curated conference consists of two scripts:
 
-**The downloader** (`fetch_program_<conf>.py`) is responsible for getting the conference's raw source material onto disk and saving it into the subdirectory's `data/` directory. This is the only part of the pipeline that should touch the network. A downloader can use whatever approach fits your conference's source, or you can download program files yourself manually. All that matters is that it ends with the required input files saved in `data/`.
+1. **A downloader** (`fetch_program_<conf>.py`)
+2. **A processor** (`process_program_<conf>.py`)
 
-**The processor** (`process_program_<conf>.py`) reads those raw files entirely offline and produces a single `conference_data.json` matching the schema documented in [CONFERENCE_JSON.md](docs/CONFERENCE_JSON.md). That schema is source-agnostic, so completely different conferences with completely different processors can emit the same shape and use the same builder.
+### Downloader
 
-Because the builder and the app itself are not conference-dependent, no changes to the shared scripts are needed once those two exist. The same `python make_app.py <conf>` command will then build your conference just like any other.
+The downloader is responsible for getting the conference's raw source material onto disk and saving it into the subdirectory's `data/` directory. This is the only part of the pipeline that should touch the network.
+
+A downloader can use whatever approach fits your conference's source, or users can download program files themselves manually. The required input files should always be saved in `data/`.
+
+### Processor
+
+The processor reads those raw files entirely offline and produces a single `conference_data.json` matching the schema documented in [`docs/CONFERENCE_JSON.md`](docs/CONFERENCE_JSON.md).
+
+That schema is source-agnostic, so completely different conferences with completely different processors can emit the same structure and use the same builder.
+
+This is also where conference-specific cleanup and enrichment happens, including things like:
+
+- Recovering full author and speaker names
+- Classifying session and talk types
+- Attaching presiders and metadata
+- Normalizing affiliations
+
+### Curator credit
+
+A conference curator is a person who created and maintains the downloader/processor pair for a conference. Curators are credited in the generated app. 
 
 ## Requirements
 
@@ -69,3 +88,7 @@ Because the builder and the app itself are not conference-dependent, no changes 
 ## License and Copyright
 
 The Fine Conference App is MIT-licensed. This repository contains only code, but the program material a downloader fetches may be copyrighted by the conference and its publisher. Do not commit those files (or a built `conference_app.html`, which embeds them) to a public repository or otherwise redistribute them. If you plan to share a built app with attendees, make sure you have the right to distribute the underlying program data.
+
+The Fine Conference App is intended as a user-side tool for organizing and viewing conference schedules and related metadata. Like Zotero, the software processes information already accessible to the user and generates a local/self-contained conference viewer. Users are responsible for ensuring their use complies with applicable conference policies, website terms, and copyright law.
+
+Conference names, logos, trademarks, and program content are the property of their respective owners and are used only for identification and compatibility purposes. Unless explicitly stated, this project is not affiliated with or endorsed by any conference organizer, publisher, sponsor, or society.
