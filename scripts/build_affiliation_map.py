@@ -263,7 +263,7 @@ _UC_SEP = r'(?:\s*,\s*|\s+at\s+|\s*-\s*|\s+)'
 # says "hopkins" even when misspelled around it).
 # ---------------------------------------------------------------------------
 
-ANCHORS: list[tuple[str, str]] = [
+_ANCHORS_SRC: list = [
     # ---- US national labs (specific names before generic) ------------------
     ('los alamos national lab', 'LANL'),
     ('lawrence livermore', 'LLNL'),
@@ -272,8 +272,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('pacific northwest national', 'PNNL'),
     ('brookhaven', 'Brookhaven'),
     ('argonne', 'Argonne'),
-    ('sandia nat. laboratories', 'Sandia'),
-    ('sandia', 'Sandia'),
+    (['sandia nat. laboratories', 'sandia'], 'Sandia'),
     # CINT (Center for Integrated Nanotechnologies) is a Sandia/Los Alamos
     # user facility; map it to Sandia. Some CINT strings carry no "Sandia"
     # token (just the center name + city), so they'd otherwise fall through
@@ -282,16 +281,15 @@ ANCHORS: list[tuple[str, str]] = [
     ('air force research laboratory', 'AFRL'),
     ('air force research lab', 'AFRL'),  # incl. truncated "Air Force Research Lab" form
     ('afrl munitions', 'AFRL'),          # Munitions Directorate folded into AFRL
-    ('afrl,', 'AFRL'),
-    ('afrl ', 'AFRL'),
+    (['afrl,', 'afrl '], 'AFRL'),
     (r're:\bafrl$', 'AFRL'),
     ('naval research lab', 'NRL'),
     ('naval surface warfare', 'Naval Surface Warfare Center'),
     ('naval air warfare', 'Naval Air Warfare Center'),
-    ('mit lincoln', 'MIT Lincoln Lab'),
-    ('mitll', 'MIT Lincoln Lab'),
-    ('lincoln laboratory, massachusetts institute', 'MIT Lincoln Lab'),
-    ('lincoln laboratory, mit', 'MIT Lincoln Lab'),
+    ([
+        'mit lincoln', 'mitll', 'lincoln laboratory, massachusetts institute',
+        'lincoln laboratory, mit',
+    ], 'MIT Lincoln Lab'),
     ('massachusetts inst of tech lincoln lab', 'MIT Lincoln Lab'),  # abbreviated short-form variant
     ('mitre', 'MITRE'),
     (r're:\bnist\b', 'NIST'),  # \b so it doesn't fire inside "miNISTry"
@@ -313,20 +311,17 @@ ANCHORS: list[tuple[str, str]] = [
     ('jila', 'JILA'),
     (r're:\blle,\s+rochester\b', 'Rochester'),
     ('laboratory for laser energetics', 'Rochester'),
-    ('darpa mto', 'DARPA'),
-    ('darpa', 'DARPA'),
+    (['darpa mto', 'darpa'], 'DARPA'),
     ('army research lab', 'ARL'),
     (r're:\barl\b', 'ARL'),
     ('us army ccdc', 'US Army CCDC'),
     ('devcom', 'DEVCOM'),
     ('hrl', 'HRL'),
     ('draper', 'Draper'),
-    ('jhu/apl', 'JHU APL'),
-    ('johns hopkins applied physics', 'JHU APL'),
+    (['jhu/apl', 'johns hopkins applied physics'], 'JHU APL'),
 
     # ---- US elite private universities ------------------------------------
-    ('massachusetts institute of technology', 'MIT'),
-    (', mit,', 'MIT'),
+    (['massachusetts institute of technology', ', mit,'], 'MIT'),
     (r're:\bmit,', 'MIT'),  # \b so it doesn't fire inside "RMIT," (Melbourne)
     # Tolerate the 'Insttute' (missing-i) misspelling seen in the ground
     # truth, consistent with the typo-absorbing philosophy above.
@@ -337,42 +332,32 @@ ANCHORS: list[tuple[str, str]] = [
     ('princeton', 'Princeton'),
     ('yale', 'Yale'),
     ('cornell', 'Cornell'),
-    ('columbia university', 'Columbia'),
-    ('columbia,', 'Columbia'),
-    ('university of pennsylvania', 'UPenn'),
-    ('upenn', 'UPenn'),
+    (['columbia university', 'columbia,'], 'Columbia'),
+    (['university of pennsylvania', 'upenn'], 'UPenn'),
     ('brown university', 'Brown'),
     ('dartmouth', 'Dartmouth'),
     ('johns hopkins', 'Johns Hopkins'),
     ('duke university', 'Duke'),
-    ('vanderbilt', 'Vanderbilt'),
-    ('vandertbilt', 'Vanderbilt'),
+    (['vanderbilt', 'vandertbilt'], 'Vanderbilt'),
     ('northwestern polytechnical', 'NWPU'),
-    ('northwestern university', 'Northwestern'),
-    ('northwestern', 'Northwestern'),
-    ('northeastern university', 'Northeastern'),
-    ('northeastern', 'Northeastern'),
+    (['northwestern university', 'northwestern'], 'Northwestern'),
+    (['northeastern university', 'northeastern'], 'Northeastern'),
     ('carnegie mellon', 'Carnegie Mellon'),
     ('rice university', 'Rice'),
-    ('baylor university', 'Baylor'),
-    ('baylor', 'Baylor'),
-    ('washington university', 'WashU'),
-    ('washu', 'WashU'),
+    (['baylor university', 'baylor'], 'Baylor'),
+    (['washington university', 'washu'], 'WashU'),
     ('tufts', 'Tufts'),
     ('tulane', 'Tulane'),
     ('emory', 'Emory'),
     ('university of chicago', 'U Chicago'),
     ('boston university', 'BU'),
-    ('new york university', 'NYU'),
-    ('nyu', 'NYU'),
+    (['new york university', 'nyu'], 'NYU'),
     ('george washington', 'George Washington'),
     ('american university', 'American U'),
     # Saint Louis University (the private Jesuit university), distinct from
     # University of Missouri-St. Louis (UMSL). Anchor on the full institution
     # name (not the bare city "St. Louis") so it can't fire on address lines.
-    ('saint louis university', 'SLU'),
-    ('st. louis university', 'SLU'),
-    ('st louis university', 'SLU'),
+    (['saint louis university', 'st. louis university', 'st louis university'], 'SLU'),
 
     # ---- UC system (specific campus before the generic word) --------------
     # The campus qualifier may be joined to "california" by a comma, the word
@@ -392,8 +377,7 @@ ANCHORS: list[tuple[str, str]] = [
     # it explicitly before the bare "UC" fallback.
     (r're:university of california' + _UC_SEP + r'la jolla', 'UC San Diego'),
     (r're:university of california' + _UC_SEP + r'santa barbara', 'UC Santa Barbara'),
-    ('uc santa barbara', 'UC Santa Barbara'),
-    ('ucsb', 'UC Santa Barbara'),
+    (['uc santa barbara', 'ucsb'], 'UC Santa Barbara'),
     (r're:university of california' + _UC_SEP + r'davis', 'UC Davis'),
     ('uc davis', 'UC Davis'),
     # Tolerate the 'Califonia' (missing-r) misspelling seen in the input,
@@ -405,8 +389,7 @@ ANCHORS: list[tuple[str, str]] = [
     (r're:university of california' + _UC_SEP + r'merced', 'UC Merced'),
     (r're:university of california' + _UC_SEP + r'santa cruz', 'UC Santa Cruz'),
     ('university of california', 'UC'),  # fallback bare form
-    ('university of southern california', 'USC'),
-    (' usc,', 'USC'),
+    (['university of southern california', ' usc,'], 'USC'),
 
     # ---- Other big US state schools ---------------------------------------
     # UMBC has irregular ground-truth treatment; most variants → UMBC, but
@@ -417,14 +400,16 @@ ANCHORS: list[tuple[str, str]] = [
     # "university of maryland" anchor so it doesn't degrade to "Maryland".
     (r're:university of maryland' + _UC_SEP + r'baltimore', 'UMBC'),
     ('umbc', 'UMBC'),
-    ('laboratory for physical sciences, college park', 'LPS Maryland'),
-    ('laboratory for telecommunication science', 'LPS Maryland'),
-    ('lps maryland', 'LPS Maryland'),
+    ([
+        'laboratory for physical sciences, college park',
+        'laboratory for telecommunication science', 'lps maryland',
+    ], 'LPS Maryland'),
     # IREAP and the Institute for Physical Science and Technology are
     # both at Maryland College Park.
-    ('institute for research in electronics', 'Maryland'),
-    ('institute for physical science and technology', 'Maryland'),
-    ('university of maryland', 'Maryland'),
+    ([
+        'institute for research in electronics',
+        'institute for physical science and technology', 'university of maryland',
+    ], 'Maryland'),
     # University of Michigan-Dearborn and -Flint are separate campuses, not the
     # Ann Arbor flagship. Separator-tolerant and listed before the bare
     # "university of michigan" anchor so they don't degrade to "Michigan".
@@ -444,15 +429,12 @@ ANCHORS: list[tuple[str, str]] = [
     # and both are caught by the campus anchors above, so this generic form is
     # safe here as a last resort for the Texas system.
     ('university of texas', 'UT Austin'),
-    ('university of central florida', 'UCF'),
-    ('ucf,', 'UCF'),
-    ('creol', 'UCF'),
+    (['university of central florida', 'ucf,', 'creol'], 'UCF'),
     ('university of florida', 'Florida'),
     ('university of arizona', 'Arizona'),
     ('re:univ\\.? of arizona', 'Arizona'),  # "Univ of Arizona" / "Univ. of Arizona"
     ('wyant college', 'Wyant College of Optical Sciences'),
-    ('arizona state university', 'ASU'),
-    ('asu,', 'ASU'),
+    (['arizona state university', 'asu,'], 'ASU'),
     ('northern arizona university', 'Northern Arizona University'),
     (r're:university of colorado' + _UC_SEP + r'boulder', 'CU Boulder'),
     ('cu boulder', 'CU Boulder'),
@@ -462,8 +444,7 @@ ANCHORS: list[tuple[str, str]] = [
     (r're:university of colorado' + _UC_SEP + r'colorado springs', 'UCCS'),
     ('university of colorado', 'Colorado'),
     ('colorado school of mines', 'Colorado School of Mines'),
-    ('university of washington', 'UW Seattle'),
-    ('uw seattle', 'UW Seattle'),
+    (['university of washington', 'uw seattle'], 'UW Seattle'),
     # UW-Milwaukee is a separate campus; pin it before the flagship anchors so
     # it can't be swallowed by the bare "university of wisconsin" form below.
     (r're:university of wisconsin' + _UC_SEP + r'milwaukee', 'UW-Milwaukee'),
@@ -472,12 +453,13 @@ ANCHORS: list[tuple[str, str]] = [
     # (no other campus besides Milwaukee appears in the data, and that's caught
     # above), so the campus-less form resolves to the flagship.
     (r're:university of wisconsin' + _UC_SEP + r'madison', 'Wisconsin'),
-    ('university of wisconsin', 'Wisconsin'),
-    ('uw-madison', 'Wisconsin'),
-    ('university of illinois urbana champaign', 'UIUC'),
-    ('university of illinois at urbana-champaign', 'UIUC'),
-    ('university of illinois urbana-champaign', 'UIUC'),
-    ('university of illinois at urbana champaign', 'UIUC'),
+    (['university of wisconsin', 'uw-madison'], 'Wisconsin'),
+    ([
+        'university of illinois urbana champaign',
+        'university of illinois at urbana-champaign',
+        'university of illinois urbana-champaign',
+        'university of illinois at urbana champaign',
+    ], 'UIUC'),
     # Misspelling guard: catch any "Illinois … Urbana … Champa{ign,gne,…}"
     # spelling (the data carries a "Urbana Champagne" typo) so it still lands on
     # UIUC instead of falling through to the fallback shortener. Requires both
@@ -486,41 +468,36 @@ ANCHORS: list[tuple[str, str]] = [
     (r're:university of illinois.*\burbana\b.*\bchampa', 'UIUC'),
     ('university of illinois,', 'UIUC'),
     ('univ of illinois at urbana', 'UIUC'),  # abbreviated short-form variant
-    ('university of illinois at chicago', 'UIC'),
-    ('uic,', 'UIC'),
+    (['university of illinois at chicago', 'uic,'], 'UIC'),
     ('uiuc', 'UIUC'),
     ('purdue', 'Purdue'),
     ('university of minnesota', 'Minnesota'),
     ('michigan state', 'Michigan State'),
     ('michigan technological', 'Michigan Tech'),
     ('ohio state', 'Ohio State'),
-    ('penn state', 'Penn State'),
-    ('pennsylvania state', 'Penn State'),
+    (['penn state', 'pennsylvania state'], 'Penn State'),
     ('north carolina state', 'NC State'),
-    ('university of north carolina at charlotte', 'UNC Charlotte'),
-    ('university of north carolina charlotte', 'UNC Charlotte'),
-    ('unc charlotte', 'UNC Charlotte'),
+    ([
+        'university of north carolina at charlotte',
+        'university of north carolina charlotte', 'unc charlotte',
+    ], 'UNC Charlotte'),
     ('univ of north carolina at charlotte', 'UNC Charlotte'),  # abbreviated short-form variant
     ('north carolina agricultural and technical state', 'NC A&T'),
     ('north caorlina agriculture and technology', 'NC A&T'),  # typo
-    ('georgia institute of technology', 'Georgia Tech'),
-    ('georgia tech', 'Georgia Tech'),
-    ('virginia polytechnic', 'Virginia Tech'),
-    ('virginia tech', 'Virginia Tech'),
-    ('university of virginia', 'UVA'),
-    (', uva,', 'UVA'),
+    (['georgia institute of technology', 'georgia tech'], 'Georgia Tech'),
+    (['virginia polytechnic', 'virginia tech'], 'Virginia Tech'),
+    (['university of virginia', ', uva,'], 'UVA'),
     ('university of pittsburgh', 'Pittsburgh'),
     ('pittsburgh, ', 'Pittsburgh'),  # weak; only late
     ('pennsylvania state university', 'Penn State'),
-    ('rensselaer', 'RPI'),
-    ('rpi,', 'RPI'),
-    ('rochester institute of technology', 'RIT'),
-    (', rit,', 'RIT'),
-    ('university of rochester', 'Rochester'),
-    ('university of rochester lle', 'Rochester'),
-    ('institute of optics, university of rochester', 'Rochester'),
-    ('the institute of optics, university of rochester', 'Rochester'),
-    ('the institute of optics,', 'Rochester'),
+    (['rensselaer', 'rpi,'], 'RPI'),
+    (['rochester institute of technology', ', rit,'], 'RIT'),
+    ([
+        'university of rochester', 'university of rochester lle',
+        'institute of optics, university of rochester',
+        'the institute of optics, university of rochester',
+        'the institute of optics,',
+    ], 'Rochester'),
     ('laboratory of laser and energetics', 'Rochester'),  # misspelled variant
     ('sydor technologies', 'Sydor'),
     ('vpiphotonics', 'VPIphotonics'),
@@ -542,8 +519,10 @@ ANCHORS: list[tuple[str, str]] = [
     # UT Chattanooga is a separate campus from the Knoxville flagship.
     (r're:university of tennessee' + _UC_SEP + r'chattanooga', 'UT Chattanooga'),
     ('university of tennessee', 'U Tennessee'),
-    ('university of louisiana at lafayette', 'U Louisiana Lafayette'),
-    ('university of louisiana lafayette', 'U Louisiana Lafayette'),
+    ([
+        'university of louisiana at lafayette',
+        'university of louisiana lafayette',
+    ], 'U Louisiana Lafayette'),
     # University of Missouri-Kansas City (UMKC) and -St. Louis (UMSL) are
     # separate campuses from the Columbia flagship.
     (r're:university of missouri' + _UC_SEP + r'kansas city', 'UMKC'),
@@ -558,8 +537,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of delaware', 'Delaware'),
     ('delaware state', 'Delaware State'),
     ('university of north texas', 'U North Texas'),
-    ('university of new mexico', 'UNM'),
-    ('unm,', 'UNM'),
+    (['university of new mexico', 'unm,'], 'UNM'),
     ('umass amherst', 'UMass Amherst'),
     ('umass lowell', 'UMass Lowell'),
     ('umass boston', 'UMass Boston'),
@@ -572,31 +550,27 @@ ANCHORS: list[tuple[str, str]] = [
     (r're:university of massachusetts' + _UC_SEP + r'lowell', 'UMass Lowell'),
     (r're:university of massachusetts' + _UC_SEP + r'boston', 'UMass Boston'),
     (r're:university of massachusetts' + _UC_SEP + r'dartmouth', 'UMass Dartmouth'),
-    ('university of massachusetts', 'UMass'),
-    ('umass', 'UMass'),
+    (['university of massachusetts', 'umass'], 'UMass'),
     ('stony brook', 'SUNY Stony Brook'),
-    ('university at albany', 'SUNY Albany'),
-    ('suny albany', 'SUNY Albany'),
+    (['university at albany', 'suny albany'], 'SUNY Albany'),
     # CUNY: all "CUNY" variants → CUNY per ground truth; the bare
     # "Physics and Astronomy, College of Staten Island, Staten Island, NY"
     # (no CUNY in string) maps to 'Staten Island' via the LATE anchor.
-    ('cuny advanced science research center', 'CUNY'),
-    ('cuny,', 'CUNY'),
-    ('cuny graduate center', 'CUNY'),
-    (', cuny,', 'CUNY'),
-    ('the graduate center,', 'CUNY'),
-    ('graduate center cuny', 'CUNY'),
-    ('graduate center of the city university of new york', 'CUNY'),
-    ('city university of new york', 'CUNY'),
+    ([
+        'cuny advanced science research center', 'cuny,', 'cuny graduate center',
+        ', cuny,', 'the graduate center,', 'graduate center cuny',
+        'graduate center of the city university of new york',
+        'city university of new york',
+    ], 'CUNY'),
     ('city college of new york', 'CCNY'),
     ('rutgers', 'Rutgers'),
     ('stevens', 'Stevens'),
     ('syracuse', 'Syracuse'),
-    ('university of indiana', 'IU Bloomington'),
-    ('iu bloomington', 'IU Bloomington'),
-    ('indiana university bloomington', 'IU Bloomington'),
-    ('indiana university,', 'IU Bloomington'),
-    ('indiana university ', 'IU Bloomington'),
+    ([
+        'university of indiana', 'iu bloomington',
+        'indiana university bloomington', 'indiana university,',
+        'indiana university ',
+    ], 'IU Bloomington'),
     ('oregon state university', 'Oregon State'),
     ('washington state university', 'Washington State'),
     ('florida international university', 'FIU'),
@@ -607,16 +581,13 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of toronto', 'U Toronto'),
     ('university of ottawa', 'U Ottawa'),
     ('universite laval', 'Laval'),
-    ('universite de montreal', 'U Montreal'),
-    ('university of montreal', 'U Montreal'),
+    (['universite de montreal', 'university of montreal'], 'U Montreal'),
     ('university of waterloo', 'Waterloo'),
     ('university of alberta', 'U Alberta'),
-    ('universite de sherbrooke', 'Sherbrooke'),
-    ('university of sherbrooke', 'Sherbrooke'),
+    (['universite de sherbrooke', 'university of sherbrooke'], 'Sherbrooke'),
     ('institut national de la recherche scientifique', 'INRS'),
     ('inrs-emt', 'INRS-EMT'),
-    ('inrs ', 'INRS'),
-    ('inrs,', 'INRS'),
+    (['inrs ', 'inrs,'], 'INRS'),
     ('university of calgary', 'Calgary'),
     ('simon fraser', 'SFU'),
     ('university of queensland', 'Queensland'),
@@ -624,32 +595,28 @@ ANCHORS: list[tuple[str, str]] = [
     (r"re:queen's university", 'Queen’s University'),
     ('concordia', 'Concordia'),
     ('lakehead', 'Lakehead University'),
-    ('polytechnique montreal', 'Polytechnique Montreal'),
-    ('ecole polytechnique de montreal', 'Polytechnique Montreal'),
+    ([
+        'polytechnique montreal', 'ecole polytechnique de montreal',
+    ], 'Polytechnique Montreal'),
 
     # ---- US "private mid-major" + research orgs ---------------------------
     ('boeing', 'Boeing'),
     # BAE Systems, incl. the "SMS" and spelled-out "Space and Missions Systems"
     # (Boulder, CO) sub-unit forms, all fold to the parent "BAE Systems".
     ('bae systems', 'BAE Systems'),
-    ('apple inc', 'Apple'),
-    ('apple,', 'Apple'),
+    (['apple inc', 'apple,'], 'Apple'),
     ('google', 'Google'),
-    ('meta platforms', 'Meta'),
-    ('meta,', 'Meta'),
-    ('meta inc', 'Meta'),
+    (['meta platforms', 'meta,', 'meta inc'], 'Meta'),
     ('microsoft', 'Microsoft'),
     ('amazon', 'Amazon'),
-    ('intel ', 'Intel'),
-    ('intel,', 'Intel'),
+    (['intel ', 'intel,'], 'Intel'),
     ('nvidia', 'Nvidia'),  # most are lowercase nv...; existing map also has NVDIA typo - handle specifically below
     ('nvdia', 'NVDIA'),
     ('ibm', 'IBM'),
-    ('hewlett packard enterprise', 'HPE Labs'),
-    ('hewlett packard labs', 'HPE Labs'),
-    ('hpe labs belgium', 'HPE Labs'),
-    ('hpe labs', 'HPE Labs'),
-    ('hpe,', 'HPE Labs'),
+    ([
+        'hewlett packard enterprise', 'hewlett packard labs', 'hpe labs belgium',
+        'hpe labs', 'hpe,',
+    ], 'HPE Labs'),
     ('hewlett-packard', 'HP'),
     ('cisco', 'Cisco'),
     ('nokia bell labs', 'Nokia Bell Labs'),
@@ -657,18 +624,15 @@ ANCHORS: list[tuple[str, str]] = [
     ('nokia', 'Nokia'),
     ('honeywell', 'Honeywell'),
     ('northrop grumman', 'Northrop Grumman'),
-    ('coherent corp', 'Coherent'),
-    ('coherent,', 'Coherent'),
+    (['coherent corp', 'coherent,'], 'Coherent'),
     ('thorlabs', 'Thorlabs'),
     ('newport', 'Newport'),
     ('corning', 'Corning'),
     ('amentum,', 'Amentum'),
-    ('lumentum', 'Lumentum'),
-    ('mentum,', 'Lumentum'),
+    (['lumentum', 'mentum,'], 'Lumentum'),
     ('lam research', 'Lam Research Corporation'),
     ('thermo fisher', 'Thermo Fisher Scientific'),
-    ('global foundries', 'GlobalFoundries'),
-    ('globalfoundries', 'GlobalFoundries'),
+    (['global foundries', 'globalfoundries'], 'GlobalFoundries'),
     ('broadcom', 'Broadcom'),
     ('western digital', 'Western Digital Corporation'),
     ('stmicro', 'STMicro'),
@@ -704,25 +668,19 @@ ANCHORS: list[tuple[str, str]] = [
     # so one regex tolerating an optional space/hyphen between "chi" and "3"
     # catches all forms; canonical label uses the spaced form.
     (r're:chi[\s-]?3 optics', 'Chi 3 Optics'),
-    ('center for microsystem technology', 'imec'),
-    ('imec', 'imec'),
+    (['center for microsystem technology', 'imec'], 'imec'),
 
     # ---- UK ----------------------------------------------------------------
     ('imperial college london', 'Imperial'),
     ('university of oxford', 'Oxford'),
-    ('university of cambridge', 'Cambridge'),
-    ('cambridge university', 'Cambridge'),
-    ('university college london', 'UCL'),
-    (', ucl,', 'UCL'),
+    (['university of cambridge', 'cambridge university'], 'Cambridge'),
+    (['university college london', ', ucl,'], 'UCL'),
     # normalize() folds curly apostrophes to ASCII, so one needle covers both
     # "King's" and "King’s".
     ('king\'s college london', 'King’s College London'),
-    ('heriot-watt', 'Heriot-Watt'),
-    ('heriot watt', 'Heriot-Watt'),
-    ('university of glasgow', 'Glasgow'),
-    ('glasgow university', 'Glasgow'),
-    ('university of strathclyde', 'Strathclyde'),
-    ('strathclyde', 'Strathclyde'),
+    (['heriot-watt', 'heriot watt'], 'Heriot-Watt'),
+    (['university of glasgow', 'glasgow university'], 'Glasgow'),
+    (['university of strathclyde', 'strathclyde'], 'Strathclyde'),
     ('university of edinburgh', 'U Edinburgh'),
     ('university of southampton', 'Southampton'),
     ('university of bristol', 'Bristol'),
@@ -737,13 +695,10 @@ ANCHORS: list[tuple[str, str]] = [
     ('cardiff', 'Cardiff'),
     # Aston: all Aston University / Aston Institute of Photonic Technologies
     # variants collapse to the single short label 'Aston'.
-    ('aston institute of photonic', 'Aston'),
-    ('aston university', 'Aston'),
-    ('aston,', 'Aston'),
+    (['aston institute of photonic', 'aston university', 'aston,'], 'Aston'),
     ('loughborough', 'Loughborough'),
     ('plymouth', 'Plymouth'),
-    ('national physical lab', 'NPL UK'),
-    ('npl,', 'NPL UK'),
+    (['national physical lab', 'npl,'], 'NPL UK'),
     ('stfc', 'STFC'),
     ('epsrc centre for doctoral training in applied photonics', 'EPSRC CDT Photonics'),
     ('university hospital southampton', 'University Hospital Southampton'),
@@ -756,17 +711,19 @@ ANCHORS: list[tuple[str, str]] = [
     ('tyndall', 'Tyndall'),
 
     # ---- Germany -----------------------------------------------------------
-    ('max planck institute for the science of light', 'MPI Light'),
-    ('max-planck institute for the science of light', 'MPI Light'),
+    ([
+        'max planck institute for the science of light',
+        'max-planck institute for the science of light',
+    ], 'MPI Light'),
     ('max-planck-inst physik des lichts', 'MPI Light'),  # German name for Science of Light
     ('max planck institute of microstructure', 'MPI Microstructure'),
     ('max planck institute for multidisciplinary sciences', 'MPI Multidisc Sci'),
-    ('max-planck-institut fur quantenoptik', 'MPQ'),
-    ('max planck institute of quantum optics', 'MPQ'),
-    ('mpq,', 'MPQ'),
+    ([
+        'max-planck-institut fur quantenoptik',
+        'max planck institute of quantum optics', 'mpq,',
+    ], 'MPQ'),
     ('max plank for multidisciplinary sciences', 'MPI Multidisc Sci'),
-    ('max born institute', 'Max Born'),
-    ('max-born-institut', 'Max Born'),
+    (['max born institute', 'max-born-institut'], 'Max Born'),
     ('max planck', 'Max Planck'),
     ('fraunhofer hhi', 'Fraunhofer HHI'),
     ('fraunhofer ilt', 'Fraunhofer ILT'),
@@ -780,33 +737,33 @@ ANCHORS: list[tuple[str, str]] = [
     ('hzdr', 'HZDR'),
     ('helmholtz', 'Helmholtz Jena'),
     ('rwth aachen', 'RWTH Aachen'),
-    ('lmu munich', 'LMU Munich'),
-    ('ludwig-maximilians', 'LMU Munich'),
-    ('ludwig maximilians', 'LMU Munich'),
-    ('ludwig maximilian university', 'LMU Munich'),
-    ('ludwig-maximilian-universitat', 'LMU Munich'),
-    ('technical university of munich', 'TU Munich'),
-    ('technische universitat munchen', 'TU Munich'),
-    ('tu munich', 'TU Munich'),
-    ('technische universitat berlin', 'TU Berlin'),
-    ('technical university of berlin', 'TU Berlin'),
-    ('tu berlin', 'TU Berlin'),
-    ('technische universitat darmstadt', 'TU Darmstadt'),
-    ('technical university of darmstadt', 'TU Darmstadt'),
-    ('tu darmstadt', 'TU Darmstadt'),
-    ('technische universitat dresden', 'TU Dresden'),
-    ('tu dresden', 'TU Dresden'),
+    ([
+        'lmu munich', 'ludwig-maximilians', 'ludwig maximilians',
+        'ludwig maximilian university', 'ludwig-maximilian-universitat',
+    ], 'LMU Munich'),
+    ([
+        'technical university of munich', 'technische universitat munchen',
+        'tu munich',
+    ], 'TU Munich'),
+    ([
+        'technische universitat berlin', 'technical university of berlin',
+        'tu berlin',
+    ], 'TU Berlin'),
+    ([
+        'technische universitat darmstadt', 'technical university of darmstadt',
+        'tu darmstadt',
+    ], 'TU Darmstadt'),
+    (['technische universitat dresden', 'tu dresden'], 'TU Dresden'),
     ('technische universitat dortmund', 'TU Dortmund'),
-    ('karlsruhe institute of technology', 'KIT'),
-    ('kit,', 'KIT'),
-    ('humboldt-universitat', 'Humboldt'),
-    ('humboldt universitat', 'Humboldt'),
-    ('humboldt university', 'Humboldt'),
-    ('friedrich-schiller-universitat jena', 'Jena'),
-    ('friedrich-schiller', 'Jena'),
-    ('friedrich schiller university jena', 'Jena'),
-    ('friedrich schiller university,', 'Jena'),
-    ('friedrich schiller', 'Jena'),
+    (['karlsruhe institute of technology', 'kit,'], 'KIT'),
+    ([
+        'humboldt-universitat', 'humboldt universitat', 'humboldt university',
+    ], 'Humboldt'),
+    ([
+        'friedrich-schiller-universitat jena', 'friedrich-schiller',
+        'friedrich schiller university jena', 'friedrich schiller university,',
+        'friedrich schiller',
+    ], 'Jena'),
     ('iap jena', 'IAP Jena'),
     ('university of jena', 'Jena'),
     ('university of stuttgart', 'Stuttgart'),
@@ -818,17 +775,16 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of regensburg', 'Regensburg'),
     ('regensburg center for ultrafast', 'Regensburg Center for Ultrafast Nanoscopy'),
     ('university of kassel', 'Kassel'),
-    ('university of hannover', 'Leibniz U Hannover'),
-    ('leibniz university hannover', 'Leibniz U Hannover'),
-    ('leibniz universitat hannover', 'Leibniz U Hannover'),
+    ([
+        'university of hannover', 'leibniz university hannover',
+        'leibniz universitat hannover',
+    ], 'Leibniz U Hannover'),
     ('leibniz-institut fur oberflachenmodifizierung', 'Leibniz-Institut für Oberflächenmodifizierung e.V'),
     ('cluster of excellence phoenixd', 'Cluster of Excellence PhoenixD'),
     ('laser zentrum hannover', 'Laser Zentrum Hannover e.V'),
     ('university of duisburg-essen', 'Duisburg-Essen'),
-    ('universitat hamburg', 'Universitat Hamburg'),
-    ('university of hamburg', 'Universitat Hamburg'),
-    ('european xfel', 'European XFEL'),
-    ('european x-ray free electron laser', 'European XFEL'),
+    (['universitat hamburg', 'university of hamburg'], 'Universitat Hamburg'),
+    (['european xfel', 'european x-ray free electron laser'], 'European XFEL'),
     ('xfel', 'XFEL'),
     ('desy', 'DESY'),
     ('cycle gmbh', 'Cycle GmbH'),
@@ -840,17 +796,14 @@ ANCHORS: list[tuple[str, str]] = [
     ('marvel fusion', 'MARVEL Fusion GmbH'),
     ('mpi corporation', 'MPI Corporation'),
     ('mpi light', 'MPI Light'),
-    ('weierstraß-institut', 'WIAS Berlin'),
-    ('weierstrass institute', 'WIAS Berlin'),
-    ('wias berlin', 'WIAS Berlin'),
+    (['weierstraß-institut', 'weierstrass institute', 'wias berlin'], 'WIAS Berlin'),
     ('paderborn', 'Paderborn'),
     # German city Münster (accent-folded to "munster"), but NOT Ireland's
     # "Munster Technological University" (Cork) — the bare substring would grab
     # it once accents are folded, so exclude that one specific institution and
     # let it fall through to the fallback shortener, which keeps its full name.
     (r're:munster(?! technological)', 'Münster'),
-    ('university of munster', 'Münster'),
-    ('westfalische wilhelms', 'Münster'),
+    (['university of munster', 'westfalische wilhelms'], 'Münster'),
     ('saot', 'SAOT Erlangen'),
     # FAU Erlangen-Nürnberg: all Friedrich-Alexander spellings (hyphen,
     # en-dash, no-hyphen, English "Erlangen-Nuremberg") collapse to 'FAU'.
@@ -866,18 +819,15 @@ ANCHORS: list[tuple[str, str]] = [
     ('chemnitz', 'Chemnitz University of Technology'),
     ('brandenburgische technische', 'BTU Cottbus'),
     ('rheinland-pfalzische', 'Rheinland-Pfälzische Technische Universität'),
-    ('christian-albrechts-universitat', 'Kiel'),
-    ('christian-albrechts', 'Kiel'),
-    ('kiel university', 'Kiel'),
-    ('university of kiel', 'Kiel'),
+    ([
+        'christian-albrechts-universitat', 'christian-albrechts',
+        'kiel university', 'university of kiel',
+    ], 'Kiel'),
     ('otto-von-guericke', 'Otto-von-Guericke-Universitat Magdeburg'),
-    ('fbh', 'FBH'),
-    ('ferdinand-braun-institut', 'FBH'),
-    ('physikalisch-technische bundesanstalt', 'PTB'),
-    ('physikalisch-technsche', 'PTB'),
+    (['fbh', 'ferdinand-braun-institut'], 'FBH'),
+    (['physikalisch-technische bundesanstalt', 'physikalisch-technsche'], 'PTB'),
     ('cluster of excellence', 'Cluster of Excellence PhoenixD'),
-    ('dlr,', 'DLR'),
-    ('german aerospace center', 'DLR'),
+    (['dlr,', 'german aerospace center'], 'DLR'),
     ('gsi helmholtz centre', 'GSI Helmholtz Centre for Heavy Ion Research'),
     ('deeplight', 'DeepLight S.A./GmbH'),
 
@@ -887,22 +837,20 @@ ANCHORS: list[tuple[str, str]] = [
     ('eidgenossische technische hochschule', 'ETH Zürich'),
     # All of these are EPFL in Lausanne, Switzerland — distinct from
     # France's École Polytechnique (Paris) and Polytechnique Montréal.
-    ('ecole polytechnique federale de lausanne', 'EPFL'),
-    ('swiss federal institute of technology lausanne', 'EPFL'),
-    ('swiss federal institute of technology, lausanne', 'EPFL'),
-    ('swiss federal technology institute of lausanne', 'EPFL'),
-    ('epfl', 'EPFL'),
-    ('paul scherrer', 'PSI'),
-    (', psi,', 'PSI'),
+    ([
+        'ecole polytechnique federale de lausanne',
+        'swiss federal institute of technology lausanne',
+        'swiss federal institute of technology, lausanne',
+        'swiss federal technology institute of lausanne', 'epfl',
+    ], 'EPFL'),
+    (['paul scherrer', ', psi,'], 'PSI'),
     ('university of basel', 'Basel'),
     ('university of geneva', 'Geneva'),
     # Bern University of Applied Sciences = Berner Fachhochschule, standard
     # short name BFH. Distinct from University of Bern ('U Bern'); match the
     # full applied-sciences phrase so the two never conflate.
-    ('bern university of applied sciences', 'BFH'),
-    ('berner fachhochschule', 'BFH'),
-    ('university of neuchatel', 'Neuchâtel'),
-    ('universite de neuchatel', 'Neuchâtel'),
+    (['bern university of applied sciences', 'berner fachhochschule'], 'BFH'),
+    (['university of neuchatel', 'universite de neuchatel'], 'Neuchâtel'),
     ('centre suisse d', 'CSEM'),
     ('empa,', 'Empa'),
     (r"re:,\s*empa\b", 'Empa'),
@@ -917,10 +865,8 @@ ANCHORS: list[tuple[str, str]] = [
     # come BEFORE the generic paris-saclay anchor, since the C2N strings carry
     # "Université Paris-Saclay" in the address and would otherwise degrade to
     # "U Paris-Saclay". The "(c2n)" token is distinctive to these strings.
-    ('(c2n)', 'C2N Paris-Saclay'),
-    ('centre de nanoscience et nanotechnologie', 'C2N Paris-Saclay'),
-    ('universite paris-saclay', 'U Paris-Saclay'),
-    ('paris-saclay', 'U Paris-Saclay'),
+    (['(c2n)', 'centre de nanoscience et nanotechnologie'], 'C2N Paris-Saclay'),
+    (['universite paris-saclay', 'paris-saclay'], 'U Paris-Saclay'),
     # The "Laboratoire de Physique de l'ENS / de l'École Normale Supérieure"
     # (LPENS) is the ENS physics department. Its affiliation strings list many
     # co-tutelles (ENS, PSL, CNRS, Sorbonne, Université Paris Cité) in varying
@@ -930,22 +876,18 @@ ANCHORS: list[tuple[str, str]] = [
     # string contains this lab name — verified — so CLEO is unaffected.)
     (r"re:laboratoire de physique de l'(ens|ecole normale superieure)",
      'ENS Paris'),
-    ('universite paris cite', 'U Paris Cité'),
-    ('universite de paris', 'U Paris Cité'),
-    ('paris cite', 'U Paris Cité'),
+    (['universite paris cite', 'universite de paris', 'paris cite'], 'U Paris Cité'),
     ('sorbonne', 'Sorbonne'),
     # Grenoble Alpes must come BEFORE CEA-LETI so combined strings with both
     # are attributed to Grenoble Alpes per ground truth.
-    ('universite grenoble alpes', 'Grenoble Alpes'),
-    ('univ. grenoble alpes', 'Grenoble Alpes'),
-    ('univ grenoble alpes', 'Grenoble Alpes'),
-    ('university grenoble alpes', 'Grenoble Alpes'),
-    ('university of grenoble', 'Grenoble Alpes'),
+    ([
+        'universite grenoble alpes', 'univ. grenoble alpes', 'univ grenoble alpes',
+        'university grenoble alpes', 'university of grenoble',
+    ], 'Grenoble Alpes'),
     # CEA: combined CEA-Leti + CEA strings → CEA; pure CEA-LETI alone → CEA-Leti.
     ('cea-leti, cea,', 'CEA'),
     ('cea-leti', 'CEA-Leti'),
-    ('cea,', 'CEA'),
-    ('cea-saclay', 'CEA'),
+    (['cea,', 'cea-saclay'], 'CEA'),
     ('insa lyon', 'INSA Lyon'),
     # Université Marie et Louis Pasteur (Besançon) — formed 2025 from the
     # merger of UFC and UTBM. Must run BEFORE the generic 'cnrs' anchor so
@@ -959,16 +901,20 @@ ANCHORS: list[tuple[str, str]] = [
     # Europe, CNRS, Laboratoire ... de Bourgogne" maps to Bourgogne, not CNRS.
     ('universite de bourgogne europe', 'Bourgogne'),
     ('universite bourgogne europe', 'Bourgogne'),  # the actual no-"de" spelling
-    ('universite de bourgogne', 'Bourgogne'),
-    ('laboratoire interdisciplinaire carnot de bourgogne', 'Bourgogne'),
+    ([
+        'universite de bourgogne',
+        'laboratoire interdisciplinaire carnot de bourgogne',
+    ], 'Bourgogne'),
     ('cnrs', 'CNRS'),
     ('ecole normale superieure', 'ENS Paris'),
     # ULB's engineering faculty is literally named "École Polytechnique de
     # Bruxelles", so its affiliation strings contain "Ecole Polytechnique".
     # This must run BEFORE the generic Paris "ecole polytechnique," anchors
     # below, or the Brussels institution gets mislabelled "Polytechnique".
-    ('re:ecole polytechnique.*libre de bruxelles', 'ULB'),
-    ('re:ecole polytechnique.*universite libre de bruxelles', 'ULB'),
+    ([
+        're:ecole polytechnique.*libre de bruxelles',
+        're:ecole polytechnique.*universite libre de bruxelles',
+    ], 'ULB'),
     ('ecole polytechnique,', 'IP Paris'),  # Paris campus
     ('institut polytechnique de paris', 'IP Paris'),
     ('universite de bordeaux', 'Bordeaux'),
@@ -976,15 +922,12 @@ ANCHORS: list[tuple[str, str]] = [
     ('universite de lyon', 'U Lyon'),
     ('ecole centrale de lyon', 'Ecole Centrale de Lyon'),
     ('insa lyon', 'INSA Lyon'),
-    ('universite de lille', 'Lille'),
-    ('university of lille', 'Lille'),
+    (['universite de lille', 'university of lille'], 'Lille'),
     ('universite de toulouse', 'U Toulouse'),
     ('universite de montpellier', 'Université de Montpellier'),
-    ('universite de limoges', 'Université de Limoges'),
-    ('university of limoges', 'Université de Limoges'),
+    (['universite de limoges', 'university of limoges'], 'Université de Limoges'),
     ('universite cote d', 'Université Cote d\'Azur'),
-    ('universite de dijon', 'Dijon'),
-    ('dijon', 'Dijon'),
+    (['universite de dijon', 'dijon'], 'Dijon'),
     ('xlim', 'XLIM'),
     ('iii-v lab', 'III-V Lab'),
     ('amplitude laser', 'Amplitude Laser'),
@@ -1001,42 +944,37 @@ ANCHORS: list[tuple[str, str]] = [
     # ---- Italy -------------------------------------------------------------
     ('politecnico di milano', 'Politecnico di Milano'),
     ('politecnico di torino', 'PoliTo'),
-    ('politecnico di bari', 'Polytechnic University of Bari'),
-    ('polytechnic university of bari', 'Polytechnic University of Bari'),
-    ('scuola superiore sant\'anna', 'Scuola Superiore Sant\'Anna'),
-    ('sant\'anna', 'Scuola Superiore Sant\'Anna'),
+    ([
+        'politecnico di bari', 'polytechnic university of bari',
+    ], 'Polytechnic University of Bari'),
+    (["scuola superiore sant'anna", "sant'anna"], "Scuola Superiore Sant'Anna"),
     ('sapienza', 'Sapienza'),
     ('universita cattolica del sacro cuore', 'Università Cattolica del Sacro Cuore'),
     ('universita nicolo cusano', 'Università Nicolò Cusano'),
     ('universita della calabria', 'Università della Calabria'),
     ('university of calabria', 'University of calabria'),
-    ('universita di trento', 'University of Trento'),
-    ('university of trento', 'University of Trento'),
-    ('university of florence', 'Florence'),
-    ('universita di firenze', 'Florence'),
+    (['universita di trento', 'university of trento'], 'University of Trento'),
+    (['university of florence', 'universita di firenze'], 'Florence'),
     ('university, florence', 'Florence'),  # truncated form
-    ('university of pavia', 'Pavia'),
-    ('universita degli studi di pavia', 'Pavia'),
-    ('universita di pavia', 'Pavia'),
-    ('universita pavia', 'Pavia'),
-    ('universita di brescia', 'Brescia'),
-    ('university of brescia', 'Brescia'),
-    ('university of padua', 'Padua'),
-    ('university of padova', 'Padua'),
-    ('universita di padova', 'Padua'),
-    ('universita degli studi di padova', 'Padua'),
-    ('universita di ferrara', 'Ferrara'),
-    ('university of ferrara', 'Ferrara'),
-    ('universita di cagliari', 'Cagliari'),
-    ('university of cagliari', 'Cagliari'),
+    ([
+        'university of pavia', 'universita degli studi di pavia',
+        'universita di pavia', 'universita pavia',
+    ], 'Pavia'),
+    (['universita di brescia', 'university of brescia'], 'Brescia'),
+    ([
+        'university of padua', 'university of padova', 'universita di padova',
+        'universita degli studi di padova',
+    ], 'Padua'),
+    (['universita di ferrara', 'university of ferrara'], 'Ferrara'),
+    (['universita di cagliari', 'university of cagliari'], 'Cagliari'),
     ('universita della campania', 'U Campania'),
     ('istituto di fotonica e nanotecnologie', 'Istituto di Fotonica e Nanotecnologie'),
     ('cnit', 'CNIT'),
-    ('consiglio nazionale delle ricerche', 'CNR Italy'),
-    ('cnr,', 'CNR Italy'),
-    ('national research council (cnr)', 'CNR Italy'),
-    ('national institute of optics-national research council', 'CNR-INO'),
-    ('cnr-ino', 'CNR-INO'),
+    ([
+        'consiglio nazionale delle ricerche', 'cnr,',
+        'national research council (cnr)',
+    ], 'CNR Italy'),
+    (['national institute of optics-national research council', 'cnr-ino'], 'CNR-INO'),
     ('sezione di perugia', 'Sezione di Perugia'),
     ('sezione di roma', 'Sezione di Roma'),
     ('osservatorio astrofisico di catania', 'Osservatorio Astrofisico di Catania'),
@@ -1045,17 +983,16 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of l\'aquila', 'University of L\'Aquila'),
 
     # ---- Spain -------------------------------------------------------------
-    ('icfo', 'ICFO'),
-    ('institute of photonic sciences', 'ICFO'),
-    ('universitat politecnica de catalunya', 'UPC'),
-    ('upc,', 'UPC'),
-    ('universitat politecnica de catalunya', 'UPC'),
+    (['icfo', 'institute of photonic sciences'], 'ICFO'),
+    ([
+        'universitat politecnica de catalunya', 'upc,',
+        'universitat politecnica de catalunya',
+    ], 'UPC'),
     ('universitat politecnica de valencia', 'Universitat Politecnica de Valencia'),
     ('universidad politecnica de madrid', 'Universidad Politecnica de Madrid'),
     ('universidad complutense de madrid', 'Complutense Madrid'),
     ('universitat jaume i', 'Universitat Jaume I'),
-    ('csic,', 'CSIC'),
-    ('consejo superior de investigaciones', 'CSIC'),
+    (['csic,', 'consejo superior de investigaciones'], 'CSIC'),
     ('instituto de ciencia de materiales de madrid', 'Instituto de Ciencia de Materiales de Madrid'),
     ('university of vigo', 'University of Vigo'),
     ('universitat rovira', 'URV'),
@@ -1069,27 +1006,18 @@ ANCHORS: list[tuple[str, str]] = [
     ('instituto de telecomunicacoes', 'Instituto de Telecomunicações'),
     ('instituto de plasmas e fusao nuclear', 'Instituto de Plasmas e Fusão Nuclear'),
     ('instituto superior tecnico', 'IST Lisbon'),
-    ('ciceco', 'Aveiro'),
-    ('university of aveiro', 'Aveiro'),
-    ('universidade de aveiro', 'Aveiro'),
-    ('university of porto', 'Porto'),
-    ('porto university', 'Porto'),
-    ('universidade do porto', 'Porto'),
-    ('university of lisbon', 'Lisbon'),
-    ('universidade de lisboa', 'Lisbon'),
-    ('instituto de engenharia de sistemas e computadores', 'INESC MN'),
-    ('inesc mn', 'INESC MN'),
+    (['ciceco', 'university of aveiro', 'universidade de aveiro'], 'Aveiro'),
+    (['university of porto', 'porto university', 'universidade do porto'], 'Porto'),
+    (['university of lisbon', 'universidade de lisboa'], 'Lisbon'),
+    (['instituto de engenharia de sistemas e computadores', 'inesc mn'], 'INESC MN'),
     ('sphere ultrafast', 'Sphere Ultrafast Photonics'),
     ('glophotonics', 'GLOphotonics'),
 
     # ---- Netherlands -------------------------------------------------------
-    ('eindhoven university of technology', 'TU Eindhoven'),
-    ('tu eindhoven', 'TU Eindhoven'),
-    ('delft university of technology', 'TU Delft'),
-    ('tu delft', 'TU Delft'),
+    (['eindhoven university of technology', 'tu eindhoven'], 'TU Eindhoven'),
+    (['delft university of technology', 'tu delft'], 'TU Delft'),
     ('university of twente', 'Twente'),
-    ('university of amsterdam', 'Amsterdam'),
-    ('university amsterdam', 'Amsterdam'),
+    (['university of amsterdam', 'university amsterdam'], 'Amsterdam'),
     ('institute: amsterdam medical', 'Institute: Amsterdam Medical Center'),
     ('the hague university', 'The Hague University'),
     ('photon design', 'Photon Design'),
@@ -1102,29 +1030,23 @@ ANCHORS: list[tuple[str, str]] = [
     ('universite libre de bruxelles', 'ULB'),
     ('vrije universiteit brussel', 'VUB'),
     ('ulb,', 'ULB'),
-    ('ghent university', 'Ghent'),
-    ('ugent', 'Ghent'),
+    (['ghent university', 'ugent'], 'Ghent'),
     ('intec,', 'INTEC'),
     ('hpe labs belgium', 'HPE Labs'),
 
     # ---- Nordics -----------------------------------------------------------
-    ('technical university of denmark', 'DTU'),
-    ('danmarks tekniske universitet', 'DTU'),
-    ('dtu copenhagen', 'DTU'),
-    ('danish national metrology institute', 'DFM'),
-    ('danish fundamental metrologi', 'DFM'),
-    ('dtu electro', 'DTU'),
-    ('dtu,', 'DTU'),
-    ('dtu:', 'DTU'),
+    ([
+        'technical university of denmark', 'danmarks tekniske universitet',
+        'dtu copenhagen',
+    ], 'DTU'),
+    (['danish national metrology institute', 'danish fundamental metrologi'], 'DFM'),
+    (['dtu electro', 'dtu,', 'dtu:'], 'DTU'),
     ('nkt photonics', 'NKT Photonics'),
     ('uv medico', 'UV Medico'),
-    ('niels bohr institute', 'Copenhagen'),
-    ('university of copenhagen', 'Copenhagen'),
+    (['niels bohr institute', 'university of copenhagen'], 'Copenhagen'),
     ('aarhus university', 'Aarhus'),
     ('sparrow quantum', 'Sparrow Quantum ApS'),
-    ('royal institute of technology', 'KTH'),
-    ('kth royal institute', 'KTH'),
-    ('kth,', 'KTH'),
+    (['royal institute of technology', 'kth royal institute', 'kth,'], 'KTH'),
     ('chalmers', 'Chalmers'),
     ('university of gothenburg', 'Gothenburg'),
     ('linkoping', 'Linköping'),
@@ -1139,17 +1061,15 @@ ANCHORS: list[tuple[str, str]] = [
     ('university west', 'University West'),
 
     # ---- Austria -----------------------------------------------------------
-    ('tu wien', 'TU Vienna'),
-    ('tu vienna', 'TU Vienna'),
-    ('technische universitat wien', 'TU Vienna'),
-    ('vienna university of technology', 'TU Vienna'),
-    ('tu graz', 'TU Graz'),
-    ('graz university of technology', 'TU Graz'),
+    ([
+        'tu wien', 'tu vienna', 'technische universitat wien',
+        'vienna university of technology',
+    ], 'TU Vienna'),
+    (['tu graz', 'graz university of technology'], 'TU Graz'),
     ('university of vienna', 'Vienna'),
     ('johannes kepler', 'Johannes Kepler University'),
     ('iqoqi', 'IQOQI'),
-    ('ist austria', 'IST Austria'),
-    ('institute of science and technology austria', 'IST Austria'),
+    (['ist austria', 'institute of science and technology austria'], 'IST Austria'),
     ('silicon austria labs', 'Silicon Austria Labs'),
     ('university of graz', 'Graz'),
 
@@ -1159,10 +1079,8 @@ ANCHORS: list[tuple[str, str]] = [
     ('charles university', 'Charles U Prague'),
     ('czech academy', 'Czech Academy'),
     ('fnspe', 'FNSPE'),
-    ('eli beamlines', 'ELI-Beamlines'),
-    ('eli-beamlines', 'ELI-Beamlines'),
-    ('eli-alps', 'ELI-ALPS'),
-    ('eli alps', 'ELI-ALPS'),
+    (['eli beamlines', 'eli-beamlines'], 'ELI-Beamlines'),
+    (['eli-alps', 'eli alps'], 'ELI-ALPS'),
     ('cesnet', 'CESNET'),
     ('hilase', 'HiLASE Centre'),
     ('palacky university', 'Palacky University'),
@@ -1179,27 +1097,33 @@ ANCHORS: list[tuple[str, str]] = [
     # 'warsaw,' city anchor (so the ", Warsaw, Poland" address-tailed variants
     # don't degrade to 'Warsaw') and the Singapore A*STAR "institute of
     # microelectronics" anchor further below (so they aren't mislabelled A*STAR).
-    ('lukasiewicz institute of microelectronics', 'Lukasiewicz IMiF'),
-    ('lukasiewicz research network', 'Lukasiewicz IMiF'),
-    ('institute of microelectronics and photonics', 'Lukasiewicz IMiF'),
+    ([
+        'lukasiewicz institute of microelectronics',
+        'lukasiewicz research network',
+        'institute of microelectronics and photonics',
+    ], 'Lukasiewicz IMiF'),
     ('warsaw,', 'Warsaw'),
     # Wroclaw University of Science and Technology -> Wroclaw. Match the full
     # institution phrase so the separate "Gekko Photonics, Wroclaw" company
     # (which only carries the CITY token) is never swept up. Cover the
     # accented "Wrocław" spelling too.
-    ('wroclaw university of science and technology', 'Wroclaw'),
-    ('wrocław university of science and technology', 'Wroclaw'),
+    ([
+        'wroclaw university of science and technology',
+        'wrocław university of science and technology',
+    ], 'Wroclaw'),
     ('lodz university of technology', 'Lodz University of Technology'),
-    ('uniwersytet mikolaja kopernika', 'Uniwersytet Mikolaja Kopernika W Toruniu'),
-    ('nicolaus copernicus', 'Uniwersytet Mikolaja Kopernika W Toruniu'),
+    ([
+        'uniwersytet mikolaja kopernika', 'nicolaus copernicus',
+    ], 'Uniwersytet Mikolaja Kopernika W Toruniu'),
     ('polish academy', 'Polish Academy'),
     ('vilnius university', 'Vilnius University'),
     # FTMC's English name; place before bare 'vilnius,' so it wins for the
     # address-bearing variant ("..., Vilnius, Lithuania") too.
     ('center for physical sciences', 'FTMC Vilnius'),
     ('vilnius,', 'Vilnius'),
-    ('state research institute center for physical sciences', 'FTMC Vilnius'),
-    ('ftmc,', 'FTMC Vilnius'),
+    ([
+        'state research institute center for physical sciences', 'ftmc,',
+    ], 'FTMC Vilnius'),
     ('university of ss. cyril and methodius in trnava', 'UCM Trnava'),
     ('university of ss. cyril and metodius', 'University of Ss. Cyril and Metodius'),
     ('slovak centre of scientific', 'SCSTI Slovakia'),
@@ -1213,20 +1137,15 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of west attica', 'University of West Attica'),
     ('eulambia', 'Eulambia Advanced Technologies'),
     ('izmir institute of technology', 'Izmir Institute of Technology'),
-    ('metu', 'METU'),
-    ('middle east technical', 'METU'),
+    (['metu', 'middle east technical'], 'METU'),
 
     # ---- Israel ------------------------------------------------------------
     ('technion', 'Technion'),
     ('weizmann', 'Weizmann'),
-    ('tel aviv university', 'TAU'),
-    ('tel-aviv university', 'TAU'),
-    ('hebrew university', 'Hebrew U'),
-    ('hebrew universit', 'Hebrew U'),
-    ('ben-gurion', 'Ben-Gurion'),
-    ('ben gurion', 'Ben-Gurion'),
-    ('bar-ilan', 'Bar-Ilan'),
-    ('bar ilan', 'Bar-Ilan'),
+    (['tel aviv university', 'tel-aviv university'], 'TAU'),
+    (['hebrew university', 'hebrew universit'], 'Hebrew U'),
+    (['ben-gurion', 'ben gurion'], 'Ben-Gurion'),
+    (['bar-ilan', 'bar ilan'], 'Bar-Ilan'),
     ('ariel university', 'Ariel U'),
     ('soreq nrc', 'Soreq NRC'),
     ('hadassah-hebrew-university', 'Hadassah-Hebrew-University-Medical-Center'),
@@ -1235,16 +1154,11 @@ ANCHORS: list[tuple[str, str]] = [
     ('ephos', 'Ephos'),
 
     # ---- Russia / former Soviet --------------------------------------------
-    ('a. f. ioffe', 'Ioffe'),
-    ('a.f. ioffe', 'Ioffe'),
-    ('ioffe institute', 'Ioffe'),
-    ('ioffe', 'Ioffe'),
+    (['a. f. ioffe', 'a.f. ioffe', 'ioffe institute', 'ioffe'], 'Ioffe'),
     ('a.v. rzhanov institute', 'Rzhanov ISP'),
     ('lebedev physical institute', 'Lebedev Physical Institute'),
-    ('mipt', 'MIPT'),
-    ('moscow institute of physics and technology', 'MIPT'),
-    ('moscow state university', 'Moscow State'),
-    ('lomonosov moscow', 'Moscow State'),
+    (['mipt', 'moscow institute of physics and technology'], 'MIPT'),
+    (['moscow state university', 'lomonosov moscow'], 'Moscow State'),
     ('novosibirsk state university', 'Novosibirsk State University'),
     ('tomsk state university of control systems', 'TUSUR'),
     ('tomsk state university', 'Tomsk State University'),
@@ -1258,39 +1172,33 @@ ANCHORS: list[tuple[str, str]] = [
 
     # ---- China: top universities (specific city/name BEFORE generic) ------
     # Many Chinese universities have multiple full-name spellings and abbrev.
-    ('huazhong university of scien', 'Huazhong'),
-    ('huazhong univ of science', 'Huazhong'),
-    ('huazhong univ. of science', 'Huazhong'),
-    ('huazhong univ. of sci', 'Huazhong'),
-    ('hust,', 'Huazhong'),
+    ([
+        'huazhong university of scien', 'huazhong univ of science',
+        'huazhong univ. of science', 'huazhong univ. of sci', 'hust,',
+    ], 'Huazhong'),
     ('wuhan national lab for optoelectronic', 'Wuhan National Lab for Optoelectronics'),
-    ('tsinghua university', 'Tsinghua'),
-    ('tsinghua,', 'Tsinghua'),
-    ('beijing national research center for information science and technology', 'BNRist'),
-    ('beijing national research center for information and technology', 'BNRist'),
-    ('bnrist', 'BNRist'),
+    (['tsinghua university', 'tsinghua,'], 'Tsinghua'),
+    ([
+        'beijing national research center for information science and technology',
+        'beijing national research center for information and technology',
+        'bnrist',
+    ], 'BNRist'),
     # "Peking University Yangtze Delta Institute of Optoelectronics" is a
     # separate campus/institute (Nantong, Jiangsu) and keeps its own label;
     # it must be matched BEFORE the generic "peking universit" anchor.
     ('peking university yangtze delta', 'Peking U Yangtze Delta'),
     ('peking universitity yangtze delta', 'Peking U Yangtze Delta'),  # "Universitity" typo
-    ('peking university', 'Peking U'),
-    ('peking universit', 'Peking U'),
+    (['peking university', 'peking universit'], 'Peking U'),
     ('pekin university', 'Peking U'),   # rare misspelling, same institution
     ('pku', 'Peking U'),
-    ('beijing institute of technology', 'BIT'),
-    ('bit,', 'BIT'),
+    (['beijing institute of technology', 'bit,'], 'BIT'),
     ('beihang', 'Beihang'),
-    ('beijing university of posts and telecomm', 'BUPT'),
-    ('bupt,', 'BUPT'),
-    ('beijing normal university', 'BNU'),
-    ('bnu,', 'BNU'),
+    (['beijing university of posts and telecomm', 'bupt,'], 'BUPT'),
+    (['beijing normal university', 'bnu,'], 'BNU'),
     ('beijing university of posts and telecomm', 'BUPT'),
     ('beijing univ of posts', 'BUPT'),  # abbreviated short-form variant
     ('fudan', 'Fudan'),
-    ('shanghai jiao tong', 'SJTU'),
-    ('shanghai jiaotong', 'SJTU'),
-    ('sjtu,', 'SJTU'),
+    (['shanghai jiao tong', 'shanghai jiaotong', 'sjtu,'], 'SJTU'),
     ('sjtu-pinghu institute', 'SJTU-Pinghu'),
     ('shanghaitech', 'ShanghaiTech'),
     ('shanghai university,', 'Shanghai'),
@@ -1309,9 +1217,10 @@ ANCHORS: list[tuple[str, str]] = [
     #   FJIRSM Fujian Institute of Research on the Structure of Matter, Fuzhou
     #   XIOPM Xi'an Institute of Optics and Precision Mechanics
     #   UCAS  University of Chinese Academy of Sciences (the CAS-affiliated university)
-    ('beijing national laboratory for condensed matter physics', 'CAS IOP Beijing'),
-    ('institute of physics, cas', 'CAS IOP Beijing'),
-    ('institute of physics, chinese', 'CAS IOP Beijing'),
+    ([
+        'beijing national laboratory for condensed matter physics',
+        'institute of physics, cas', 'institute of physics, chinese',
+    ], 'CAS IOP Beijing'),
     # "Institute of Physics, Beijing, ..." (no "CAS"/"Chinese Academy" token,
     # only the city) is the CAS Institute of Physics in Beijing — confirmed by
     # its co-affiliation with UCAS in the data. Anchor the city-tailed form
@@ -1323,14 +1232,20 @@ ANCHORS: list[tuple[str, str]] = [
     # Institute of Semiconductors at CAS (Beijing). Require the CAS context
     # ("Chinese Academy" or ", CAS") so the same-named institute at the *Henan*
     # Academy of Sciences is NOT swept in (it stays 'Henan Academy of Sciences').
-    ('institute of semiconductors, chinese academy', 'CAS IOS Beijing'),
-    ('institute of semiconductors,chinese academy', 'CAS IOS Beijing'),
-    ('institute of semiconductors, cas', 'CAS IOS Beijing'),
-    ('institute of microelectronics, chinese academy', 'CAS IME Beijing'),
-    ('institute of microelectronics of the chinese academy', 'CAS IME Beijing'),
+    ([
+        'institute of semiconductors, chinese academy',
+        'institute of semiconductors,chinese academy',
+        'institute of semiconductors, cas',
+    ], 'CAS IOS Beijing'),
+    ([
+        'institute of microelectronics, chinese academy',
+        'institute of microelectronics of the chinese academy',
+    ], 'CAS IME Beijing'),
     ('institute of computing technology, chinese academy', 'CAS ICT Beijing'),
-    ('aerospace information research institute', 'CAS AIR Beijing'),
-    ('national key laboratory of microwave imaging', 'CAS AIR Beijing'),
+    ([
+        'aerospace information research institute',
+        'national key laboratory of microwave imaging',
+    ], 'CAS AIR Beijing'),
     ('shanghai institute of microsystem', 'SIMIT'),
     ('shanghai institute of optics and fine mechanics', 'SIOM'),
     ('fujian institute of research on the structure of matter', 'FJIRSM'),
@@ -1340,8 +1255,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('shanghai institute of ceramics', 'Shanghai Institute of Ceramics'),
     ('shanghai engineering research center of energy efficient', 'SERC-EECAI Shanghai'),
     ('siom', 'SIOM'),
-    ('zhejiang university', 'Zhejiang'),
-    ('zju-hangzhou', 'Zhejiang'),
+    (['zhejiang university', 'zju-hangzhou'], 'Zhejiang'),
     ('zhejiang lab', 'Zhejiang Lab'),
     ('nanjing university of aeronautics', 'Nanjing U Aeronautics & Astronautics'),
     ('nanjing university of posts and telecommunications', 'NUPT'),
@@ -1349,8 +1263,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('southeast university', 'Southeast U'),
     ('purple mountain lab', 'Purple Mountain Lab'),
     ('nankai', 'Nankai'),
-    ('xi\'an jiaotong', 'Xi\'an Jiaotong'),
-    ('xian jiaotong', 'Xi\'an Jiaotong'),
+    (["xi'an jiaotong", 'xian jiaotong'], "Xi'an Jiaotong"),
     ('xidian', 'Xidian'),
     # NOTE: no bare-city "xi'an," anchor here. It was dead code before
     # normalize() folded punctuation (the source data's curly apostrophe in
@@ -1361,104 +1274,101 @@ ANCHORS: list[tuple[str, str]] = [
     # removed for; specific Xi'an institutions (Jiaotong, Xidian, XIOPM) have
     # their own anchors above, and everything else should fall through to the
     # fallback shortener, which keeps the leading institution name.
-    ('northwestern polytechnical', 'NWPU'),
-    ('nwpu', 'NWPU'),
+    (['northwestern polytechnical', 'nwpu'], 'NWPU'),
     ('university of electronic science and technology of china', 'UESTC'),
     ('university of electronic science and technology', 'UESTC'),  # "of China" sometimes dropped
-    ('univ. electronic sci. & tech. of china', 'UESTC'),
-    ('univ of electronic science & tech china', 'UESTC'),
-    ('uestc', 'UESTC'),
-    ('university of science and technology of china', 'USTC'),
-    ('university of science and technology of chin,', 'USTC'),
-    ('ustc,', 'USTC'),
-    ('chinese academy of sciences', 'CAS'),
-    ('chinese academy of science', 'CAS'),
-    ('chinese academic of science', 'CAS'),
+    ([
+        'univ. electronic sci. & tech. of china',
+        'univ of electronic science & tech china', 'uestc',
+    ], 'UESTC'),
+    ([
+        'university of science and technology of china',
+        'university of science and technology of chin,', 'ustc,',
+    ], 'USTC'),
+    ([
+        'chinese academy of sciences', 'chinese academy of science',
+        'chinese academic of science',
+    ], 'CAS'),
     ('chinese academy of medical sciences', 'CAMS-PUMC'),
     ('south china normal', 'South China Normal University'),
-    ('south china university of technology', 'SCUT'),
-    ('scut,', 'SCUT'),
+    (['south china university of technology', 'scut,'], 'SCUT'),
     ('south china academy of advanced opto', 'SCAAO'),
-    ('sun yat-sen', 'Sun Yat-sen U'),
-    ('sun yat sen', 'Sun Yat-sen U'),
+    (['sun yat-sen', 'sun yat sen'], 'Sun Yat-sen U'),
     ('great bay university', 'Great Bay University'),
     ('shenzhen university,', 'Shenzhen U'),
     ('shenzhen technology', 'Shenzhen Tech U'),
-    ('southern university of science and technology', 'SUSTech'),
-    ('sustech', 'SUSTech'),
+    (['southern university of science and technology', 'sustech'], 'SUSTech'),
     ('jinan university', 'Jinan'),
     # HK: order matters — more-specific first.
-    ('hong kong university of science and technology', 'HKUST'),
-    ('hkust', 'HKUST'),
-    ('city university of hong kong', 'CityU HK'),
-    ('city university hong kong', 'CityU HK'),
-    ('chinese university of hong kong (shenzhen)', 'CUHK Shenzhen'),
-    ('the chinese university of hong kong (shenzhen)', 'CUHK Shenzhen'),
-    ('chinese university of hong kong, shenzhen', 'CUHK Shenzhen'),
-    ('the chinese university of hong kong', 'CUHK'),
-    ('chinese university of hong kong', 'CUHK'),
+    (['hong kong university of science and technology', 'hkust'], 'HKUST'),
+    (['city university of hong kong', 'city university hong kong'], 'CityU HK'),
+    ([
+        'chinese university of hong kong (shenzhen)',
+        'the chinese university of hong kong (shenzhen)',
+        'chinese university of hong kong, shenzhen',
+    ], 'CUHK Shenzhen'),
+    ([
+        'the chinese university of hong kong', 'chinese university of hong kong',
+    ], 'CUHK'),
     (r're:chinese univ\w*rsity of hong kong', 'CUHK'),  # absorbs "Univrsity" typo
     ('cuhk shenzhen', 'CUHK Shenzhen'),
     ('cuhk,', 'CUHK'),
     ('hong kong polytechnic', 'PolyU HK'),
     ('hong kong polytechinic', 'PolyU HK'),  # typo
-    ('the hong kong polytechnic', 'PolyU HK'),
-    ('the hong kong polytechinic', 'PolyU HK'),
+    (['the hong kong polytechnic', 'the hong kong polytechinic'], 'PolyU HK'),
     ('hong kong baptist', 'HK Baptist'),
-    ('the university of hong kong', 'HKU'),
-    ('university of hong kong', 'HKU'),
-    ('the university of hongkong', 'HKU'),
-    ('hku,', 'HKU'),
+    ([
+        'the university of hong kong', 'university of hong kong',
+        'the university of hongkong', 'hku,',
+    ], 'HKU'),
     ('university of macau', 'Macau'),
     ('pui ching middle school macau', 'Pui Ching Middle School Macau'),
     # Per existing ground-truth, NTUST is classified as NTU Taiwan too.
     ('national taiwan university of science and technology', 'NTU Taiwan'),
     ('national taiwan univ of science', 'NTU Taiwan'),  # abbreviated short-form variant
-    ('ntust', 'NTU Taiwan'),
-    ('national taiwan university', 'NTU Taiwan'),
+    (['ntust', 'national taiwan university'], 'NTU Taiwan'),
     ('natioal taiwan university', 'NTU Taiwan'),  # misspelling
-    ('national tsing hua', 'NTHU'),
-    ('national tsing-hua', 'NTHU'),
-    ('nthu', 'NTHU'),
+    (['national tsing hua', 'national tsing-hua', 'nthu'], 'NTHU'),
     ('national chiao tung', 'NTU Taiwan'),
-    ('national yang ming chiao tung', 'NYCU'),
-    ('national ang ming chiao tung', 'NYCU'),
-    ('national yaming chiaotung', 'NYCU'),
+    ([
+        'national yang ming chiao tung', 'national ang ming chiao tung',
+        'national yaming chiaotung',
+    ], 'NYCU'),
     ('national central university', 'National Central University'),
     ('national cheng kung', 'NCKU'),
     ('national chung cheng university', 'National Chung Cheng University'),
     ('national chung hsing', 'National Chung Hsing University'),
-    ('national taiwan university of science and technology', 'NTUST'),
-    ('ntust', 'NTUST'),
+    (['national taiwan university of science and technology', 'ntust'], 'NTUST'),
     ('feng chia', 'Feng Chia University'),
     ('hon hai research', 'Hon Hai Research Institute'),
     ('artilux', 'Artilux Inc.'),
     ('chengdu', 'Chengdu'),
-    ('university of petroleum (beijing)', 'China University of Petroleum (Beijing)'),
-    ('china university of petroleum', 'China University of Petroleum (Beijing)'),
+    ([
+        'university of petroleum (beijing)', 'china university of petroleum',
+    ], 'China University of Petroleum (Beijing)'),
     ('china university of geosciences', 'China University of Geosciences'),
     ('central south university', 'Central South University'),
     ('south university of science', 'SUSTech'),
     ('north china electric', 'North China Electric Power University'),
-    ('national university of defense technology', 'NUDT'),
-    ('nudt,', 'NUDT'),
-    ('university of defense technology', 'NUDT'),
-    ('national engineering research center for next generation internet access', 'NERC-NGIAS Wuhan'),
-    ('national engineering research center of next generation internet access-system', 'NERC-NGIAS Wuhan'),
-    ('cqu,', 'CQU'),
-    ('chongqing university', 'CQU'),
+    ([
+        'national university of defense technology', 'nudt,',
+        'university of defense technology',
+    ], 'NUDT'),
+    ([
+        'national engineering research center for next generation internet access',
+        'national engineering research center of next generation internet access-system',
+    ], 'NERC-NGIAS Wuhan'),
+    (['cqu,', 'chongqing university'], 'CQU'),
     ('guangdong laboratory of artificial intelligence', 'GDLAB AI SZ'),
     ('guangdong university of technology', 'Guangdong U Tech'),
     ('guangxi university', 'Guangxi University'),
     ('guangxi medical', 'Guangxi Medical University'),
-    ('harbin institute of technology', 'HIT'),
-    ('hit,', 'HIT'),
+    (['harbin institute of technology', 'hit,'], 'HIT'),
     ('harbin engineering university', 'Harbin Engineering University'),
     ('jiangsu normal', 'Jiangsu Normal University'),
     ('jilin university', 'Jilin'),
     ('xiamen university', 'Xiamen'),
-    ('hefei national laboratory', 'Hefei Natl Lab'),
-    ('hefei natl lab', 'Hefei Natl Lab'),
+    (['hefei national laboratory', 'hefei natl lab'], 'Hefei Natl Lab'),
     ('tianjin university', 'Tianjin'),
     ('tongji university', 'Tongji'),
     ('ningbo university of technology', 'Ningbo University of Technology'),
@@ -1475,20 +1385,17 @@ ANCHORS: list[tuple[str, str]] = [
     ('fujian science', 'Fujian S&T Innovation Lab'),
     ('wuhan university', 'Wuhan U'),
     ('wuhan textile', 'Wuhan Textile U'),
-    ('optics valley lab', 'Optics Valley Lab'),
-    ('optics valley laboratory', 'Optics Valley Lab'),
-    ('zte ', 'ZTE'),
-    ('zte,', 'ZTE'),
-    ('zte corporation', 'ZTE'),
-    ('hanjiang naitional laboratory', 'Hanjiang National Lab'),
-    ('hanjiang national laboratory', 'Hanjiang National Lab'),
+    (['optics valley lab', 'optics valley laboratory'], 'Optics Valley Lab'),
+    (['zte ', 'zte,', 'zte corporation'], 'ZTE'),
+    ([
+        'hanjiang naitional laboratory', 'hanjiang national laboratory',
+    ], 'Hanjiang National Lab'),
     ('china mobile xiong', 'China Mobile Xiong’an'),
     ('china mobile research', 'China Mobile Research Institute'),
     ('china telecom research', 'China Telecom Research Institute'),
     ('china academy of electronics', 'CAEIT'),
     ('accelink', 'Accelink'),
-    ('cict,', 'CICT'),
-    ('cict ', 'CICT'),
+    (['cict,', 'cict '], 'CICT'),
     ('yofc', 'YOFC'),
     ('state key laboratory of optical fiber and cable', 'State Key Lab of Optical Fiber and Cable'),
     ('huawei', 'Huawei'),
@@ -1499,26 +1406,26 @@ ANCHORS: list[tuple[str, str]] = [
     ('jinhua no. 1 high school', 'Jinhua No. 1 High School'),
     ('berxel photonics', 'Berxel Photonics'),
     ('luzhou laojiao', 'Luzhou Laojiao Co.Ltd.'),
-    ('liobate technology', 'Liobate'),
-    ('liobate technologies', 'Liobate'),
-    ('zhangjiang lab', 'Zhangjiang Laboratory'),
-    ('zhangjiang laboratory', 'Zhangjiang Laboratory'),
-    ('zhang jiang laboratory', 'Zhangjiang Laboratory'),
+    (['liobate technology', 'liobate technologies'], 'Liobate'),
+    ([
+        'zhangjiang lab', 'zhangjiang laboratory', 'zhang jiang laboratory',
+    ], 'Zhangjiang Laboratory'),
     ('yongjiang laboratory', 'Yongjiang Laboratory'),
     ('jinyinhu', 'Jinyinhu Laboratory'),
     ('purple mountain', 'Purple Mountain Lab'),
     ('shenzhen jufei', 'Shenzhen Jufei Optoelectronics Co'),
-    ('peng cheng laboratory', 'PCL Shenzhen'),
-    ('pengcheng laboratory', 'PCL Shenzhen'),
-    ('pcl shenzhen', 'PCL Shenzhen'),
+    (['peng cheng laboratory', 'pengcheng laboratory', 'pcl shenzhen'], 'PCL Shenzhen'),
     ('aerospace system engineering', 'Aerospace System Engineering'),
     ('ccdc drilling', 'CCDC Drilling Research Institute'),
-    ('national key lab amnm', 'National Key Lab AMNM'),
-    ('national key laboratory of advanced micro and nano manufacture', 'National Key Lab AMNM'),
+    ([
+        'national key lab amnm',
+        'national key laboratory of advanced micro and nano manufacture',
+    ], 'National Key Lab AMNM'),
     ('bangladesh university of engineering', 'BUET'),
     ('beijing national laboratory for condensed matter physics', 'CAS IOP Beijing'),
-    ('consorzio nazionale interuniversitario per le telecomunicazioni', 'CNIT Italy'),
-    ('cnit,', 'CNIT Italy'),
+    ([
+        'consorzio nazionale interuniversitario per le telecomunicazioni', 'cnit,',
+    ], 'CNIT Italy'),
     ('icrea', 'ICREA'),
     ('joint international research laboratory of specialty fiber', 'Shanghai'),
     ('vereshchagin institute', 'Vereshchagin IHPP'),
@@ -1533,20 +1440,17 @@ ANCHORS: list[tuple[str, str]] = [
     ('yofc', 'YOFC'),
 
     # ---- Japan -------------------------------------------------------------
-    ('the university of tokyo', 'U Tokyo'),
-    ('university of tokyo', 'U Tokyo'),
+    (['the university of tokyo', 'university of tokyo'], 'U Tokyo'),
     ('tokyo university of science', 'Tokyo U Science'),
-    ('tokyo institute of technology', 'Tokyo Tech'),
-    ('tokyo tech', 'Tokyo Tech'),
-    ('institute of science tokyo', 'Tokyo Tech'),
+    ([
+        'tokyo institute of technology', 'tokyo tech',
+        'institute of science tokyo',
+    ], 'Tokyo Tech'),
     ('tokyo metropolitan university', 'Tokyo Metropolitan University'),
     ('tokyo university of agriculture and technology', 'TUAT'),
-    ('keio university', 'Keio'),
-    ('keio,', 'Keio'),
+    (['keio university', 'keio,'], 'Keio'),
     ('waseda', 'Waseda'),
-    ('the university of osaka', 'Osaka'),
-    ('university of osaka', 'Osaka'),
-    ('osaka university', 'Osaka'),
+    (['the university of osaka', 'university of osaka', 'osaka university'], 'Osaka'),
     ('osaka metropolitan', 'Osaka Metropolitan University'),
     ('kyoto university', 'Kyoto'),
     ('kyushu university', 'Kyushu'),
@@ -1558,8 +1462,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('okayama university', 'Okayama'),
     ('yokohama national university', 'Yokohama Nat'),
     ('saitama university', 'Saitama'),
-    ('utsunomiya university', 'Utsunomiya'),
-    ('utsunomiya u', 'Utsunomiya'),
+    (['utsunomiya university', 'utsunomiya u'], 'Utsunomiya'),
     ('university of electro-communications', 'U Electro-Comm Tokyo'),
     ('graduate institute for advanced studies', 'Graduate Institute for Advanced Studies'),
     ('okinawa institute of science', 'OIST'),
@@ -1593,16 +1496,14 @@ ANCHORS: list[tuple[str, str]] = [
     (r're:\baist\b\s*,', 'AIST Japan'),
     ('national institute of advanced industrial science and technology', 'AIST Japan'),
     # Abbreviated short-forms for AIST.
-    ('natl inst of adv industrial', 'AIST Japan'),
-    ('natl. inst. adv. ind. sci', 'AIST Japan'),
+    (['natl inst of adv industrial', 'natl. inst. adv. ind. sci'], 'AIST Japan'),
     (r're:\baist\b\s', 'AIST Japan'),
-    ('nict ', 'NICT'),
-    ('nict,', 'NICT'),
-    ('nict network', 'NICT'),
-    ('advanced ict research institute', 'NICT'),
-    ('national institute of information and communications technology', 'NICT'),
-    ('national institute of information and communication technology', 'NICT'),
-    ('national inst of information & comm tech', 'NICT'),
+    ([
+        'nict ', 'nict,', 'nict network', 'advanced ict research institute',
+        'national institute of information and communications technology',
+        'national institute of information and communication technology',
+        'national inst of information & comm tech',
+    ], 'NICT'),
     ('nims', 'NIMS'),
     ('riken', 'RIKEN'),
     ('national institute of metrology', 'National Institute of Metrology'),
@@ -1615,9 +1516,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('sumitomo electric', 'Sumitomo Electric Industries'),
     ('furukawa fitel', 'Furukawa FITEL Optical Components'),
     ('fujikura', 'Fujikura Ltd.'),
-    ('nec ', 'NEC'),
-    ('nec,', 'NEC'),
-    ('nec corp', 'NEC'),
+    (['nec ', 'nec,', 'nec corp'], 'NEC'),
     ('ntt innovative devices', 'NTT Innovative Devices Corporation'),
     ('nippon telegraph & telephone', 'NTT Japan'),
     # NTT: the bare "NTT Inc., <city>" parent-company form and all other NTT
@@ -1625,9 +1524,7 @@ ANCHORS: list[tuple[str, str]] = [
     # corporations with a distinct identity (e.g. NTT Innovative Devices) keep
     # their own label above.
     (r're:^ntt inc\.,', 'NTT'),
-    ('ntt research', 'NTT'),
-    ('ntt,', 'NTT'),
-    ('ntt ', 'NTT'),
+    (['ntt research', 'ntt,', 'ntt '], 'NTT'),
     ('kddi', 'KDDI'),
     ('samusng r&d japan', 'Samsung'),  # "Samusng" is a typo for Samsung
     ('asai nursery', 'Asai Nursery'),
@@ -1643,41 +1540,34 @@ ANCHORS: list[tuple[str, str]] = [
     ('john a. paulson school', 'John A. Paulson School of Engineering and Applied Sciences'),
     ('kapteyn-murnane', 'Kapteyn-Murnane Laboratories Inc.'),
     ('ryukoku', 'Ryukoku Univ'),
-    ('tokushima university', 'Tokushima'),
-    ('tokushima', 'Tokushima'),
-    ('naist', 'NAIST'),
-    ('nara institute of science and technology', 'NAIST'),
+    (['tokushima university', 'tokushima'], 'Tokushima'),
+    (['naist', 'nara institute of science and technology'], 'NAIST'),
     ('functional nanosystems', 'Functional Nanosystems'),
 
     # ---- Korea -------------------------------------------------------------
-    ('korea advanced institute of science', 'KAIST'),
-    ('kaist,', 'KAIST'),
-    (', kaist', 'KAIST'),
+    (['korea advanced institute of science', 'kaist,', ', kaist'], 'KAIST'),
     ('seoul national university', 'Seoul Nat U'),
     ('yonsei', 'Yonsei'),
     ('korea university', 'Korea U'),
-    ('postech', 'POSTECH'),
-    ('pohang university of science and technology', 'POSTECH'),
+    (['postech', 'pohang university of science and technology'], 'POSTECH'),
     ('sungkyunkwan', 'Sungkyunkwan'),
     ('hanyang', 'Hanyang'),
     ('chungbuk', 'Chungbuk National University'),
     ('hanbat', 'Hanbat National University'),
     ('ajou', 'Ajou University'),
-    ('gist', 'GIST'),
-    ('gwangju institute of science and technology', 'GIST'),
-    ('unist', 'UNIST'),
-    ('ulsan national institute of science and technology', 'UNIST'),
+    (['gist', 'gwangju institute of science and technology'], 'GIST'),
+    (['unist', 'ulsan national institute of science and technology'], 'UNIST'),
     # \b so it doesn't fire inside accent-folded Portuguese "elétrica" ->
     # "eletrica" (contains the substring "etri").
     (r're:\betri\b', 'ETRI'),
     ('electronics and telecommunications research institute', 'ETRI'),
-    ('kist ', 'KIST'),
-    ('kist,', 'KIST'),
+    (['kist ', 'kist,'], 'KIST'),
     ('kist school', 'KIST School'),
     ('korea institute of science and technology', 'KIST'),
-    ('kriss', 'KRISS'),
-    ('korea research institute of standards and science', 'KRISS'),
-    ('korea research institute of standard and science', 'KRISS'),
+    ([
+        'kriss', 'korea research institute of standards and science',
+        'korea research institute of standard and science',
+    ], 'KRISS'),
     ('korea institute of machinery and materials', 'KIMM'),
     ('korea university of science and technology (ust)', 'Korea University of Science and Technology (UST)'),
     ('korea university of science and technology (kist)', 'Korea University of Science and Technology (KIST)'),
@@ -1686,13 +1576,12 @@ ANCHORS: list[tuple[str, str]] = [
 
     # ---- Singapore / SE Asia ----------------------------------------------
     ('nanyang technological university', 'NTU Singapore'),
-    ('national university of singapore', 'NUS'),
-    ('nus,', 'NUS'),
-    ('singapore university of technology and design', 'SUTD'),
-    ('sutd,', 'SUTD'),
-    ('a*star', 'A*STAR'),
-    ('agency for science, technology and research', 'A*STAR'),
-    ('agency for science technology and research', 'A*STAR'),
+    (['national university of singapore', 'nus,'], 'NUS'),
+    (['singapore university of technology and design', 'sutd,'], 'SUTD'),
+    ([
+        'a*star', 'agency for science, technology and research',
+        'agency for science technology and research',
+    ], 'A*STAR'),
     # A*STAR Singapore sub-institutes fold into 'A*STAR'. By the time we reach
     # here the conflicting same-named institutes have already been routed away:
     #   - "Institute of Microelectronics, Chinese Academy of Sciences" -> CAS IME Beijing
@@ -1701,20 +1590,17 @@ ANCHORS: list[tuple[str, str]] = [
     # We deliberately do NOT use a bare "institute of microelectronics" anchor
     # (too greedy — it swept up the Polish/Henan institutes); the "(ime)" and
     # trailing-comma forms are what the Singapore strings actually carry.
-    ('institute of microelectronics (ime)', 'A*STAR'),
-    ('institute of microelectronics,', 'A*STAR'),
-    ('institute for infocomm research', 'A*STAR'),
-    ('i2r,', 'A*STAR'),
-    ('institute of high performance computing', 'A*STAR'),
-    ('q.inc', 'A*STAR'),
-    ('quantum innovation centre', 'A*STAR'),
+    ([
+        'institute of microelectronics (ime)', 'institute of microelectronics,',
+        'institute for infocomm research', 'i2r,',
+        'institute of high performance computing', 'q.inc',
+        'quantum innovation centre',
+    ], 'A*STAR'),
     ('maritime', 'Maritime Port Auth SG'),
     ('singtel', 'Singtel'),
     ('singapore telecommunications', 'Singapore Telecommunications Limited (Singtel)'),
-    ('national space technology and information center', 'NSTIC Singapore'),
-    ('nstic', 'NSTIC Singapore'),
-    ('advanced micro foundry', 'Advanced Micro Foundry'),
-    ('advanced micro foundry,', 'Advanced Micro Foundry'),
+    (['national space technology and information center', 'nstic'], 'NSTIC Singapore'),
+    (['advanced micro foundry', 'advanced micro foundry,'], 'Advanced Micro Foundry'),
     ('silterra malaysia', 'SilTerra Malaysia'),
     ('silterra', 'SilTerra'),
     ('linkstar microtronics', 'Linkstar Microtronics Pte. Ltd'),
@@ -1736,67 +1622,53 @@ ANCHORS: list[tuple[str, str]] = [
     ('iit bombay', 'IIT Bombay'),
     ('indian institute of technology - bombay', 'Indian Institute of Technology - Bombay'),
     ('indian institute of technology bombay', 'IIT Bombay'),
-    ('iit delhi', 'IIT Delhi'),
-    ('indian institute of technology delhi', 'IIT Delhi'),
-    ('iit madras', 'IIT Madras'),
-    ('indian institute of technology madras', 'IIT Madras'),
-    ('iit kanpur', 'IIT Kanpur'),
-    ('indian institute of technology kanpur', 'IIT Kanpur'),
-    ('iit kharagpur', 'IIT Kharagpur'),
-    ('indian institute of technology kharagpur', 'IIT Kharagpur'),
-    ('iit roorkee', 'IIT Roorkee'),
-    ('indian institute of technology roorkee', 'IIT Roorkee'),
-    ('iit guwahati', 'IIT Guwahati'),
-    ('indian institute of technology guwahati', 'IIT Guwahati'),
-    ('iit hyderabad', 'IIT Hyderabad'),
-    ('indian institute of technology hyderabad', 'IIT Hyderabad'),
-    ('iit indore', 'IIT Indore'),
-    ('indian institute of technology indore', 'IIT Indore'),
-    ('indian institute of technology (iit) indore', 'IIT Indore'),
+    (['iit delhi', 'indian institute of technology delhi'], 'IIT Delhi'),
+    (['iit madras', 'indian institute of technology madras'], 'IIT Madras'),
+    (['iit kanpur', 'indian institute of technology kanpur'], 'IIT Kanpur'),
+    (['iit kharagpur', 'indian institute of technology kharagpur'], 'IIT Kharagpur'),
+    (['iit roorkee', 'indian institute of technology roorkee'], 'IIT Roorkee'),
+    (['iit guwahati', 'indian institute of technology guwahati'], 'IIT Guwahati'),
+    (['iit hyderabad', 'indian institute of technology hyderabad'], 'IIT Hyderabad'),
+    ([
+        'iit indore', 'indian institute of technology indore',
+        'indian institute of technology (iit) indore',
+    ], 'IIT Indore'),
     (r're:indian institu[t]?e of technology \(iit\) indore', 'IIT Indore'),  # absorbs "institue" typo
-    ('iit jodhpur', 'Indian Inst Tech Jodhpur'),
-    ('indian institute of technology jodhpur', 'Indian Inst Tech Jodhpur'),
-    ('indian institute of technology ropar', 'Indian Institute of Technology Ropar'),
-    ('iit ropar', 'Indian Institute of Technology Ropar'),
-    ('indian institute of technology,', 'Indian Institute of Technology'),
-    ('indian institute of technology ', 'Indian Institute of Technology'),
+    ([
+        'iit jodhpur', 'indian institute of technology jodhpur',
+    ], 'Indian Inst Tech Jodhpur'),
+    ([
+        'indian institute of technology ropar', 'iit ropar',
+    ], 'Indian Institute of Technology Ropar'),
+    ([
+        'indian institute of technology,', 'indian institute of technology ',
+    ], 'Indian Institute of Technology'),
     ('iit,', 'IIT'),
     ('indian institute of information technology', 'Indian Institute of Information Technology'),
-    ('iisc bangalore', 'IISc Bangalore'),
-    ('indian institute of science', 'IISc Bangalore'),
-    ('tifr', 'TIFR'),
-    ('tata institute of fundamental research', 'TIFR'),
+    (['iisc bangalore', 'indian institute of science'], 'IISc Bangalore'),
+    (['tifr', 'tata institute of fundamental research'], 'TIFR'),
     ('inst sw comm', 'Inst SW Comm'),
-    ('csir csio', 'CSIR CSIO'),
-    ('csir-cspio', 'CSIR CSIO'),
-    ('hyderabad,', 'UoH'),
-    ('uoh', 'UoH'),
-    ('university of hyderabad', 'UoH'),
+    (['csir csio', 'csir-cspio'], 'CSIR CSIO'),
+    (['hyderabad,', 'uoh', 'university of hyderabad'], 'UoH'),
     ('punjab engineering college', 'Punjab Engineering College'),
     ('christ university', 'Christ University'),
     ('gail (india)', 'Gail (India) Ltd.'),
 
     # ---- Australia / NZ ----------------------------------------------------
-    ('australian national university', 'ANU'),
-    ('anu,', 'ANU'),
+    (['australian national university', 'anu,'], 'ANU'),
     ('university of sydney', 'Sydney'),
     ('university of new south wales', 'UNSW'),
     ('unsw canberra', 'UNSW Canberra'),
-    ('unsw,', 'UNSW'),
-    ('unsw ', 'UNSW'),
-    ('university of melbourne', 'Melbourne'),
-    ('the university of melbourne', 'Melbourne'),
+    (['unsw,', 'unsw '], 'UNSW'),
+    (['university of melbourne', 'the university of melbourne'], 'Melbourne'),
     ('the university of mlebourne', 'Melbourne'),  # "Mlebourne" misspelling
     ('monash', 'Monash'),
-    ('royal melbourne institute of technology', 'RMIT'),
-    ('rmit', 'RMIT'),
+    (['royal melbourne institute of technology', 'rmit'], 'RMIT'),
     ('university of queensland', 'U Queensland'),
     ('university of western australia', 'UWA'),
     (r"re:\buwa\b", 'UWA'),
-    ('university of technology sydney', 'UTS Sydney'),
-    ('uts sydney', 'UTS Sydney'),
-    ('university of adelaide', 'Adelaide University'),
-    ('adelaide university', 'Adelaide University'),
+    (['university of technology sydney', 'uts sydney'], 'UTS Sydney'),
+    (['university of adelaide', 'adelaide university'], 'Adelaide University'),
     ('macquarie', 'Macquarie'),
     # COMBS Centre (ARC Centre of Excellence in Optical Microcombs for
     # Breakthrough Science): a distributed centre with no single host university
@@ -1808,22 +1680,20 @@ ANCHORS: list[tuple[str, str]] = [
     # bare-university anchors below (e.g. "swinburne"): a string like
     # "…Microcombs… (COMBS), Swinburne University…" should resolve to the centre,
     # not to whichever member university happens to appear in the same line.
-    ('optical microcombs', 'COMBS Australia'),
-    ('microcombs and breakthrough science', 'COMBS Australia'),
-    ('combs and optical sciences centre', 'COMBS Australia'),
-    ('combs centre of excellence', 'COMBS Australia'),
-    ('combs australia', 'COMBS Australia'),
+    ([
+        'optical microcombs', 'microcombs and breakthrough science',
+        'combs and optical sciences centre', 'combs centre of excellence',
+        'combs australia',
+    ], 'COMBS Australia'),
     ('swinburne', 'Swinburne'),
-    ('ozgrav', 'OzGrav'),
-    ('centre of excellence for gravitational wave', 'OzGrav'),
+    (['ozgrav', 'centre of excellence for gravitational wave'], 'OzGrav'),
     ('victoria university of wellington', 'Victoria U Wellington'),
     ('university of auckland', 'Auckland'),
     ('university of canterbury nz', 'U Canterbury NZ'),
     ('dodd-walls', 'Dodd-Walls Centre'),
 
     # ---- Canada ------------------------------------------------------------
-    ('national research council canada', 'NRC Canada'),
-    ('nrc canada', 'NRC Canada'),
+    (['national research council canada', 'nrc canada'], 'NRC Canada'),
     ('defence research and development canada', 'DRDC'),
     ('institut courtois', 'Institut Courtois'),
 
@@ -1832,28 +1702,27 @@ ANCHORS: list[tuple[str, str]] = [
     # UNAM — Universidad Nacional Autónoma de México (National Autonomous
     # University of Mexico). "UNAM" is the standard short name. Cover the
     # Spanish name, the English translation, and the bare acronym.
-    ('universidad nacional autonoma de mexico', 'UNAM'),
-    ('national autonomous university of mexico', 'UNAM'),
+    ([
+        'universidad nacional autonoma de mexico',
+        'national autonomous university of mexico',
+    ], 'UNAM'),
     (r're:\bunam\b', 'UNAM'),
-    ('universidade federal de pernambuco', 'UFPE'),
-    ('ufpe,', 'UFPE'),
+    (['universidade federal de pernambuco', 'ufpe,'], 'UFPE'),
     # Federal University of Alagoas (UFAL) — English and Portuguese spellings
     # are the same institution → 'Alagoas'. The Federal *Institute* of Alagoas
     # (IFAL) is a separate body and keeps its own label (anchor below).
-    ('universidade federal de alagoas', 'Alagoas'),
-    ('federal university of alagoas', 'Alagoas'),
+    (['universidade federal de alagoas', 'federal university of alagoas'], 'Alagoas'),
     ('federal institute of alagoas', 'Federal Institute of Alagoas'),
     ('federal university of bahia', 'Federal University of Bahia'),
     ('federal university of lavras', 'Federal University of Lavras'),
     ('federal university of ouro preto', 'Federal University of Ouro Preto'),
     ('federal university of parana', 'Federal University of Paraná'),
     ('fluminense federal university', 'Fluminense Federal University'),
-    ('universidade estadual de campinas', 'Unicamp'),
-    ('unicamp,', 'Unicamp'),
-    ('unicamp', 'Unicamp'),
-    ('state university of campinas', 'Unicamp'),
-    ('universidade de sao paulo', 'São Paulo'),
-    ('university of sao paulo', 'São Paulo'),
+    ([
+        'universidade estadual de campinas', 'unicamp,', 'unicamp',
+        'state university of campinas',
+    ], 'Unicamp'),
+    (['universidade de sao paulo', 'university of sao paulo'], 'São Paulo'),
     ('usp - instituto de fisica de sao carlos', 'USP - Instituto de Fisica de Sao Carlos'),
     ('centro brasileiro de pesquisas fisicas', 'Centro Brasileiro de Pesquisas Fisicas'),
     ('university of guanajuato', 'U Guanajuato'),
@@ -1861,24 +1730,20 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of witwatersrand', 'University of Witwatersrand'),
 
     # ---- Middle East -------------------------------------------------------
-    ('king abdullah university of science', 'KAUST'),
-    ('kaust', 'KAUST'),
-    ('king fahd university of petroleum', 'KFUPM'),
-    ('kfupm', 'KFUPM'),
+    (['king abdullah university of science', 'kaust'], 'KAUST'),
+    (['king fahd university of petroleum', 'kfupm'], 'KFUPM'),
     ('expec advanced research', 'EXPEC Advanced Research Center (EXPEC ARC)'),
     ('halliburton', 'Halliburton Technology'),
     ('al-azhar', 'Al-Azhar University'),
     ('ain shams', 'Ain Shams University'),
-    ('alexandria u', 'Alexandria'),
-    ('university of alexandria', 'Alexandria'),
+    (['alexandria u', 'university of alexandria'], 'Alexandria'),
     ('minia university', 'Minia University'),
     ('abu dhabi university', 'Abu Dhabi University'),
     ('technology innovation institute', 'Technology Innovation Institute'),
     ('university of jeddah', 'University of Jeddah'),
 
     # ---- Cross-cutting US specialty ---------------------------------------
-    ('rochester institute of technology', 'RIT'),
-    ('rit,', 'RIT'),
+    (['rochester institute of technology', 'rit,'], 'RIT'),
     ('rensselaer polytechnic institute', 'RPI'),
     ('lehigh', 'Lehigh'),
     ('drexel', 'Drexel'),
@@ -1903,30 +1768,28 @@ ANCHORS: list[tuple[str, str]] = [
     ('virginia state university', 'Virginia State University'),
     ('norfolk state', 'Norfolk State'),
     ('west virginia university', 'West Virginia University'),
-    ('university of north dakota', 'University of North Dakota'),
-    ('north dakota,', 'University of North Dakota'),
+    (['university of north dakota', 'north dakota,'], 'University of North Dakota'),
     ('farmingdale state college', 'Farmingdale State College'),
     ('hershey high school', 'Hershey High School'),
     ('bridgewater state university', 'Bridgewater State'),
     ('us military academy', 'US Military Academy'),
-    ('byu,', 'BYU'),
-    ('brigham young', 'BYU'),
+    (['byu,', 'brigham young'], 'BYU'),
     ('weber state', 'Weber State'),
     ('utah state', 'Utah State'),
     ('university park', 'University Park'),
     ('university of guelph', 'U Guelph'),
-    ('clemson center for optical materials', 'COMSET Clemson'),
-    ('center for optical materials science and engineering', 'COMSET Clemson'),
+    ([
+        'clemson center for optical materials',
+        'center for optical materials science and engineering',
+    ], 'COMSET Clemson'),
     ('center for advanced self-powered systems', 'ASSIST'),
-    ('usra research institute for advanced computer science', 'USRA RIACS'),
-    ('riacs,', 'USRA RIACS'),
+    (['usra research institute for advanced computer science', 'riacs,'], 'USRA RIACS'),
     ('institut interdisciplinaire d', '3IT Sherbrooke'),  # Institut Interdisciplinaire d'Innovation Technologique
     ('triangle regional research', 'TRRDC'),
     ('w&wsens', 'W&Wsens Devices Inc'),
     ('oewaves', 'OEwaves'),
     ('ipg photonics', 'IPG Photonics'),
-    ('np photonics, inc', 'NP Photonics'),
-    ('np photonics,', 'NP Photonics'),
+    (['np photonics, inc', 'np photonics,'], 'NP Photonics'),
     ('phase sensitive innovations,', 'Phase Sensitive Innovations'),
     ('phase sensitive innovations, inc', 'Phase Sensitive Innovations, Inc.'),
     ('photonect', 'Photonect Interconnect Solutions Inc'),
@@ -1941,8 +1804,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('omega optics', 'Omega Optics'),
     ('axiomatic-ai', 'Axiomatic-AI'),
     ('aloe semiconductor', 'Aloe Semiconductor Inc.'),
-    ('adtech optics', 'AdTech Photonics'),
-    ('adtech photonics', 'AdTech Photonics'),
+    (['adtech optics', 'adtech photonics'], 'AdTech Photonics'),
     ('xscape', 'Xscape Photonics'),
     ('nexus photonics', 'Nexus Photonics'),
     ('beacon photonics', 'Beacon Photonics'),
@@ -1964,21 +1826,18 @@ ANCHORS: list[tuple[str, str]] = [
     ('qubitekk', 'Qubitekk'),
     ('qunnect', 'Qunnect Inc.'),
     ('quantum computing inc', 'Quantum Computing Inc'),
-    ('mesa lab', 'NCAR'),
-    ('national center for atmospheric research', 'NCAR'),
+    (['mesa lab', 'national center for atmospheric research'], 'NCAR'),
     ('lawrence semiconductor', 'LSRL'),
     ('mpi corporation', 'MPI Corporation'),
     ('mpi multidisciplinary sciences', 'MPI Multidisc Sci'),
     ('relativity networks', 'Relativity Networks'),
     ('postdoctoral research associate', 'Postdoctoral Research Associate'),
-    ('ii-vi,', 'II-VI'),
-    (' ii-vi ', 'II-VI'),
+    (['ii-vi,', ' ii-vi '], 'II-VI'),
     ('coherent corp', 'Coherent'),
     ('tau systems', 'TAU Systems Inc'),
     ('teragear', 'Teragear'),
     ('thorlabs quantum', 'Thorlabs'),
-    ('eu tech', 'IEU'),
-    ('ieu,', 'IEU'),
+    (['eu tech', 'ieu,'], 'IEU'),
     ('qxp technology', 'QXP Technology'),
     ('qaleido', 'Qaleido Photonics'),
     ('qioptiq', 'Qioptiq Ltd.'),
@@ -1999,13 +1858,11 @@ ANCHORS: list[tuple[str, str]] = [
     ('chi 3 optics', 'Chi 3 Optics'),
     ('chi-3 optics', 'Chi-3 Optics'),
     ('chi3 optics', 'Chi3 Optics LLC'),
-    ('opms', 'OpMS - Open Minded Solutions'),
-    ('open minded solutions', 'OpMS - Open Minded Solutions'),
+    (['opms', 'open minded solutions'], 'OpMS - Open Minded Solutions'),
     ('ks photonics', 'HS Photonics'),  # close enough; specific name
     ('hs photonics', 'HS Photonics'),
     ('hubble', 'Hubble'),
-    ('flyth aerospace', 'FLYHT Aerospace Solutions Ltd'),
-    ('flyht aerospace', 'FLYHT Aerospace Solutions Ltd'),
+    (['flyth aerospace', 'flyht aerospace'], 'FLYHT Aerospace Solutions Ltd'),
     ('avirata', 'Avirata Defence Systems'),
     ('atlantic technological', 'Atlantic Technological University'),
     ('measurement science and technology', 'Measurement Science and Technology'),
@@ -2016,23 +1873,24 @@ ANCHORS: list[tuple[str, str]] = [
     ('cto office', 'CTO Office'),
     ('joint quantum institute', 'Maryland'),
     ('lps maryland', 'LPS Maryland'),
-    ('hpe labs,', 'HPE Labs'),
-    ('hpe ', 'HPE Labs'),
-    ('the institute of optics, university of rochester', 'Rochester'),
-    ('institute of optics, university of rochester', 'Rochester'),
+    (['hpe labs,', 'hpe '], 'HPE Labs'),
+    ([
+        'the institute of optics, university of rochester',
+        'institute of optics, university of rochester',
+    ], 'Rochester'),
     (r're:\blle\s+rochester\b', 'Rochester'),
     ('aeluma', 'Aeluma'),
     ('lumiphase ag', 'Lumiphase AG'),
     ('bright quantum', 'Bright Quantum Inc.'),
     ('shiva photonics', 'Shiva Photonics'),
-    ('coreace', 'Core4ce'),
-    ('core4ce', 'Core4ce'),
+    (['coreace', 'core4ce'], 'Core4ce'),
     ('columbus technologies', 'Columbus Technologies and Services'),
     ('xcimer energy', 'Xcimer Energy Corporation'),
     ('photonic crystal', 'Photonic Inc'),
-    ('north carolina,', 'NC State'),
-    ('north carolina state university,', 'NC State'),
-    ('north carolina, raleigh', 'NC State'),
+    ([
+        'north carolina,', 'north carolina state university,',
+        'north carolina, raleigh',
+    ], 'NC State'),
     ('photon design,', 'Photon Design'),
     ('vpiphotonics', 'VPIphotonics GmbH'),
 
@@ -2041,16 +1899,17 @@ ANCHORS: list[tuple[str, str]] = [
     # ---- Other catch-all institutes ----------------------------------------
     ('hpe ', 'HPE Labs'),
     ('hp inc', 'HP'),
-    ('av incorporated', 'AV Inc.'),
-    ('av inc.', 'AV Inc.'),
+    (['av incorporated', 'av inc.'], 'AV Inc.'),
 
     # ---- Ad-hoc rarities ---------------------------------------------------
     ('uniwersytet mikolaja', 'Uniwersytet Mikolaja Kopernika W Toruniu'),
     ('university of trento', 'University of Trento'),
     ('university of macau', 'Macau'),
     ('university of jeddah', 'University of Jeddah'),
-    ('aerospace, mechanical engineering, university of notre dame', 'Notre Dame'),
-    ('notre dame', 'Notre Dame'),
+    ([
+        'aerospace, mechanical engineering, university of notre dame',
+        'notre dame',
+    ], 'Notre Dame'),
     ('binghamton', 'Binghamton'),
     ('university of bonn', 'U Bonn'),
     ('university of cologne', 'U Cologne'),
@@ -2078,19 +1937,17 @@ ANCHORS: list[tuple[str, str]] = [
     # Konstanz: the data carries a misspelling ("Kostanz"). Anchor both the
     # correct and the typo'd spelling to the canonical bare name so neither
     # falls through to a "U Kostanz" fallback.
-    ('university of konstanz', 'Konstanz'),
-    ('university of kostanz', 'Konstanz'),
-    ('universitat konstanz', 'Konstanz'),
+    ([
+        'university of konstanz', 'university of kostanz', 'universitat konstanz',
+    ], 'Konstanz'),
     # ---- special relabels --------------------------------------------------
     # "University of Los Angeles" is a mangled "University of California, Los
     # Angeles"; there is no separate UCLA-less institution by that name.
     ('university of los angeles', 'UCLA'),
     # University of Illinois Chicago: use the standard initialism.
-    ('university of illinois chicago', 'UIC'),
-    ('university of illinois at chicago', 'UIC'),
+    (['university of illinois chicago', 'university of illinois at chicago'], 'UIC'),
     # Università della Campania "Luigi Vanvitelli".
-    ('university of campania', 'UniCampania'),
-    ('universita della campania', 'UniCampania'),
+    (['university of campania', 'universita della campania'], 'UniCampania'),
     # Diamond SA (fiber-optic connector maker, Losone, Switzerland). The raw
     # string is "Diamond Company"; map to its proper short name.
     ('diamond company', 'Diamond SA'),
@@ -2103,8 +1960,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('laval university', 'Laval'),
     ('university konstanz', 'Konstanz'),        # "University Konstanz" (no "of")
     ('universitat stuttgart', 'Stuttgart'),
-    ('univ. of sydney', 'Sydney'),
-    ('univ of sydney', 'Sydney'),
+    (['univ. of sydney', 'univ of sydney'], 'Sydney'),
     ('tohoku univ', 'Tohoku'),                  # "Tohoku Univ." abbreviation
     ('saitama univ', 'Saitama'),
     ('kassel universitat', 'Kassel'),
@@ -2119,14 +1975,12 @@ ANCHORS: list[tuple[str, str]] = [
     ('sjtu', 'SJTU'),
     # Ruhr University Bochum: many hyphen/spelling variants -> one label.
     ('ruhr-universitat-bochum - puls group', 'RUB'),  # PULS research group at RUB
-    ('puls group', 'RUB'),
-    ('ruhr-universitat bochum', 'RUB'),
-    ('ruhr universitat bochum', 'RUB'),
-    ('ruhr-universitat bochum', 'RUB'),
-    ('ruhr universitat bochum', 'RUB'),
-    ('ruhr-university bochum', 'RUB'),
-    ('ruhr-university-bochum', 'RUB'),
-    ('ruhr university bochum', 'RUB'),
+    ([
+        'puls group', 'ruhr-universitat bochum', 'ruhr universitat bochum',
+        'ruhr-universitat bochum', 'ruhr universitat bochum',
+        'ruhr-university bochum', 'ruhr-university-bochum',
+        'ruhr university bochum',
+    ], 'RUB'),
     # ---- garbled / typo'd source strings ----------------------------------
     # These raw spellings are mangled enough that the normal anchors miss them;
     # fold each onto the correct institution. Substrings (not exact overrides)
@@ -2142,29 +1996,26 @@ ANCHORS: list[tuple[str, str]] = [
     ('tokyo metropokitan university', 'Tokyo Metropolitan University'),  # typo
     ('standford university', 'Stanford'),
     ('pennslvania state university', 'Penn State'),
-    ('technical university munich', 'TU Munich'),
-    ('technical university muncih', 'TU Munich'),
-    ('technische universitat munchen', 'TU Munich'),
+    ([
+        'technical university munich', 'technical university muncih',
+        'technische universitat munchen',
+    ], 'TU Munich'),
     ('technical university dortmund', 'TU Dortmund'),
     ('technische universitat dortmund', 'TU Dortmund'),  # no-umlaut variant
     ('technical university berlin', 'TU Berlin'),
     ('technische universiteit eindhoven', 'TU Eindhoven'),
     ('philipps-universitat marburg', 'Marburg'),
     ('phillips-university marburg', 'Marburg'),  # "Phillips" misspelling
-    ('helmut schmidt university', 'Helmut Schmidt U'),
-    ('helmut-schmidt-university', 'Helmut Schmidt U'),
+    (['helmut schmidt university', 'helmut-schmidt-university'], 'Helmut Schmidt U'),
     ('universita di trento', 'University of Trento'),
     ('insubria university', 'Insubria U'),
     # The "universit'a" form is a mangled "università" (the à arrived as a
     # quote+a), a LETTER corruption normalize() can't fix, so it keeps its own
     # needle. The two real "università dell'insubria" spellings differ only by
     # apostrophe glyph, which normalize() folds, so one ASCII needle covers both.
-    ("universit'a dell'insubria", 'Insubria U'),
-    ("universita dell'insubria", 'Insubria U'),
-    ('universita di pisa', 'U Pisa'),
-    ('university of pisa', 'U Pisa'),
-    ('universitat rostock', 'U Rostock'),
-    ('university of rostock', 'U Rostock'),
+    (["universit'a dell'insubria", "universita dell'insubria"], 'Insubria U'),
+    (['universita di pisa', 'university of pisa'], 'U Pisa'),
+    (['universitat rostock', 'university of rostock'], 'U Rostock'),
     ('universidad de guanajuato', 'U Guanajuato'),
     ('university of kansas', 'U Kansas'),
     ('shizuoka university', 'Shizuoka'),
@@ -2186,13 +2037,11 @@ ANCHORS: list[tuple[str, str]] = [
     ('technische universitat wien', 'TU Vienna'),   # German spelling variant
     # University of Leeds: the program writes it several long ways (with the
     # school suffix, as the Pollard Institute, etc.). All collapse to "Leeds".
-    ('university of leeds', 'Leeds'),
-    ('pollard institute', 'Leeds'),
+    (['university of leeds', 'pollard institute'], 'Leeds'),
     (r're:\bu leeds\b', 'Leeds'),   # already-abbreviated "U Leeds" institution form
     # Laboratoire Pierre Aigrain / former UPMC Paris 6 — the ENS Paris physics
     # lab; fold the historical Pierre-et-Marie-Curie / Paris 6 form to ENS Paris.
-    ('pierre et marie curie', 'ENS Paris'),
-    ('laboratoire pierre aigrain', 'ENS Paris'),
+    (['pierre et marie curie', 'laboratoire pierre aigrain'], 'ENS Paris'),
     # "Institute of Quantum Electronics Zurich (ETHZ)" and similar ETH Zürich
     # spellings -> ETH Zürich (matches the existing ETH handling).
     ('quantum electronics zurich', 'ETH Zürich'),
@@ -2203,8 +2052,7 @@ ANCHORS: list[tuple[str, str]] = [
     # NEST = the CNR-Istituto Nanoscienze + Scuola Normale Superiore lab in Pisa,
     # written with the "(NEST)" tag in some forms and as a leading "NEST" in
     # others; both fold to NEST.
-    ('scuola normale superiore (nest)', 'NEST'),
-    ('nest cnr-istituto nanoscienze', 'NEST'),
+    (['scuola normale superiore (nest)', 'nest cnr-istituto nanoscienze'], 'NEST'),
     ('nrc post-doctoral research associate', 'NRL'),
     ('ihp-leibniz institut', 'IHP'),
     # Peter Grünberg Institute (all spellings: "Gruenberg"/"Grünberg"->"grunberg"
@@ -2230,8 +2078,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('university of nottingham', 'U Nottingham'),   # matches CLEO's convention
     # "Dipartimento di Scienze, Università degli Studi Roma" = Roma Tre's
     # science dept; and the explicit "Università Roma Tre" form. (No CLEO use.)
-    ('universita roma tre', 'Roma Tre'),
-    ('universita degli studi roma', 'Roma Tre'),
+    (['universita roma tre', 'universita degli studi roma'], 'Roma Tre'),
     # Note: "Institut Polytechnique de Paris" -> "IP Paris" and "Silicon Austria
     # Labs GmbH" -> "Silicon Austria Labs" are applied by editing their existing
     # curated anchors earlier in this list (so they take effect for CLEO too,
@@ -2245,7 +2092,7 @@ ANCHORS: list[tuple[str, str]] = [
 # Append more late patterns AFTER the above big batch (lower priority).
 # These are short tokens that should only trigger if nothing earlier did.
 # They use word-boundary regex to avoid matching inside larger words.
-LATE_ANCHORS: list[tuple[str, str]] = [
+_LATE_ANCHORS_SRC: list = [
     # Bare-city LATE anchors removed — they wrongly turned "Sydor Technologies,
     # Rochester, NY" into "Rochester" and similar. The fallback shortener
     # produces "Sydor Technologies" instead.
@@ -2256,6 +2103,39 @@ LATE_ANCHORS: list[tuple[str, str]] = [
     # and Technology University, Beijing, China"). The fallback shortener
     # extracts the real institution name instead.
 ]
+
+
+def _expand_anchors(src: list) -> list[tuple[str, str]]:
+    """Flatten the authored anchor source into the (needle, short) pairs the
+    matcher consumes, preserving order exactly.
+
+    Two authoring forms are accepted and may be freely mixed, both reading
+    needle(s) first, short label last:
+      - ('needle', 'Short')           a single anchor
+      - (['n1', 'n2', ...], 'Short')  several needles that all map to one Short,
+                                      expanded in place to
+                                      ('n1','Short'), ('n2','Short'), ...
+    The grouped form just removes the repetition of writing the same Short label
+    on every line; because each group expands at its own position, the resulting
+    ordered list is identical to writing the pairs out individually. Order is
+    load-bearing (first match wins, specific-before-general), so this must never
+    reorder entries.
+    """
+    out: list[tuple[str, str]] = []
+    for entry in src:
+        key, val = entry
+        if isinstance(key, (list, tuple)) and not isinstance(key, str):
+            # Grouped form: ([needles], Short)
+            for needle in key:
+                out.append((needle, val))
+        else:
+            # Plain form: (needle, Short)
+            out.append((key, val))
+    return out
+
+
+ANCHORS: list[tuple[str, str]] = _expand_anchors(_ANCHORS_SRC)
+LATE_ANCHORS: list[tuple[str, str]] = _expand_anchors(_LATE_ANCHORS_SRC)
 
 
 # ---------------------------------------------------------------------------
