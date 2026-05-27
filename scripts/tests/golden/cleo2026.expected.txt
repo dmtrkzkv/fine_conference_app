@@ -663,8 +663,8 @@ Department of Applied Physics, Royal Institute of Technology,, Stockholm, Sweden
 Department of Applied Physics, School of Engineering, The University of Tokyo, Koga, Ibaraki, Japan	U Tokyo
 Department of Applied Physics, University of Tokyo, Bunkyo-ku, Tokyo, Japan	U Tokyo
 Department of Applied Physics, Yale University, New Haven, CT, United States	Yale
-Department of Applied Science and Technology (DISAT), Politecnico di Torino	Politecnico di Torino
-Department of Applied Science and Technology (DISAT), Politecnico di Torino, Torino, Italy	Politecnico di Torino
+Department of Applied Science and Technology (DISAT), Politecnico di Torino	PoliTo
+Department of Applied Science and Technology (DISAT), Politecnico di Torino, Torino, Italy	PoliTo
 Department of Artificial Intelligence Semiconductor Engineering, Hanyang University, Seoul, Korea (the Republic of)	Hanyang
 Department of Automation, Tsinghua University, Beijing, China	Tsinghua
 Department of Biochemistry and Molecular Biology, Institute of Basic Medical Sciences, Chinese Academy of Medical Sciences and Peking Union Medical College	CAMS-PUMC
@@ -810,7 +810,7 @@ Department of Materials Science and Engineering, University of Ioannina	Ioannina
 Department of Materials Science and Engineering, University of Ioannina, Ioannina, Greece	Ioannina
 Department of Materials Science and Engineering, University of Virginia, Charlottesville, VA, United States	UVA
 Department of Materials Science and NanoEngineering, Rice University, Houston, TX, United States	Rice
-Department of Materials, ETH Zurich, Zurich, Switzerland	ETH Zurich
+Department of Materials, ETH Zurich, Zurich, Switzerland	ETH Zürich
 Department of Mathematics, Virginia Tech, Blacksburg, VA, United States	Virginia Tech
 Department of Mechanical Engineering and Institute for Physical Science and Technology, University of Maryland, College Park, MD, United States	Maryland
 Department of Mechanical Engineering, Massachusetts Institute of Technology, Cambridge, MA, United States	MIT
@@ -962,8 +962,8 @@ Department of Radiophysics, University of Nizhny Novgorod, Nizhny Novgorod, Russ
 Department of Semiconductor Systems Engineering, Korea University, Seoul, Korea (the Republic of)	Korea U
 Department of Surgery, University Hospital Southampton, Southampton, United Kingdom	University Hospital Southampton
 Department of physics, University of Maryland, College park, MD, United States	Maryland
-Dept. of Control and Computer Engineering, Politecnico di Torino	Politecnico di Torino
-Dept. of Control and Computer Engineering, Politecnico di Torino, Turin, Italy	Politecnico di Torino
+Dept. of Control and Computer Engineering, Politecnico di Torino	PoliTo
+Dept. of Control and Computer Engineering, Politecnico di Torino, Turin, Italy	PoliTo
 Dept. of Electrical Engineering, University of Southern California, Los Angeles, CA, United States	USC
 Dept. of Electrical and Computer Engineering, North Carolina State University, Raleigh, NC, United States	NC State
 Dept. of Electrical and Computer Engineering, University of Virginia, Charlottesville, VA, United States	UVA
@@ -1064,8 +1064,8 @@ EPFL, Neuchâtel, Switzerland	EPFL
 EPSRC Centre for Doctoral Training in Applied Photonics	EPSRC CDT Photonics
 EPSRC Centre for Doctoral Training in Applied Photonics, Edinburgh, United Kingdom	EPSRC CDT Photonics
 ETH	ETH
-ETH Zurich	ETH Zurich
-ETH Zürich	ETH Zurich
+ETH Zurich	ETH Zürich
+ETH Zürich	ETH Zürich
 ETRI	ETRI
 EUV Tech	EUV Tech
 EUV Tech, Martinez, CA, United States	EUV Tech
@@ -1782,7 +1782,7 @@ Institute for Photonics and Nanotechnologies	Institute for Photonics and Nanotec
 Institute for Physical Science and Technology	Maryland
 Institute for Physical Science and Technology, College Park, MD, United States	Maryland
 Institute for Physical Science and Technology, University of Maryland, College Park, College Park, MD, United States	Maryland
-Institute for Quantum Electronics, ETH Zürich, Zürich, Switzerland	ETH Zurich
+Institute for Quantum Electronics, ETH Zürich, Zürich, Switzerland	ETH Zürich
 Institute for Quantum Science and Technology	Institute for Quantum Science and Technology
 Institute for Quantum Science and Technology, Shanghai University, Shanghai 2000444	Shanghai
 Institute for Quantum Science and Technology, Shanghai University, Shanghai 2000444, Shanghai, China	Shanghai
@@ -1873,7 +1873,7 @@ Institute of Post-LED Photonics (pLED), Tokushima University, Tokushima, Tokushi
 Institute of Post-LED Photonics (pLED), Tokushima, Japan	Tokushima
 Institute of Post-LED Photonics, Tokushima University	Tokushima
 Institute of Post-LED Photonics, Tokushima University, Tokushima, Tokushima, Japan	Tokushima
-Institute of Quantum Electronics, ETH Zürich, Zurich, Switzerland	ETH Zurich
+Institute of Quantum Electronics, ETH Zürich, Zurich, Switzerland	ETH Zürich
 Institute of Quantum Optics, Leibniz Universität Hannover, Hannover, Germany	Leibniz U Hannover
 Institute of Quantum Precision Measurement, State Key Laboratory of Radio Frequency Heterogeneous Integration, College of Physics and Optoelectronic Engineering, Shenzhen University, Shenzhen, China	Shenzhen U
 Institute of Radio Astronomy of NASU	Institute of Radio Astronomy of NASU
@@ -1913,7 +1913,7 @@ Instituto de Microelectronica de Barcelona	Instituto de Microelectronica de Barc
 Instituto de Plasmas e Fusão Nuclear	Instituto de Plasmas e Fusão Nuclear
 Instituto de Telecomunicações	Instituto de Telecomunicações
 Instituto de Telecomunicações, Lisbon, Portugal	Instituto de Telecomunicações
-Integrated Systems Laboratory, ETH Zurich, Zurich, Switzerland	ETH Zurich
+Integrated Systems Laboratory, ETH Zurich, Zurich, Switzerland	ETH Zürich
 Intel	Intel
 Intel Corporation	Intel
 Intel Corporation, Chandler, AZ, United States	Intel
@@ -2863,9 +2863,9 @@ Physics, Columbia University, New York, NY, United States	Columbia
 Physics, Concordia University, Montreal, QC, Canada	Concordia
 Physics, De La Salle University, Caloocan, Philippines	De La Salle University
 Physics, Duke University, Durham, NC, United States	Duke
-Physics, ETH Zurich, Zurich, Zurich, Switzerland	ETH Zurich
-Physics, ETH Zürich, Zurich, Zurich, Switzerland	ETH Zurich
-Physics, ETH Zürich, Zürich, Switzerland	ETH Zurich
+Physics, ETH Zurich, Zurich, Zurich, Switzerland	ETH Zürich
+Physics, ETH Zürich, Zurich, Zurich, Switzerland	ETH Zürich
+Physics, ETH Zürich, Zürich, Switzerland	ETH Zürich
 Physics, ETH, Zurich, Switzerland	ETH
 Physics, Florida international University, Miami, FL, United States	FIU
 Physics, Friedrich-Alexander University of Erlangen-Nuremberg, Erlangen, Germany	FAU
@@ -2965,8 +2965,8 @@ Polish Academy of Sciences, Warsaw, Poland	Warsaw
 Politecnico di Milano	Politecnico di Milano
 Politecnico di Milano, Milan, MI, Italy	Politecnico di Milano
 Politecnico di Milano, Milano, Italy	Politecnico di Milano
-Politecnico di Torino	Politecnico di Torino
-Politecnico di Torino, Torino, Torino, Italy	Politecnico di Torino
+Politecnico di Torino	PoliTo
+Politecnico di Torino, Torino, Torino, Italy	PoliTo
 Polytechnic University of Bari	Polytechnic University of Bari
 Polytechnique Montreal	Polytechnique Montreal
 Polytechnique Montreal, Montreal, QC, Canada	Polytechnique Montreal

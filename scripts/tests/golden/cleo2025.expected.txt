@@ -765,7 +765,7 @@ Department of Experimental Physics, Wroclaw University of Science and Technology
 Department of Functional Materials and Electronics, Center for Physical Sciences and Technology, Vilnius, Lithuania	FTMC Vilnius
 Department of Industrial and Information Engineering, University of Pavia, Pavia, Pavia, Italy	Pavia
 Department of Informatics - CIRI, Aristotle University of Thessaloniki, Thessaloniki, Greece	Aristotle
-Department of Information Technology and Electrical Engineering, ETH Zurich, Zuerich, Switzerland	ETH Zurich
+Department of Information Technology and Electrical Engineering, ETH Zurich, Zuerich, Switzerland	ETH Zürich
 Department of Information Technology, Ghent University - imec, Ghent, Belgium	imec
 Department of Inorganic Chemistry, University of Chemistry and Technology Prague, Prague, Czechia	University of Chemistry and Technology Prague
 Department of Materials Science and Engineering, City University of Hong Kong, Hong Kong, China	CityU HK
@@ -836,10 +836,10 @@ Department of Physics, California Institute of Technology, Pasadena, CA, United 
 Department of Physics, Chung-Ang University, Seoul, Korea (the Republic of)	Chung-Ang University
 Department of Physics, Columbia University, New York City, NY, United States	Columbia
 Department of Physics, Duke University, Durham, NC, United States	Duke
-Department of Physics, ETH Zurich, Zurich, Germany	ETH Zurich
-Department of Physics, ETH Zurich, Zürich, Switzerland	ETH Zurich
-Department of Physics, ETH Zürich, Zurich, Switzerland	ETH Zurich
-Department of Physics, ETH Zürich, Zurich, Zurich, Switzerland	ETH Zurich
+Department of Physics, ETH Zurich, Zurich, Germany	ETH Zürich
+Department of Physics, ETH Zurich, Zürich, Switzerland	ETH Zürich
+Department of Physics, ETH Zürich, Zurich, Switzerland	ETH Zürich
+Department of Physics, ETH Zürich, Zurich, Zurich, Switzerland	ETH Zürich
 Department of Physics, Engineering Physics & Astronomy, Queen's University, Kingston, ON, Canada	Queen’s University
 Department of Physics, Faculty of Science and Technology, Keio University, Yokohama, Japan	Keio
 Department of Physics, Friedrich Alexander University Erlangen-Nuremberg, Erlangen, Bavaria, Germany	FAU
@@ -1023,10 +1023,10 @@ EPFL, Lausanne, Switzerland	EPFL
 EPSRC Centre for Doctoral Training in Applied Photonics	EPSRC CDT Photonics
 EPSRC Centre for Doctoral Training in Applied Photonics, Edinburgh, United Kingdom	EPSRC CDT Photonics
 ETH	ETH
-ETH Zurich	ETH Zurich
-ETH Zurich, Zurich, Switzerland	ETH Zurich
-ETH Zurich, Zürich, Switzerland	ETH Zurich
-ETH Zürich	ETH Zurich
+ETH Zurich	ETH Zürich
+ETH Zurich, Zurich, Switzerland	ETH Zürich
+ETH Zurich, Zürich, Switzerland	ETH Zürich
+ETH Zürich	ETH Zürich
 ETH, Zurich, Switzerland	ETH
 ETRI	ETRI
 ETRI, Daejeon, Korea (the Republic of)	ETRI
@@ -1677,7 +1677,7 @@ Institute for Advanced Academic Research, Chiba University, Chiba, Chiba, Japan	
 Institute for Applied Laser, Photonics and Surface Technologies ALPS, Bern University of Applied Sciences, Burgdorf, Switzerland	BFH
 Institute for Applied Science, Technical University of Darmstadt, Darmstadt, Hesse, Germany	TU Darmstadt
 Institute for Biomedical Engineering and Institute of Pharmacology and Toxicology, Faculty of Medicine, University of Zurich, Zurich, Zurich, Switzerland	U Zurich
-Institute for Biomedical Engineering, Department of Information Technology and Electrical Engineering, ETH Zurich, Zürich, Zürich, Switzerland	ETH Zurich
+Institute for Biomedical Engineering, Department of Information Technology and Electrical Engineering, ETH Zurich, Zürich, Zürich, Switzerland	ETH Zürich
 Institute for Complex Systems, National Research Council (CNR), Rome, Italy	CNR Italy
 Institute for Infocomm Research	A*STAR
 Institute for Infocomm Research, ASTAR	A*STAR
@@ -1712,7 +1712,7 @@ Institute for Soldier Nanotechnologies, Massachusetts Institute of Technology, C
 Institute for Solid State Physics, The University of Tokyo, Kashiwa, Chiba, Japan	U Tokyo
 Institute for Solid State Physics, The University of Tokyo, Kashiwa, Japan	U Tokyo
 Institute for Terahertz Science and Technology, UCSB, Santa Barbara, CA, United States	UC Santa Barbara
-Institute for Theoretical Physics, ETH Zurich, Zurich, Switzerland	ETH Zurich
+Institute for Theoretical Physics, ETH Zurich, Zurich, Switzerland	ETH Zürich
 Institute of Advanced Photonics Technology, School of Information Engineering, Guangdong University of Technology	Guangdong U Tech
 Institute of Advanced Photonics Technology, School of Information Engineering, Guangdong University of Technology, Guangzhou, China	Guangdong U Tech
 Institute of Advanced Science Facilities	Institute of Advanced Science Facilities
@@ -2761,8 +2761,8 @@ Physics, CU Boulder, Boulder, CO, United States	CU Boulder
 Physics, Caltech, Pasadena, CA, United States	Caltech
 Physics, Colorado State University, Fort Collins, CO, United States	Colorado State University
 Physics, Concordia University, Montreal, QC, Canada	Concordia
-Physics, ETH Zurich, Zurich, Switzerland	ETH Zurich
-Physics, ETH Zürich, Zurich, Zurich, Switzerland	ETH Zurich
+Physics, ETH Zurich, Zurich, Switzerland	ETH Zürich
+Physics, ETH Zürich, Zurich, Zurich, Switzerland	ETH Zürich
 Physics, Engineering Physics and Astronomy, Queen's University, Kingston, ON, Canada	Queen’s University
 Physics, Friedrich Alexander universtat, Erlangen, Erlangen, Germany	FAU
 Physics, Friedrich-Alexander-University of Erlangen-Nürnberg, Erlangen, Bavaria, Germany	FAU
@@ -2857,8 +2857,8 @@ Politecnico Di Milano, Como, Italy	Politecnico di Milano
 Politecnico di Milano	Politecnico di Milano
 Politecnico di Milano, Milan, Italy	Politecnico di Milano
 Politecnico di Milano, Milano, Italy	Politecnico di Milano
-Politecnico di Torino	Politecnico di Torino
-Politecnico di Torino, Torino, Italy	Politecnico di Torino
+Politecnico di Torino	PoliTo
+Politecnico di Torino, Torino, Italy	PoliTo
 Polymer Science and Engineering, University of Massachusetts, Amherst, MA, United States	UMass Amherst
 Polytechnic University of Valencia	Polytechnic University of Valencia
 Polytechnic University of Valencia, Valencia, Comunidad Valenciana, Spain	Polytechnic University of Valencia

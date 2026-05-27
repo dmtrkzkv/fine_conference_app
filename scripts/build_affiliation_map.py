@@ -882,9 +882,9 @@ ANCHORS: list[tuple[str, str]] = [
     ('deeplight', 'DeepLight S.A./GmbH'),
 
     # ---- Switzerland -------------------------------------------------------
-    ('eth zurich', 'ETH Zurich'),
+    ('eth zurich', 'ETH Zürich'),
     (', eth,', 'ETH'),
-    ('eidgenossische technische hochschule', 'ETH Zurich'),
+    ('eidgenossische technische hochschule', 'ETH Zürich'),
     # All of these are EPFL in Lausanne, Switzerland — distinct from
     # France's École Polytechnique (Paris) and Polytechnique Montréal.
     ('ecole polytechnique federale de lausanne', 'EPFL'),
@@ -1000,7 +1000,7 @@ ANCHORS: list[tuple[str, str]] = [
 
     # ---- Italy -------------------------------------------------------------
     ('politecnico di milano', 'Politecnico di Milano'),
-    ('politecnico di torino', 'Politecnico di Torino'),
+    ('politecnico di torino', 'PoliTo'),
     ('politecnico di bari', 'Polytechnic University of Bari'),
     ('polytechnic university of bari', 'Polytechnic University of Bari'),
     ('scuola superiore sant\'anna', 'Scuola Superiore Sant\'Anna'),
@@ -2194,9 +2194,9 @@ ANCHORS: list[tuple[str, str]] = [
     ('pierre et marie curie', 'ENS Paris'),
     ('laboratoire pierre aigrain', 'ENS Paris'),
     # "Institute of Quantum Electronics Zurich (ETHZ)" and similar ETH Zürich
-    # spellings -> ETH Zurich (matches the existing ETH handling).
-    ('quantum electronics zurich', 'ETH Zurich'),
-    (r're:\bethz\b', 'ETH Zurich'),
+    # spellings -> ETH Zürich (matches the existing ETH handling).
+    ('quantum electronics zurich', 'ETH Zürich'),
+    (r're:\bethz\b', 'ETH Zürich'),
     ('university of wurzburg', 'Würzburg'),
     ('european laboratory for non-linear spectroscopy', 'LENS'),
     ('ernst ruska-centre', 'Ernst Ruska Centre'),

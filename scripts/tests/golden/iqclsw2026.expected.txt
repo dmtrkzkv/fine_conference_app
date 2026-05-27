@@ -27,7 +27,7 @@ Department of Electrical and Computer Engineering, Technical University of Munic
 Department of Electrical and Computer Engineering, University of Waterloo (Canada)	Waterloo
 Department of Electrical and Electronic Engineering, Ariel University (Israel)	Ariel U
 Department of Electronic and Electrical Engineering, University College London (UK)	UCL
-Department of Electronics and Telecommunications, Politecnico di Torino (Italy)	Politecnico di Torino
+Department of Electronics and Telecommunications, Politecnico di Torino (Italy)	PoliTo
 Department of Materials Science and Engineering, University of Delaware (USA)	Delaware
 Department of Physics, Humboldt University (Germany)	Humboldt
 Department of Physics, Konstanz University (Germany)	Konstanz
@@ -35,7 +35,7 @@ Dipartimento di Fisica “E. Fermi”, Università di Pisa (Italy)	U Pisa
 Dipartimento di Fisica, Politecnico di Milano (Italy)	Politecnico di Milano
 Dipartimento di Fisica, Universitá di Pisa (Italy)	U Pisa
 Dipartimento di Scienze, Università degli Studi Roma (Italy)	Roma Tre
-ETH Zurich (Switzerland)	ETH Zurich
+ETH Zurich (Switzerland)	ETH Zürich
 Ernst Ruska-Centre for Microscopy and Spectroscopy with Electrons (Germany)	Ernst Ruska Centre
 European Laboratory for Non-linear Spectroscopy (LENS) (Italy)	LENS
 Faculty of Engineering and Institute of Nanotechnology and Advanced Materials, Bar-Ilan University (Israel)	Bar-Ilan
@@ -58,16 +58,16 @@ Institut Prime, Université de Poitiers (France)	Institut Prime
 Institut Universitaire de France – IUF (France)	IUF
 Institut für Biophysik, Goethe Universität Frankfurt (Germany)	Institut für Biophysik
 Institut für Halbleiter und Festkörperphysik, Johannes Kepler Universität (Austria)	Johannes Kepler University
-Institute for Quantum Electronics and Quantum Center, ETH Zürich (Switzerland)	ETH Zurich
-Institute for Quantum Electronics, Department pf Physics, ETH Zürich (Switzerland)	ETH Zurich
-Institute for Quantum Electronics, ETH Zurich (Switzerland)	ETH Zurich
-Institute for Quantum Electronics, ETH Zürich (Switzerland)	ETH Zurich
+Institute for Quantum Electronics and Quantum Center, ETH Zürich (Switzerland)	ETH Zürich
+Institute for Quantum Electronics, Department pf Physics, ETH Zürich (Switzerland)	ETH Zürich
+Institute for Quantum Electronics, ETH Zurich (Switzerland)	ETH Zürich
+Institute for Quantum Electronics, ETH Zürich (Switzerland)	ETH Zürich
 Institute of Electronics and Systems, University of Montpellier, CNRS (France)	CNRS
 Institute of Electronics, Microelectronics and Nanotechnology, CNRS, Univ. Lille, Univ. Polytechnique Hauts-de-France (France)	CNRS
 Institute of Photonics and Optical Science (IPOS), School of Physics, University of Sydney (Australia)	Sydney
-Institute of Quantum Electronics Zurich (ETHZ) – Switzerland	ETH Zurich
-Institute of Quantum Electronics, ETH Zurich (Switzerland)	ETH Zurich
-Institute of Quantum Electronics, ETH Zürich (Switzerland)	ETH Zurich
+Institute of Quantum Electronics Zurich (ETHZ) – Switzerland	ETH Zürich
+Institute of Quantum Electronics, ETH Zurich (Switzerland)	ETH Zürich
+Institute of Quantum Electronics, ETH Zürich (Switzerland)	ETH Zürich
 Institute of Solid State Electronics & Center for Micro- & Nanostructures, TU Wien (Austria)	TU Vienna
 Institute of Solid State Electronics, TU Wien (Austria)	TU Vienna
 Institute of Solid-State Electronics, TU Wien (Austria)	TU Vienna
@@ -110,9 +110,9 @@ Paul-Drude-Institut für Festkörperelektronik (Germany)	Paul Drude Institute
 Peter Gruenberg Institute 9 (PGI 9) (Germany)	Forschungszentrum Jülich
 Photonics Institute & Center for Micro- and Nanostructures, TU Wien (Austria)	TU Vienna
 Photonics Institute, TU Wien (Austria)	TU Vienna
-Politecnico di Torino (Italy)	Politecnico di Torino
+Politecnico di Torino (Italy)	PoliTo
 Pollard Institute, University of Leeds (UK)	Leeds
-Quantum Optoelectronics Group, Institute of Quantum Electronics, ETH Zurich, 8093 Zürich, Switzerland	ETH Zurich
+Quantum Optoelectronics Group, Institute of Quantum Electronics, ETH Zurich, 8093 Zürich, Switzerland	ETH Zürich
 Quantum and Nanotechnologies Research Center, National Research Council Canada (Canada)	NRC Canada
 Sandia National Laboratories, Center of Integrated Nanotechnologies (USA)	Sandia
 Sapienza Univ. of Rome, Department of Physics (Italy)	Sapienza
@@ -120,7 +120,7 @@ School of Applied and Engineering Physics, Mohammed VI Polytechnic University (M
 School of Electronic and Electrical Engineering, University of Leeds (UK)	Leeds
 School of Engineering, RMIT University (Australia)	RMIT
 School of Physics and Astronomy, The University of Nottingham (UK)	U Nottingham
-Scientific IT Services, ETH Zurich (Switzerland)	ETH Zurich
+Scientific IT Services, ETH Zurich (Switzerland)	ETH Zürich
 Shanghai Institute of Microsystem and Information Technology, Chinese Academy of Sciences (China)	SIMIT
 Silicon Austria Labs (Austria)	Silicon Austria Labs
 State Key Laboratory of Luminescence Science and Technology, Changchun Institute of Optics, Fine Mechanics and Physics, Chinese Academy of Sciences (China)	CAS
