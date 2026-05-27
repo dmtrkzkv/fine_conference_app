@@ -83,6 +83,16 @@ DATA_DIR = SCRIPT_DIR / "data"
 INPUT_PDF = DATA_DIR / "TEST2026_Program_Abstracts.pdf"
 OUTPUT_JSON = SCRIPT_DIR / "conference_data.json"
 
+# Optional curator credit shown at the bottom of the app's About section as
+# "<conference> curated by <name, affiliation>" (the name/affiliation links to
+# `link` when one is given). Leave name empty (or set CURATOR = None) to omit
+# the line entirely — the builder simply skips it when there is no curator.
+CURATOR = {
+    "name":        "Ada Lovelace",
+    "affiliation": "Analytical Engine Society",
+    "link":        "https://example.org/curator",
+}
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -956,7 +966,7 @@ def build_conference_data(conference_name: str,
     log(f"[build] {len(sessions)} sessions, {len(talks)} talks")
     log(f"[build]   talks with an abstract page: {n_with_abstract}/{len(talks)}")
 
-    return {
+    data = {
         "conference_name": conference_name or "",
         "sessions": sorted(sessions.values(), key=lambda s: (s["start_ts"] or "")),
         "talks":    sorted(talks, key=lambda t: (t["start_ts"] or "")),
@@ -968,6 +978,19 @@ def build_conference_data(conference_name: str,
             "institution_strings":          sorted(institution_strings),
         },
     }
+
+    # Optional curator credit. Only emit the block when a non-empty name is
+    # configured; otherwise leave the JSON as-is and the app shows just the
+    # app-author attribution.
+    if CURATOR and (CURATOR.get("name") or "").strip():
+        data["curator"] = {
+            "name":        (CURATOR.get("name") or "").strip(),
+            "affiliation": (CURATOR.get("affiliation") or "").strip(),
+            "link":        (CURATOR.get("link") or "").strip(),
+        }
+        log(f"[build]   curator: {data['curator']['name']!r}")
+
+    return data
 
 
 def _tag_for(status: str) -> str:

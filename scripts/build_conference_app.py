@@ -53,6 +53,7 @@ completely different conference with a completely different processor can
 emit the same shape.
   {
     "conference_name": "Conference Name Year",
+    "curator": {name, affiliation, link},  # OPTIONAL credit, shown in About
     "sessions": [ {id, title, type, topic, date, location, presider,
                    presider_aff (RAW), details, start_ts, end_ts, color,
                    talk_ids} ],
@@ -2097,6 +2098,14 @@ body[data-active-view="session-detail"] .bubble[data-kind="talk"],
   color: var(--muted);
   font-size: calc(14px * var(--fs));
   margin: 0;
+}
+/* Curator credit, shown above the app attribution and set a little apart from
+   it. Matches the muted, centered attribution styling below it. */
+.me-curator {
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(14px * var(--fs));
+  margin: 0 0 10px;
 }
 /* Split-rights notice, set slightly apart from the name above it. */
 .me-rights {
@@ -5099,11 +5108,42 @@ function renderMe(c) {
   // Settings section (below Notes): a text-size stepper.
   appendSettingsSection(c);
 
-  // About section at the bottom: app name (links to the GitHub repo, styled
-  // subtly so it reads as tappable without shouting "link"), author, and the
-  // split-rights note — the app is MIT-licensed; the program data belongs to
-  // the conference and its publishers, not to this project.
+  // About section at the bottom: an OPTIONAL curator credit, then the app name
+  // (links to the GitHub repo, styled subtly so it reads as tappable without
+  // shouting "link"), the app author, and the split-rights note — the app is
+  // MIT-licensed; the program data belongs to the conference and its
+  // publishers, not to this project.
   const about = el("div", { class: "me-settings me-about" });
+
+  // Optional curator credit, shown ABOVE the app attribution and set slightly
+  // apart from it. When DATA.curator carries at least a name, render a line
+  // "<conference> curated by <name, affiliation>"; the "<name, affiliation>"
+  // text links out when a curator.link is supplied, and is plain (still styled
+  // muted) when it isn't. With no curator (or no curator name) nothing is
+  // added and the attribution below is exactly the original two lines.
+  const curator = DATA.curator || null;
+  const curatorName = curator && (curator.name || "").trim();
+  if (curatorName) {
+    const confName = (DATA.conference_name || "Conference").trim();
+    const curatorAff = (curator.affiliation || "").trim();
+    // "name, affiliation" when an affiliation exists, otherwise just the name.
+    const curatorText = curatorAff ? (curatorName + ", " + curatorAff)
+                                   : curatorName;
+    const curatorLink = (curator.link || "").trim();
+    const curatorCredit = curatorLink
+      ? el("a", {
+          class: "me-attribution-link",
+          href: curatorLink,
+          target: "_blank",
+          rel: "noopener noreferrer",
+        }, curatorText)
+      : document.createTextNode(curatorText);
+    about.appendChild(el("div", { class: "me-curator" }, [
+      confName + " curated by ",
+      curatorCredit,
+    ]));
+  }
+
   about.appendChild(el("div", { class: "me-attribution" }, [
     el("a", {
       class: "me-attribution-link",

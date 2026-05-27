@@ -35,6 +35,7 @@ get a working app. The keys below are the contract.
 ```json
 {
   "conference_name": "CLEO 2026",
+  "curator": { ... },
   "sessions": [ ... ],
   "talks": [ ... ],
   "session_types": [ ... ],
@@ -46,6 +47,7 @@ get a working app. The keys below are the contract.
 | Key | Required | Purpose |
 |-----|----------|---------|
 | `conference_name` | Recommended | Page `<title>`, the "My Notes" export header, and the Sessions/Talks page headings (rendered as `"<name> Sessions"` / `"<name> Talks"`). Falls back to `"Conference"` if missing or empty. |
+| `curator` | Optional | Curator credit shown at the bottom of the About section. Omit (or leave the name empty) to show only the app-author line. |
 | `sessions` | **Yes** | The list of sessions. |
 | `talks` | **Yes** | The list of talks. |
 | `session_types` | Optional | Type registry and colors for the Sessions tab. Built-in defaults used if absent. |
@@ -107,8 +109,8 @@ supply these). Sessions have no `withdrawn` flag.
   "start_ts": "2026-05-10T09:00:00",
   "end_ts": "2026-05-10T11:00:00",
   "location": "Room 201",
-  "presider": "Jerome Faist",
-  "presider_aff": "ETH Zurich, Institute for Quantum Electronics, Zurich, Switzerland",
+  "presider": "Alex Rivera",
+  "presider_aff": "Institute for Quantum Electronics, Example University, Springfield, Country",
   "talk_ids": ["T-101", "T-102", "T-103"]
 }
 ```
@@ -150,8 +152,8 @@ Ordered list of author objects:
 
 ```json
 "authors": [
-  { "name": "David Burghoff", "insts": [1] },
-  { "name": "Ningren Han",  "insts": [2] }
+  { "name": "Jordan Lee", "insts": [1] },
+  { "name": "Sam Taylor",  "insts": [2] }
 ]
 ```
 
@@ -167,8 +169,8 @@ Numbered institution list:
 
 ```json
 "institutions": [
-  { "n": 1, "name": "Department of Electrical and Computer Engineering, The University of Texas at Austin, Austin, TX, USA", "alt_names": ["UT Austin"] },
-  { "n": 2, "name": "Google Deepmind, Palo Alto, CA, USA", "alt_names": ["Google"] }
+  { "n": 1, "name": "Department of Electrical and Computer Engineering, Example University, Springfield, ST, Country", "alt_names": ["Example University"] },
+  { "n": 2, "name": "Sample Research Lab, Metropolis, ST, Country", "alt_names": ["Sample Lab"] }
 ]
 ```
 
@@ -193,16 +195,16 @@ Numbered institution list:
   "number": "SM1A.1",
   "start_ts": "2026-05-10T09:00:00",
   "end_ts": "2026-05-10T09:15:00",
-  "speaker": "David Burghoff",
+  "speaker": "Jordan Lee",
   "speaker_pos": 0,
-  "first_author": "David Burghoff",
-  "last_author": "John Smith",
+  "first_author": "Jordan Lee",
+  "last_author": "Casey Morgan",
   "authors": [
-    { "name": "David Burghoff", "insts": [1] },
-    { "name": "John Smith", "insts": [1] }
+    { "name": "Jordan Lee", "insts": [1] },
+    { "name": "Casey Morgan", "insts": [1] }
   ],
   "institutions": [
-    { "n": 1, "name": "Department of Electrical and Computer Engineering, The University of Texas at Austin, Austin, TX, USA" }
+    { "n": 1, "name": "Department of Electrical and Computer Engineering, Example University, Springfield, ST, Country" }
   ],
   "abstract": "We demonstrate a free-running QCL dual-comb covering the 7-8 <i>µ</i>m band with line spacing set by the round-trip frequency f<sub>rep</sub> ...",
   "status": "sessioned",
@@ -256,6 +258,40 @@ slate/pink` for talks).
 
 ---
 
+## `curator` (optional)
+
+An optional credit shown at the bottom of the app's About section. When
+present (and carrying a non-empty `name`), the app renders a line just below
+the app name:
+
+```
+The Fine Conference App v0.1
+
+<conference_name> curated by <name>, <affiliation>
+App by David Burghoff, UT Austin
+```
+
+The `<name>, <affiliation>` text links to `link` when one is supplied, and is
+shown as plain (muted) text when it isn't.
+
+```json
+"curator": {
+  "name": "Alex Rivera",
+  "affiliation": "Example University",
+  "link": "https://example.org/curator"
+}
+```
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `name` | **Yes** (within the block) | Curator display name. If this is empty or the whole `curator` block is absent, no curator line is shown — the About section stays as the app name plus the app-author line. |
+| `affiliation` | Optional | Appended after the name as `"<name>, <affiliation>"`. Omitted (with its comma) when empty. |
+| `link` | Optional | If present, the `"<name>, <affiliation>"` text becomes a link to this URL; otherwise it is plain text. |
+
+If there is no curator, the About section is left exactly as-is.
+
+---
+
 ## `affiliation_sources` (optional)
 
 Raw string pools the affiliation shortener learns from. The builder hands this
@@ -263,9 +299,9 @@ block straight to `build_affiliation_map.py`; you do not pre-shorten anything.
 
 ```json
 "affiliation_sources": {
-  "affiliation_full_lines":       ["Department of Electrical and Computer Engineering, The University of Texas at Austin, Austin, TX, USA", "..."],
-  "presider_affiliation_strings": ["Institute for Quantum Electronics, ETH Zurich, Zurich, Switzerland", "..."],
-  "institution_strings":          ["UT Austin", "..."]
+  "affiliation_full_lines":       ["Department of Electrical and Computer Engineering, Example University, Springfield, ST, Country", "..."],
+  "presider_affiliation_strings": ["Institute for Quantum Electronics, Example University, Springfield, Country", "..."],
+  "institution_strings":          ["Example University", "..."]
 }
 ```
 
