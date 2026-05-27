@@ -871,8 +871,25 @@ def speaker_short_aff(speaker: str, authors: list, institutions: list) -> str:
                     return shared
             if spk_affs:
                 return spk_affs[0]
-    # No structured speaker membership resolved — fall back to the talk's first
-    # institution (same behaviour as the generic resolver).
+    # No structured speaker membership resolved. WHEN the talk actually carries
+    # structured author→institution links (some author has a non-empty `insts`)
+    # AND the speaker is not themselves the last author, a speaker with no link
+    # is meaningfully unaffiliated, so fall back to the LAST author's primary
+    # affiliation — the senior/PI author anchors the group, a better guess than
+    # the talk's first institution. But when NO author has structured links
+    # (e.g. datasets that never populate `insts`), that emptiness is just
+    # missing data, not a signal; and when the speaker IS the last author there
+    # is no separate PI to defer to. In both those cases keep the original
+    # behaviour (the talk's first institution), which for a first-author speaker
+    # is right.
+    has_structured = any(a.get("insts") for a in (authors or []))
+    speaker_is_last = bool(
+        speaker and authors
+        and _norm_name(authors[-1].get("name", "")) == _norm_name(speaker))
+    if has_structured and not speaker_is_last:
+        fallback = last_author_short_aff(authors, institutions)
+        if fallback:
+            return fallback
     return _person_short_aff_by_key(speaker, authors, institutions, _norm_name)
 
 
@@ -1342,6 +1359,24 @@ def enrich_affiliations(data: dict) -> dict:
 
     print(f"[affil]   presider affiliations backfilled from papers: "
           f"{n_backfilled} (still missing/invalid: {n_unresolved})")
+
+    # ------------------------------------------------------------------ sort
+    # The list views (renderTimeGrouped et al.) group items into time buckets
+    # by walking the array and assuming chronological order — equal-time items
+    # must already be adjacent, and a session/talk must not appear out of place
+    # (e.g. an evening poster session emitted last in the array but starting
+    # Tuesday). We do NOT rely on the processor to pre-sort; the builder sorts
+    # here so any processor's output renders in the right order. Sort is stable
+    # and by start_ts ascending; rows with a missing/empty start_ts sort last
+    # while keeping their original relative order (a blank key would otherwise
+    # sort before real timestamps).
+    def _ts_key(x: dict) -> tuple[int, str]:
+        ts = (x.get("start_ts") or "").strip()
+        return (1, "") if not ts else (0, ts)
+
+    data["sessions"] = sorted(sessions, key=_ts_key)
+    data["talks"] = sorted(talks, key=_ts_key)
+
     return data
 
 
@@ -3784,9 +3819,17 @@ function legacyTalkByline(item) {
   const speaker = item.speaker      || "";
   const pos     = (item.speaker_pos == null ? -1 : item.speaker_pos);
 
+  // A talk with one author (or where first and last resolve to the same
+  // person) must show that name ONCE, not "Name…Name". Treat `last` as a
+  // distinct trailing author only when it's actually a different person from
+  // `first`; otherwise drop it. This makes the byline robust regardless of
+  // whether the processor blanked last_author for single-author talks.
+  const sameFirstLast = !last || _norm(last) === _norm(first);
+  const effLast = sameFirstLast ? "" : last;
+
   const isFirstSpeaker = pos === 0 || _norm(speaker) === _norm(first);
-  const isLastSpeaker  = last && (_norm(speaker) === _norm(last));
-  const speakerIsMiddle = speaker && !isFirstSpeaker && !isLastSpeaker && last;
+  const isLastSpeaker  = effLast && (_norm(speaker) === _norm(effLast));
+  const speakerIsMiddle = speaker && !isFirstSpeaker && !isLastSpeaker && effLast;
 
   const fmt = (name, isSpeaker) => isSpeaker
     ? `<span class="speaker">${esc(name)}</span>`
@@ -3795,7 +3838,7 @@ function legacyTalkByline(item) {
   const parts = [];
   if (first) parts.push(fmt(first, isFirstSpeaker));
   if (speakerIsMiddle) parts.push(fmt(speaker, true));
-  if (last) parts.push(fmt(last, isLastSpeaker));
+  if (effLast) parts.push(fmt(effLast, isLastSpeaker));
   let html = parts.join("…");
 
   const aff = item.speaker_aff || item.last_aff || "";
@@ -5842,6 +5885,29 @@ function renderTopbarExtras(tab, top) {
       "aria-label": "Copy sync code",
       onclick: doCopy,
     }, "⧉"));
+  } else if (tab === "sessions" && top.view === "list"
+             && !canResetTab(tab) && expandableSessionIds().length) {
+    // Expand All: shares resetTab's corner slot but is its complement. Reached
+    // only on the Sessions ROOT list (top.view === "list") when there's
+    // nothing to reset — i.e. no drill-in and no session currently expanded,
+    // so canResetTab is false and the slot would otherwise be empty. The
+    // moment any session opens, canResetTab flips true and the slot reverts to
+    // the Home/reset icon below, which collapses everything back. Hidden when
+    // no session is expandable (all filtered out, or a talk-less program) so
+    // it never reads as a dead control. Uses the same stroked-SVG idiom as the
+    // Home icon (double down-chevron = "open everything below") so swapping
+    // between the two states doesn't change the corner's rendering style.
+    slot.appendChild(el("button", {
+      class: "icon-btn",
+      title: "Expand all sessions",
+      "aria-label": "Expand all sessions",
+      html: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" '
+          + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+          + 'stroke-linejoin="round" aria-hidden="true">'
+          + '<path d="M5 8.5 12 14l7-5.5"></path>'
+          + '<path d="M5 14.5 12 20l7-5.5"></path></svg>',
+      onclick: expandAllSessions,
+    }));
   } else if (canResetTab(tab)) {
     // Home: collapse back to this tab's default list (pop stack, unexpand,
     // clear search), keeping the user's place in Sessions/Talks. Sits in the
@@ -7189,17 +7255,23 @@ function back() {
 }
 
 /* Is there anything for the Home/reset control to undo on this tab? True when
-   the tab is drilled into a sub-view (stack deeper than its root), when any
-   session is expanded inline, or — on Search — when a query is typed. Scroll
-   position alone does NOT count: Home preserves your place in the list, so a
-   merely-scrolled root list has nothing to reset. On Me the corner holds the
-   sync buttons at the ROOT list, so Me resets only from a drilled-in detail
-   (session/talk) view — never from the root list itself. */
+   the tab is drilled into a sub-view (stack deeper than its root), when —
+   on Sessions — any session is expanded inline, or — on Search — when a query
+   is typed. Scroll position alone does NOT count: Home preserves your place in
+   the list, so a merely-scrolled root list has nothing to reset. On Me the
+   corner holds the sync buttons at the ROOT list, so Me resets only from a
+   drilled-in detail (session/talk) view — never from the root list itself.
+
+   Inline expansion is a SESSIONS-tab concept and Home only ever acts on the
+   active tab, so an expanded session counts as resettable on Sessions ONLY.
+   Pressing Home on Talks/Search/Me must never collapse Sessions' expansions
+   (and must not surface the Home icon on those tabs just because Sessions has
+   expansions open). */
 function canResetTab(tab) {
   const stack = state.tabStacks[tab];
   if (tab === "me") return !!(stack && stack.length > 1);
   if (stack && stack.length > 1) return true;
-  if ((state.expandedSessions || []).length) return true;
+  if (tab === "sessions" && (state.expandedSessions || []).length) return true;
   if (tab === "search" && (state.searchQuery || "").trim()) return true;
   return false;
 }
@@ -7315,10 +7387,11 @@ function cssEsc(s) {
 }
 
 /* Home: reset the active tab to its default state — pop its nav stack to the
-   root list, collapse every inline-expanded session, and (on Search) clear
-   the typed query — while KEEPING the user's place in Sessions/Talks lists by
-   re-anchoring on the item that was at the top of the viewport. On Search the
-   list is cleared with the query, so it simply returns to the top. */
+   root list, collapse every inline-expanded session (Sessions tab only), and
+   (on Search) clear the typed query — while KEEPING the user's place in
+   Sessions/Talks lists by re-anchoring on the item that was at the top of the
+   viewport. On Search the list is cleared with the query, so it simply returns
+   to the top. */
 function resetTab() {
   const tab = state.activeTab;
   if (!canResetTab(tab)) return;
@@ -7335,8 +7408,14 @@ function resetTab() {
   // Pop to root.
   const stack = state.tabStacks[tab];
   stack.length = 1;
-  // Collapse all inline expansions (global state, shared across tabs).
-  if ((state.expandedSessions || []).length) state.expandedSessions = [];
+  // Collapse all inline expansions — but ONLY when Home is pressed ON the
+  // Sessions tab. expandedSessions is global, yet inline expansion belongs to
+  // Sessions; resetting Talks/Search/Me must leave Sessions' expansions intact
+  // (canResetTab already won't surface Home on those tabs for expansions alone,
+  // but a tab legitimately reset for another reason must still not touch them).
+  if (tab === "sessions" && (state.expandedSessions || []).length) {
+    state.expandedSessions = [];
+  }
   // Clear the search query when resetting Search.
   if (tab === "search") state.searchQuery = "";
 
@@ -7352,6 +7431,44 @@ function resetTab() {
 
   // After the DOM flushes (render restores scroll in a double rAF; do the
   // re-anchor after that so our scroll set wins).
+  if (anchor) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      restoreListAnchor(anchor);
+      updateScrollIndicator();
+    }));
+  }
+}
+
+/* The set of session ids that CAN be inline-expanded right now, in DATA order.
+   Mirrors isExpandableSession (resolvable talks, not just non-empty talk_ids),
+   so it never disagrees with what the per-session toggle considers openable. */
+function expandableSessionIds() {
+  return DATA.sessions
+    .map(s => s.id)
+    .filter(isExpandableSession);
+}
+
+/* Expand All (Sessions root only): open every inline-expandable session at
+   once. The inverse of resetTab's collapse, and it shares resetTab's corner
+   slot — shown only when on the Sessions root list with at least one
+   expandable session and none currently expanded (see renderTopbarExtras).
+   Preserves the user's place in the list the same way resetTab does: the list
+   grows tall below the anchor as sessions open, so we re-anchor on the item
+   that was at the top of the viewport rather than letting the view jump. */
+function expandAllSessions() {
+  const ids = expandableSessionIds();
+  if (!ids.length) return;
+
+  // Anchor on the current top bubble before the list reflows taller.
+  const anchor = captureListAnchor();
+
+  snapshotScroll();
+  state.expandedSessions = ids;
+  saveState();
+  render();
+
+  // Re-anchor after render's own double-rAF scroll restore, so our re-anchor
+  // wins (same ordering resetTab relies on).
   if (anchor) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       restoreListAnchor(anchor);

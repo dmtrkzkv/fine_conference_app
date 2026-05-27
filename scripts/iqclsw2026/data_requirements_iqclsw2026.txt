@@ -1,0 +1,41 @@
+# data_requirements_iqclsw2026.txt
+#
+# Manifest of the input files the IQCLSW 2026 scripts need in data/.
+# Read by make_app.py to decide whether the (slow, browser-based) downloader
+# must run and to print manual-download instructions if anything is missing.
+#
+# Format (line-oriented; see make_app.py::_parse_requirements):
+#   manual_steps_written: <date>           # top-level metadata (optional)
+#   [file: <glob pattern>]                 # one block per required input
+#     required:    yes | no                # default yes
+#     produced_by: <script that creates it>
+#     description: <what it is>            # may wrap onto indented lines
+#     manual:      <how to fetch by hand>  # may wrap onto indented lines
+#   #  Lines starting with '#' are comments; blank lines end a wrapped value.
+
+manual_steps_written: 26-May-2026
+
+[file: detailed_program.html]
+  required:    yes
+  produced_by: fetch_program_iqclsw2026.py
+  description: Full rendered HTML of the single IQCLSW 2026 detailed-program
+    page. This is the SOURCE OF RECORD: the processor extracts the program text
+    from it (with lxml) and parses that into conference_data.json. It must
+    contain the markers "DETAILED PROGRAM" and "LIST OF POSTERS".
+  manual:      Open https://iqclsw2026.com/index.php/detailed-program/ in a
+    browser and save the fully rendered page (e.g. "Save Page As… > Web Page,
+    Complete", or DevTools "Copy outerHTML") to data/detailed_program.html .
+    The site rejects non-browser HTTP clients (HTTP 403), which is why the
+    automated downloader drives a headless Chromium via Playwright.
+
+[file: program_overview.html]
+  required:    no
+  produced_by: fetch_program_iqclsw2026.py
+  description: Full rendered HTML of the IQCLSW 2026 "Program at a Glance"
+    overview page. The processor extracts its grid (with lxml) to title the
+    technical sessions (e.g. "Materials", "Quantum cascade lasers", "Gornik
+    session") and to set the School/Workshop phase per morning/afternoon. It
+    must contain the marker "PROGRAM AT A GLANCE". OPTIONAL: if absent, sessions
+    fall back to generic "School N"/"Workshop N" titles and a date-based phase.
+  manual:      Open https://iqclsw2026.com/index.php/program-overview/ in a
+    browser and save the rendered page to data/program_overview.html .

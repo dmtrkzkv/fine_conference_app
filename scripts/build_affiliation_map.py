@@ -775,7 +775,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('fraunhofer', 'Fraunhofer'),
     ('forschungszentrum julich', 'Forschungszentrum Jülich'),
     ('julich-aachen', 'Jülich-Aachen Research Alliance'),
-    ('peter grunberg institute', 'Peter Grünberg Institute (PGI-6)'),
+    ('peter grunberg institute', 'Forschungszentrum Jülich'),
     ('helmholtz center dresden-rossendorf', 'Helmholtz Center Dresden-Rossendorf'),
     ('hzdr', 'HZDR'),
     ('helmholtz', 'Helmholtz Jena'),
@@ -921,6 +921,15 @@ ANCHORS: list[tuple[str, str]] = [
     ('centre de nanoscience et nanotechnologie', 'C2N Paris-Saclay'),
     ('universite paris-saclay', 'U Paris-Saclay'),
     ('paris-saclay', 'U Paris-Saclay'),
+    # The "Laboratoire de Physique de l'ENS / de l'École Normale Supérieure"
+    # (LPENS) is the ENS physics department. Its affiliation strings list many
+    # co-tutelles (ENS, PSL, CNRS, Sorbonne, Université Paris Cité) in varying
+    # order, so without this specific anchor the generic Paris-Cité / Sorbonne /
+    # CNRS anchors below would catch it inconsistently. Map the lab itself to
+    # "ENS Paris". Placed before those generic anchors so it wins. (No CLEO
+    # string contains this lab name — verified — so CLEO is unaffected.)
+    (r"re:laboratoire de physique de l'(ens|ecole normale superieure)",
+     'ENS Paris'),
     ('universite paris cite', 'U Paris Cité'),
     ('universite de paris', 'U Paris Cité'),
     ('paris cite', 'U Paris Cité'),
@@ -960,8 +969,8 @@ ANCHORS: list[tuple[str, str]] = [
     # below, or the Brussels institution gets mislabelled "Polytechnique".
     ('re:ecole polytechnique.*libre de bruxelles', 'ULB'),
     ('re:ecole polytechnique.*universite libre de bruxelles', 'ULB'),
-    ('ecole polytechnique,', 'Institut Polytechnique de Paris'),  # Paris campus
-    ('institut polytechnique de paris', 'Institut Polytechnique de Paris'),
+    ('ecole polytechnique,', 'IP Paris'),  # Paris campus
+    ('institut polytechnique de paris', 'IP Paris'),
     ('universite de bordeaux', 'Bordeaux'),
     ('universite de caen', 'Universite de Caen'),
     ('universite de lyon', 'U Lyon'),
@@ -1141,7 +1150,7 @@ ANCHORS: list[tuple[str, str]] = [
     ('iqoqi', 'IQOQI'),
     ('ist austria', 'IST Austria'),
     ('institute of science and technology austria', 'IST Austria'),
-    ('silicon austria labs', 'Silicon Austria Labs GmbH'),
+    ('silicon austria labs', 'Silicon Austria Labs'),
     ('university of graz', 'Graz'),
 
     # ---- Eastern Europe ----------------------------------------------------
@@ -2159,6 +2168,72 @@ ANCHORS: list[tuple[str, str]] = [
     ('hunan university', 'Hunan'),
     ('stockholm university', 'Stockholm'),
     ('lund university', 'Lund'),
+
+    # ---- IQCLSW 2026 institutions ------------------------------------------
+    # Canonical short names for institutions appearing in the IQCLSW program.
+    # Each needle is specific enough not to collide with CLEO strings (verified
+    # against CLEO 2025/2026); where a needle DOES also occur in CLEO, the short
+    # name chosen is a strict improvement over CLEO's previous (long) form.
+    # Needles are matched against the normalized string (lowercased, diacritics
+    # and dash/apostrophe glyphs folded), so they are written in plain ASCII.
+    ('technical university vienna', 'TU Vienna'),
+    ('technische universitat wien', 'TU Vienna'),   # German spelling variant
+    # University of Leeds: the program writes it several long ways (with the
+    # school suffix, as the Pollard Institute, etc.). All collapse to "Leeds".
+    ('university of leeds', 'Leeds'),
+    ('pollard institute', 'Leeds'),
+    (r're:\bu leeds\b', 'Leeds'),   # already-abbreviated "U Leeds" institution form
+    # Laboratoire Pierre Aigrain / former UPMC Paris 6 — the ENS Paris physics
+    # lab; fold the historical Pierre-et-Marie-Curie / Paris 6 form to ENS Paris.
+    ('pierre et marie curie', 'ENS Paris'),
+    ('laboratoire pierre aigrain', 'ENS Paris'),
+    # "Institute of Quantum Electronics Zurich (ETHZ)" and similar ETH Zürich
+    # spellings -> ETH Zurich (matches the existing ETH handling).
+    ('quantum electronics zurich', 'ETH Zurich'),
+    (r're:\bethz\b', 'ETH Zurich'),
+    ('university of wurzburg', 'Würzburg'),
+    ('european laboratory for non-linear spectroscopy', 'LENS'),
+    ('ernst ruska-centre', 'Ernst Ruska Centre'),
+    # NEST = the CNR-Istituto Nanoscienze + Scuola Normale Superiore lab in Pisa,
+    # written with the "(NEST)" tag in some forms and as a leading "NEST" in
+    # others; both fold to NEST.
+    ('scuola normale superiore (nest)', 'NEST'),
+    ('nest cnr-istituto nanoscienze', 'NEST'),
+    ('nrc post-doctoral research associate', 'NRL'),
+    ('ihp-leibniz institut', 'IHP'),
+    # Peter Grünberg Institute (all spellings: "Gruenberg"/"Grünberg"->"grunberg"
+    # after diacritic folding, hyphenated or not) is part of Forschungszentrum
+    # Jülich; map every form there. This also makes CLEO consistent — CLEO 2025
+    # already uses "Forschungszentrum Jülich" while CLEO 2026 left two long
+    # "Peter[- ]Grünberg-Institute (PGI-N)" forms; both now collapse to it.
+    (r're:peter[- ]gr(?:ue|u)nberg', 'Forschungszentrum Jülich'),
+    ('paul drude institute', 'Paul Drude Institute'),
+    # German-language form of the same institute (Paul-Drude-Institut für
+    # Festkörperelektronik); normalize() has already folded the diacritics and
+    # dashes, so the needle is plain ASCII.
+    ('paul-drude-institut', 'Paul Drude Institute'),
+    ('mohammed vi polytechnic', 'Mohammed VI'),
+    # Wroclaw (program has the typo "Universityof"); match CLEO's "Wroclaw".
+    ('wroclaw university', 'Wroclaw'),
+    (r're:\binstitut universitaire de france\b', 'IUF'),
+    ('celare quantum communications', 'Celare'),
+    ('austrian institute of technology', 'AIT'),
+    ('technical univeristy of dresden', 'TU Dresden'),   # source typo "Univeristy"
+    ('technical university of dresden', 'TU Dresden'),
+    ('konstanz university', 'Konstanz'),
+    ('university of nottingham', 'U Nottingham'),   # matches CLEO's convention
+    # "Dipartimento di Scienze, Università degli Studi Roma" = Roma Tre's
+    # science dept; and the explicit "Università Roma Tre" form. (No CLEO use.)
+    ('universita roma tre', 'Roma Tre'),
+    ('universita degli studi roma', 'Roma Tre'),
+    # Note: "Institut Polytechnique de Paris" -> "IP Paris" and "Silicon Austria
+    # Labs GmbH" -> "Silicon Austria Labs" are applied by editing their existing
+    # curated anchors earlier in this list (so they take effect for CLEO too,
+    # where the shorter forms are an improvement).
+    ('de vinci higher education', 'De Vinci'),
+    ('laser components germany', 'Laser Components'),
+    ('vigo photonics', 'Vigo Photonics'),                # drops trailing "SA"
+    ('nextnano', 'nextnano'),   # "nextnano Lab" / "nextnano GmbH" -> "nextnano"
 ]
 
 # Append more late patterns AFTER the above big batch (lower priority).
@@ -2419,7 +2494,70 @@ def canonicalize(raw: str) -> str:
     for needle, short in LATE_ANCHORS:
         if _anchor_matches(needle, norm):
             return short
-    return fallback_shorten(raw)
+    result = fallback_shorten(raw)
+
+    # Some sources write affiliations as "Institution (Country)" or
+    # "Institution – Country" with NO comma (e.g. "mirSense (France)",
+    # "Technical University Vienna (Austria)", "IEMN – France"). The comma-based
+    # tail-stripping in fallback_shorten can't see past a glued, comma-less
+    # country, so such a string canonicalizes to ITSELF — and the app then shows
+    # no short-name chip (a chip is only rendered when short != long). When, and
+    # ONLY when, the normal pipeline above failed to shorten the string at all
+    # (result == raw, modulo a trailing period), retry on a copy with that
+    # trailing country tail removed. This is strictly additive: any string the
+    # existing anchors/overrides/fallback already shorten is returned before we
+    # get here, so curated maps (e.g. CLEO's) are byte-for-byte unchanged; we
+    # only rescue strings that would otherwise have had no short form.
+    if _norm_eq_raw(result, raw):
+        stripped = _strip_trailing_country(raw)
+        if stripped and stripped != raw:
+            # Re-canonicalize the country-free string: it may now hit an anchor
+            # (e.g. "University of Leeds …" -> "U Leeds") or, at minimum, the
+            # bare institution itself is a shorter label than the original
+            # "Institution (Country)". Either is an improvement over showing no
+            # chip, so prefer the stripped canonicalization whenever it differs
+            # from the original raw input.
+            retry = canonicalize(stripped)
+            if retry and not _norm_eq_raw(retry, raw):
+                return retry
+    return result
+
+
+def _norm_eq_raw(short: str, raw: str) -> bool:
+    """True when a canonicalization 'short' is really just the input unchanged
+    (no shortening happened), ignoring a trailing period and surrounding
+    whitespace — the condition under which the app would render no chip."""
+    a = (short or "").strip().rstrip(".").strip()
+    b = (raw or "").strip().rstrip(".").strip()
+    return a == b
+
+
+# Trailing country tail in the comma-less "(Country)" or "<dash> Country" forms
+# that the comma-based fallback can't reach. Built from the existing
+# COUNTRY_TOKENS set (defined above) so the two never drift apart. Dash variants
+# cover ASCII hyphen and en/em dashes. Anchored to the END of the string.
+_COUNTRY_TAIL_RE = re.compile(
+    r"\s*(?:\(\s*(?:%s)\s*\)|[\-\u2013\u2014]\s*(?:%s))\s*$" % (
+        "|".join(re.escape(c) for c in
+                 sorted(COUNTRY_TOKENS, key=len, reverse=True)),
+        "|".join(re.escape(c) for c in
+                 sorted(COUNTRY_TOKENS, key=len, reverse=True)),
+    ),
+    re.IGNORECASE,
+)
+
+
+def _strip_trailing_country(raw: str) -> str:
+    """Remove a trailing comma-less country tail, e.g.
+    'mirSense (France)' -> 'mirSense', 'IEMN – France' -> 'IEMN'. Loops to
+    handle a rare doubled tail like '… (NEST) (Italy)' (the parenthetical that
+    is NOT a country, like '(NEST)', is left intact)."""
+    out = (raw or "").strip()
+    while True:
+        new = _COUNTRY_TAIL_RE.sub("", out).strip()
+        if new == out:
+            return out
+        out = new
 
 
 # ---------------------------------------------------------------------------
