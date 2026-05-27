@@ -50,7 +50,7 @@ For a new conference, see [Curation: Adding a new conference](#curation-adding-a
 
 ## Curation: Adding a new conference
 
-If your conference doesn't have a subdirectory yet, you will need to create one. This is called curation, and you are credited for it.
+If your conference doesn't have a subdirectory yet, you will need to create one. This is called curation, and you are credited for it in the generated app.
 
 A curated conference consists of two scripts:
 
@@ -75,10 +75,6 @@ This is also where conference-specific cleanup and enrichment happens, including
 - Classifying session and talk types
 - Attaching presiders and metadata
 - Normalizing affiliations
-
-### Curator credit
-
-A conference curator is a person who created and maintains the downloader/processor pair for a conference. Curators are credited in the generated app. 
 
 ## Requirements
 
