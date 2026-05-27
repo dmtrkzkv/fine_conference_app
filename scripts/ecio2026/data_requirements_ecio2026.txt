@@ -1,0 +1,52 @@
+# data_requirements_ecio2026.txt — ECIO 2026
+#
+# Structured manifest of the data files that the fetch (downloader) and process
+# scripts in this directory rely on. make_app.py reads this file to decide
+# whether a download can be skipped: when FORCE_DOWNLOAD is off, every file
+# marked "required = yes" below must already exist in data/ for the download to
+# be skipped; otherwise make_app runs the downloader.
+#
+# Format (simple, line-oriented; '#' starts a comment, blank lines ignored):
+#   - Each file is a block introduced by a header line "[file: <pattern>]".
+#   - <pattern> is a filename or a glob (e.g. ECIO26_*.pdf) resolved relative to
+#     the data/ subdirectory of THIS conference folder.
+#   - Inside a block, "key: value" lines give metadata. Recognized keys:
+#       required     yes | no   (default yes) — whether the file must be present
+#       produced_by  which script normally creates it (fetch / process / manual)
+#       description  one-line human description
+#       manual       how to obtain the file by hand if the downloader can't
+#   - Continuation: a "manual" value may wrap onto following indented lines.
+#
+# manual_steps_written: 2026-05-27
+# These manual-download instructions were accurate as of the date above; the
+# conference website / planner layout can change, so re-verify if much later.
+
+generated_for: ecio2026
+manual_steps_written: 2026-05-27
+
+[file: ECIO26_DetailedSchedule.pdf]
+required: yes
+produced_by: fetch
+description: Detailed program schedule PDF — the wide A3 grid with every
+  session, every time slot, and every talk title + speaker.
+manual: Open https://www.ecio-conference.org/programme-26/ in a browser, click
+  the "The detailed program can be downloaded here" link, and save the resulting
+  PDF into this folder's data/ subdirectory as exactly ECIO26_DetailedSchedule.pdf .
+  (The current direct URL is
+  https://www.ecio-conference.org/wp-content/uploads/2026/05/ECIO26_DetailedProgramSchedule_21_5.pdf
+  but the date suffix changes when the organisers re-issue the schedule, so
+  always re-derive the link from the programme page rather than hard-coding it.)
+
+[file: ECIO26_Concise.pdf]
+required: yes
+produced_by: fetch
+description: Concise program-overview PDF — one-page summary listing every
+  session block (track code, topic, time, room) with no per-talk detail. Used
+  by the processor as a cross-check on the session skeleton extracted from the
+  detailed PDF.
+manual: Open https://www.ecio-conference.org/programme-26/ and click the
+  "An overview of the program sessions can be downloaded here" link. Save it
+  into data/ as exactly ECIO26_Concise.pdf . (The current direct URL is
+  https://www.ecio-conference.org/wp-content/uploads/2026/05/ECIO_FinalProgram_Concise_13_05.pdf
+  but the date suffix changes when the organisers re-issue the overview, so
+  always re-derive the link from the programme page rather than hard-coding it.)
