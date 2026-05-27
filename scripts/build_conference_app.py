@@ -968,6 +968,227 @@ def _strip_trailing_periods(title: str) -> str:
 
 
 # =============================================================================
+# Person-name normalization
+# -----------------------------------------------------------------------------
+# Upstream data occasionally carries authors/speakers/presiders in shapes that
+# are clearly data-entry artifacts rather than the person's chosen spelling.
+# Two repair patterns handle every real case we've seen across multiple
+# source feeds:
+#
+#   1. ALL-CAPS letter-runs that should be Title-Cased. Triggered only when
+#      the run has at least three letters AND contains a vowel (A/E/I/O/U/Y).
+#      The vowel requirement keeps run-together initials like 'JDG', 'AG',
+#      'AJ' as initials while still catching every real surname error
+#      ('DIDIER', 'WANG', 'YANG', 'LYU', 'KIM', 'LIU' — all have vowels).
+#      Hyphenated names are repaired per-piece, so 'LAURENT-PUIG' becomes
+#      'Laurent-Puig'.
+#
+#   2. Lowercase first/last tokens that should start with a capital. So
+#      'fatih atar' -> 'Fatih Atar', 'A. matsko' -> 'A. Matsko'. Lowercase
+#      mid-name particles ('von', 'de', 'da', 'di', 'te', 'van', and the
+#      French elisions "d'", "l'") are valid in the middle and stay.
+#      Mid-name single-letter initials in '<letter>.' form are forced
+#      upper, so 'k. c. joshi' becomes 'K. C. Joshi' rather than
+#      'K. c. Joshi'.
+#
+# When normalizing an ALL-CAPS-source name, we also lowercase any known
+# particle that got dragged into caps by the same artifact ('POINSINET DE
+# SIVRY-HOULE' -> 'Poinsinet de Sivry-Houle', not '... DE ...').
+#
+# Inputs that don't look like person names are skipped: strings with more
+# than six tokens (longest real authors we see are 6 tokens, e.g.
+# 'A K M Sarwar Hossain Faysal') or any digits (real names don't carry
+# digits; titles and footnote-marked entries do). This guards against
+# upstream bugs that occasionally drop a title into the author_aliases
+# search list.
+# =============================================================================
+
+# Mid-name particles that should remain lowercase even when they appear in
+# the middle of an otherwise-CAPS name. Apostrophe particles ("d'", "l'") are
+# handled separately because they include punctuation.
+_NAME_PARTICLES = frozenset({
+    "de", "da", "di", "du", "del", "della", "dei", "degli", "delle",
+    "do", "dos", "das",
+    "le", "la", "lo", "las", "los",
+    "van", "von", "der", "den", "ter", "ten", "te", "zu",
+    "af", "av", "al", "el", "bin", "ibn",
+})
+
+_VOWELS = frozenset("AEIOUYaeiouy")
+_INITIAL_RE = re.compile(r"^[A-Za-z]\.$")
+_PARTICLE_PREFIX_RE = re.compile(r"^[DdLl]'")
+
+
+def _has_vowel(letters: str) -> bool:
+    return any(c in _VOWELS for c in letters)
+
+
+def _fix_allcaps_piece(piece: str) -> str:
+    """Title-case a single hyphen-free piece if it's ALL CAPS AND at least
+    three letters AND contains a vowel. The length+vowel test together
+    keep legitimate initials runs (M, AB, JDG) from being lowercased, while
+    every real surname error gets fixed."""
+    letters = re.sub(r"[^A-Za-z]", "", piece)
+    if len(letters) >= 3 and letters.isupper() and _has_vowel(letters):
+        out, seen = [], False
+        for ch in piece:
+            if ch.isalpha():
+                out.append(ch.upper() if not seen else ch.lower())
+                seen = True
+            else:
+                out.append(ch)
+        return "".join(out)
+    return piece
+
+
+def _fix_allcaps_token(token: str) -> str:
+    """Apply the all-caps fix per hyphen-separated piece, so 'LAURENT-PUIG'
+    becomes 'Laurent-Puig' and 'M.-S.' (initials) is left untouched."""
+    return "-".join(_fix_allcaps_piece(p) for p in token.split("-"))
+
+
+def _capitalize_first_alpha(token: str) -> str:
+    """Capitalize the first alphabetic character in a token (in place). A
+    leading non-letter (e.g. the apostrophe in "d'herbais") is preserved;
+    only the first actual letter is touched, so the rest of the token's
+    casing is kept intact."""
+    for i, ch in enumerate(token):
+        if ch.isalpha():
+            if ch.islower():
+                return token[:i] + ch.upper() + token[i + 1:]
+            return token
+    return token
+
+
+def _looks_like_non_name(name: str) -> bool:
+    """Defensive check for inputs that aren't human names — typically titles
+    that have leaked into the author_aliases search list. Real names never
+    have more than six tokens in our feeds, and never carry digits."""
+    if any(c.isdigit() for c in name):
+        return True
+    if len(name.split()) > 6:
+        return True
+    return False
+
+
+def normalize_person_name(name: str) -> str:
+    """Normalize a single human-name string per the rules described above.
+    Idempotent. Returns the input unchanged when it carries no fixable
+    artifacts (or doesn't look like a name)."""
+    if not name:
+        return name
+    if _looks_like_non_name(name):
+        return name
+    tokens = name.split()
+    if not tokens:
+        return name
+
+    # Snapshot the original casing of each token before any modification.
+    # We need this to decide later whether a middle 'DE', 'VAN', etc. came
+    # from an all-caps artifact (and should be lowered to 'de'/'van') or
+    # came in already mixed-case as 'Van Thourhout', 'Da Ros', etc. — names
+    # whose owners chose the capitalized form, which we must not change.
+    def _is_allcaps_token(tok):
+        letters = re.sub(r"[^A-Za-z]", "", tok)
+        return len(letters) >= 2 and letters.isupper()
+
+    caps_orig = [_is_allcaps_token(t) for t in tokens]
+
+    # Rule 1: ALL-CAPS repair, every token.
+    tokens = [_fix_allcaps_token(t) for t in tokens]
+
+    # Rule 2a: first token must start with an uppercase letter, with one
+    # exception: a French elision particle ("d'Aligny", "l'Estrange") that
+    # is conventionally written with a lowercase leading letter regardless
+    # of position.
+    if not _PARTICLE_PREFIX_RE.match(tokens[0]):
+        tokens[0] = _capitalize_first_alpha(tokens[0])
+
+    # Rule 2b: last token, same logic. A last token like "d'Aligny" stays.
+    if len(tokens) > 1 and not _PARTICLE_PREFIX_RE.match(tokens[-1]):
+        tokens[-1] = _capitalize_first_alpha(tokens[-1])
+
+    # Rule 3: middle tokens.
+    #   * '<letter>.' is treated as an initial and forced upper, so a string
+    #     like 'k. c. joshi' becomes 'K. C. Joshi' and 'Leticia d. Magalhaes'
+    #     becomes 'Leticia D. Magalhaes'.
+    #   * A known surname particle ('de', 'van', 'la', 'di' ...) is lowered
+    #     ONLY when the original token was all-caps. That way 'POINSINET DE
+    #     SIVRY-HOULE' -> 'Poinsinet de Sivry-Houle' but 'Dries Van
+    #     Thourhout', 'Francesco Da Ros', 'Chris G. Van De Walle' (names
+    #     whose owners use the capitalized form) are left untouched.
+    for i in range(1, len(tokens) - 1):
+        tok = tokens[i]
+        if _INITIAL_RE.match(tok):
+            tokens[i] = tok.upper()
+        elif caps_orig[i] and tok.lower() in _NAME_PARTICLES:
+            tokens[i] = tok.lower()
+
+    return " ".join(tokens)
+
+
+def normalize_names_in_data(data: dict) -> None:
+    """Apply normalize_person_name across every name-bearing field in the
+    data, in place. Touched fields:
+
+        sessions[].presider                       (may carry '; ' / ' and '
+                                                   separators between
+                                                   co-presiders)
+        talks[].speaker, .presenter,
+               .first_author, .last_author
+        talks[].authors[].name
+        talks[].author_aliases[]                  (search-only loose forms)
+
+    Other fields (titles, abstracts, affiliations, raw institution strings)
+    are left untouched. Affiliations have their own all-caps tokens that are
+    typically legitimate ('MIT', 'NIST', 'KAIST'), which is exactly why this
+    normalization is scoped to person names."""
+    n_changed = 0
+
+    def fix(s):
+        nonlocal n_changed
+        if not s:
+            return s
+        out = normalize_person_name(s)
+        if out != s:
+            n_changed += 1
+        return out
+
+    def fix_multi(s):
+        """Co-presider strings split on '; ' or ' and '; normalize each
+        piece independently so 'JANE DOE and john smith' becomes
+        'Jane Doe and John Smith' without losing the separator. Falls back
+        to whole-string normalization when no separator is present."""
+        if not s:
+            return s
+        parts = re.split(r"(\s*;\s*|\s+and\s+)", s)
+        if len(parts) == 1:
+            return fix(s)
+        out_parts = []
+        for i, p in enumerate(parts):
+            # Even indices are names; odd indices are the matched separators.
+            out_parts.append(fix(p) if i % 2 == 0 else p)
+        return "".join(out_parts)
+
+    for s in data.get("sessions", []) or []:
+        if s.get("presider"):
+            s["presider"] = fix_multi(s["presider"])
+
+    for t in data.get("talks", []) or []:
+        for f in ("speaker", "presenter", "first_author", "last_author"):
+            if t.get(f):
+                t[f] = fix(t[f])
+        for a in t.get("authors", []) or []:
+            if a.get("name"):
+                a["name"] = fix(a["name"])
+        aliases = t.get("author_aliases")
+        if isinstance(aliases, list):
+            t["author_aliases"] = [fix(x) for x in aliases]
+
+    print(f"[names] normalized {n_changed} person-name field(s)")
+
+
+# =============================================================================
 # Inline-LaTeX -> Unicode for abstract bodies
 # -----------------------------------------------------------------------------
 # A few abstracts carry simple inline
@@ -1196,6 +1417,12 @@ def _renumber_talk_insts(talk: dict) -> bool:
 def enrich_affiliations(data: dict) -> dict:
     sessions = data.get("sessions", [])
     talks = data.get("talks", [])
+
+    # 0a. Normalize person names: fix ALL-CAPS tokens (longer than two
+    #     letters) and lowercase first/last name tokens. Done before
+    #     everything else so downstream affiliation matching, search
+    #     aliases, and byline rendering all see the cleaned forms.
+    normalize_names_in_data(data)
 
     # 0. Normalize titles: trim trailing whitespace and remove a single
     #    trailing period (leaving an ellipsis intact), so the rendered HTML
@@ -3871,9 +4098,10 @@ function talkByline(item) {
   if (prev < lastI) html += "…";
 
   // Keep the normal trailing affiliation so the line still reads like the
-  // usual byline.
+  // usual byline. Skip the leading ", " when no names rendered at all
+  // (e.g. an aff-only record), so the line doesn't begin with a stray comma.
   const tail = item.speaker_aff || item.last_aff || "";
-  if (tail) html += `, ${esc(tail)}`;
+  if (tail) html += html ? `, ${esc(tail)}` : esc(tail);
   return html;
 }
 
@@ -3908,7 +4136,7 @@ function legacyTalkByline(item) {
   let html = parts.join("…");
 
   const aff = item.speaker_aff || item.last_aff || "";
-  if (aff) html += `, ${esc(aff)}`;
+  if (aff) html += html ? `, ${esc(aff)}` : esc(aff);
   return html;
 }
 

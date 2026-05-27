@@ -2199,7 +2199,7 @@ function talkByline(item) {
   if (prev < lastI) html += "…";
 
   const tail = item.speaker_aff || item.last_aff || "";
-  if (tail) html += `, ${esc(tail)}`;
+  if (tail) html += html ? `, ${esc(tail)}` : esc(tail);
   return html;
 }
 
@@ -2227,7 +2227,7 @@ function legacyTalkByline(item) {
   let html = parts.join("…");
 
   const aff = item.speaker_aff || item.last_aff || "";
-  if (aff) html += `, ${esc(aff)}`;
+  if (aff) html += html ? `, ${esc(aff)}` : esc(aff);
   return html;
 }
 
