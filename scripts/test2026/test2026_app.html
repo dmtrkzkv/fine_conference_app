@@ -491,7 +491,7 @@ body[data-active-view="session-detail"] .bubble[data-kind="talk"],
   text-align: center;
   color: var(--muted);
   font-size: calc(14px * var(--fs));
-  margin: 0 0 10px;
+  margin: 10px 0 0;
 }
 
 .me-rights {
@@ -3126,6 +3126,22 @@ function renderMe(c) {
 
   const about = el("div", { class: "me-settings me-about" });
 
+  about.appendChild(el("div", { class: "me-attribution" }, [
+    el("a", {
+      class: "me-attribution-link",
+      href: "https://github.com/burghoff/fine_conference_app",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    }, "The Fine Conference App v0.1"),
+    el("br"),
+    el("a", {
+      class: "me-attribution-link",
+      href: "https://burghoff.org",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    }, "David Burghoff, UT Austin"),
+  ]));
+
   const curator = DATA.curator || null;
   const curatorName = curator && (curator.name || "").trim();
   if (curatorName) {
@@ -3144,31 +3160,18 @@ function renderMe(c) {
         }, curatorText)
       : document.createTextNode(curatorText);
     about.appendChild(el("div", { class: "me-curator" }, [
-      confName + " curated by ",
+      confName + " data curated by",
+      el("br"),
       curatorCredit,
     ]));
   }
 
-  about.appendChild(el("div", { class: "me-attribution" }, [
-    el("a", {
-      class: "me-attribution-link",
-      href: "https://github.com/burghoff/fine_conference_app",
-      target: "_blank",
-      rel: "noopener noreferrer",
-    }, "The Fine Conference App v0.1"),
+  about.appendChild(el("div", { class: "me-attribution me-rights" }, [
+    "App: MIT License",
     el("br"),
-    el("a", {
-      class: "me-attribution-link",
-      href: "https://burghoff.org",
-      target: "_blank",
-      rel: "noopener noreferrer",
-    }, "David Burghoff, UT Austin"),
-    el("div", { class: "me-rights" }, [
-      "App: MIT License",
-      el("br"),
-      "Data: Copyrighted by conference and its publishers",
-    ]),
+    "Data: Copyrighted by conference and its publishers",
   ]));
+
   c.appendChild(about);
 }
 
