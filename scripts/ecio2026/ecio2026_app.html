@@ -1,0 +1,5053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>ECIO 2026</title>
+<style>
+:root {
+  --fs: 1;            
+  
+  --sp: min(var(--fs), 1);
+  
+  --radius-base: 10px;
+  --radius: calc(var(--radius-base) * var(--sp));
+  --bg:        #f6f6f4;
+  --surface:   #ffffff;
+  --surface-2: #f0efeb;
+  --text:      #131313;
+  --muted:     #6f6e6a;
+  --line:      rgba(0,0,0,.08);
+  --accent:    #d6541c;
+  --accent-soft: rgba(214,84,28,.12);
+  --accent-faint: rgba(214,84,28,.45);
+  --tile-overlay: rgba(246,246,244,.65);
+  
+  --tab-h:     calc(58px * var(--fs));
+  --top-h:     calc(48px * var(--fs));
+  --bot-h:     calc(40px * var(--fs));
+  --ind-h:     calc(28px * var(--fs));
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --c-blue-fg:    #2563eb;  --c-blue-bg:    #e8efff;
+  --c-violet-fg:  #7c3aed;  --c-violet-bg:  #efe9ff;
+  --c-emerald-fg: #059669;  --c-emerald-bg: #def7ec;
+  --c-amber-fg:   #c2750a;  --c-amber-bg:   #fdf0d6;
+  --c-slate-fg:   #475569;  --c-slate-bg:   #e7eaee;
+  --c-rose-fg:    #e11d48;  --c-rose-bg:    #ffe1e8;
+  --c-teal-fg:    #0d9488;  --c-teal-bg:    #d6f3ef;
+  --c-indigo-fg:  #4f46e5;  --c-indigo-bg:  #e6e4ff;
+  --c-pink-fg:    #db2777;  --c-pink-bg:    #ffe4f1;
+  --c-lime-fg:    #65a30d;  --c-lime-bg:    #ecfccb;
+  --c-neutral-fg: #525252;  --c-neutral-bg: #ececea;
+  --c-gold-fg:    #a16207;  --c-gold-bg:    #fef9c3;
+  --c-orange-fg:  #ea580c;  --c-orange-bg:  #ffedd5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #111111;
+    --surface:   #1c1c1d;
+    --surface-2: #232326;
+    --text:      #f0eee9;
+    --muted:     #a0a09c;
+    --line:      rgba(255,255,255,.08);
+    --accent:    #ff8c5c;
+    --accent-soft: rgba(255,140,92,.18);
+    --accent-faint: rgba(255,140,92,.55);
+    --tile-overlay: rgba(17,17,17,.55);
+
+    --c-blue-bg:    #1a233d;
+    --c-violet-bg:  #271f3e;
+    --c-emerald-bg: #133024;
+    --c-amber-bg:   #36280f;
+    --c-slate-bg:   #232a33;
+    --c-rose-bg:    #38161f;
+    --c-teal-bg:    #102b27;
+    --c-indigo-bg:  #1d1a3d;
+    --c-pink-bg:    #371525;
+    --c-lime-bg:    #1f2810;
+    --c-neutral-bg: #2a2a2a;
+    --c-gold-bg:    #3a3010;
+    --c-orange-bg:  #3b1d0a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 8px;
+  
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: calc(15px * var(--fs))/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: contain;
+  
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  
+  max-height: var(--app-h, 100dvh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+button {
+  background: none; border: none; color: inherit;
+  font: inherit; padding: 0; cursor: pointer;
+}
+
+#topbar {
+  flex: 0 0 auto;
+  
+  touch-action: none;
+  height: calc(var(--top-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+  background: rgb(246,246,244);
+  border-bottom: 1px solid var(--line);
+  
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  z-index: 30;
+}
+@media (prefers-color-scheme: dark) {
+  #topbar { background: rgb(17,17,17); }
+}
+#back-btn {
+  height: var(--top-h); padding: 0 14px;
+  font-size: calc(17px * var(--fs)); color: var(--accent);
+  display: flex; align-items: center; gap: 2px;
+  justify-self: start;
+}
+#back-btn[hidden] { display: none; }
+#page-title {
+  margin: 0; padding: 0 8px;
+  font-size: calc(16px * var(--fs)); font-weight: 600; letter-spacing: .01em;
+  text-align: center;
+  grid-column: 2;
+}
+
+body[data-active-tab="me"] #back-btn[hidden] ~ #page-title {
+  grid-column: 1 / 3;
+  text-align: left;
+  padding-left: 14px;
+}
+#topbar-extra {
+  display: flex; align-items: center;
+  padding-right: 8px;
+  justify-self: end;
+  gap: 4px;
+}
+
+.topbar-sync {
+  font-size: calc(11px * var(--fs)); color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 40vw; min-width: 0;
+}
+.icon-btn {
+  height: 36px; min-width: 36px; padding: 0 8px;
+  border-radius: var(--radius);
+  font-size: calc(18px * var(--fs));
+  color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn:active { background: var(--accent-soft); }
+
+#content {
+  position: relative;
+  
+  flex: 1 1 0;
+  min-height: 0;
+  
+  overflow-y: scroll;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  
+  padding: 8px calc(12px * var(--sp)) 24px;
+}
+
+#me-connectors,
+#session-connectors,
+#session-list-connectors {
+  position: absolute;
+  top: 0; left: 0;
+  
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.date-header {
+  margin: 14px 2px 4px;
+  font-size: calc(11px * var(--fs)); font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+}
+.date-header:first-child { margin-top: 4px; }
+
+#me-connectors + .date-header,
+#session-connectors + .date-header,
+#session-list-connectors + .date-header { margin-top: 4px; }
+
+.time-header {
+  margin: 4px 2px 2px;
+  font-size: calc(11px * var(--fs)); font-weight: 600;
+  color: var(--muted);
+  display: flex; align-items: baseline; gap: 8px;
+}
+.time-header::after {
+  content: ""; flex: 1; height: 1px; background: var(--line);
+}
+
+.time-header .th-text {
+  border-radius: 4px;
+  padding: 0;
+}
+body[data-active-tab="me"] .time-header .th-text,
+body[data-active-view="session-detail"] .time-header .th-text,
+#me-content .time-header .th-text {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-active-tab="me"] .date-header,
+body[data-active-view="session-detail"] .date-header,
+#me-content .date-header {
+  position: relative;
+  z-index: 1;
+}
+
+.bubble {
+  position: relative;
+  background: var(--c-neutral-bg);
+  border-left: calc(4px * var(--sp)) solid var(--c-neutral-fg);
+  border-radius: var(--radius);
+  
+  margin: calc(5px * var(--sp)) 0;
+  padding: calc(7px * var(--sp)) calc(50px * var(--sp)) calc(7px * var(--sp)) calc(11px * var(--sp));
+  min-height: calc(44px * var(--sp));
+  display: flex; flex-direction: column; justify-content: center;
+  cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+  transition: transform .08s ease, background .15s ease;
+}
+.bubble:active { transform: scale(.985); }
+
+.bubble.clr-blue    { background: var(--c-blue-bg);    border-left-color: var(--c-blue-fg); }
+.bubble.clr-violet  { background: var(--c-violet-bg);  border-left-color: var(--c-violet-fg); }
+.bubble.clr-emerald { background: var(--c-emerald-bg); border-left-color: var(--c-emerald-fg); }
+.bubble.clr-amber   { background: var(--c-amber-bg);   border-left-color: var(--c-amber-fg); }
+.bubble.clr-slate   { background: var(--c-slate-bg);   border-left-color: var(--c-slate-fg); }
+.bubble.clr-rose    { background: var(--c-rose-bg);    border-left-color: var(--c-rose-fg); }
+.bubble.clr-teal    { background: var(--c-teal-bg);    border-left-color: var(--c-teal-fg); }
+.bubble.clr-indigo  { background: var(--c-indigo-bg);  border-left-color: var(--c-indigo-fg); }
+.bubble.clr-pink    { background: var(--c-pink-bg);    border-left-color: var(--c-pink-fg); }
+.bubble.clr-lime    { background: var(--c-lime-bg);    border-left-color: var(--c-lime-fg); }
+.bubble.clr-gold    { background: var(--c-gold-bg);    border-left-color: var(--c-gold-fg); }
+.bubble.clr-orange  { background: var(--c-orange-bg);  border-left-color: var(--c-orange-fg); }
+
+.bubble-loc {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: calc(10.5px * var(--fs)); font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--text);
+  background: rgba(0,0,0,.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  opacity: .82;
+}
+@media (prefers-color-scheme: dark) {
+  .bubble-loc { background: rgba(255,255,255,.10); }
+}
+
+.bubble-title {
+  font-size: calc(14px * var(--fs)); line-height: 1.25; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  opacity: .92;
+}
+.bubble-sub {
+  font-size: calc(12px * var(--fs)); color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: .92;
+}
+
+.speaker {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.author-hit {
+  color: var(--text);
+}
+
+.bubble[data-kind="session"] {
+  border-left-width: calc(6px * var(--sp));
+  padding-top: calc(9px * var(--sp)); padding-bottom: calc(9px * var(--sp));
+}
+.bubble[data-kind="session"] .bubble-title {
+  font-size: calc(14.5px * var(--fs));
+}
+
+.bubble[data-kind="talk"] {
+  border-left-width: calc(3px * var(--sp));
+  padding-left: calc(14px * var(--sp));
+}
+
+body[data-active-view="schedule"]       .bubble[data-kind="talk"],
+body[data-active-view="session-detail"] .bubble[data-kind="talk"],
+#me-content                              .bubble[data-kind="talk"] {
+  
+  margin-left: calc(22px * var(--sp));
+}
+.bubble.added { box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+.bubble.partial { box-shadow: inset 0 0 0 1px var(--accent-faint); }
+
+.schedule-btn {
+  
+  --sb-d: calc(36px * var(--sp));
+  position: absolute; top: 50%; right: calc(6px * var(--sp));
+  transform: translateY(-50%);
+  width: var(--sb-d); height: var(--sb-d);
+  border-radius: 50%;
+  background: rgba(255,255,255,.55);
+  color: var(--text);
+  display: block;          
+}
+
+.schedule-btn::before,
+.schedule-btn::after {
+  content: "";
+  position: absolute; top: 50%; left: 50%;
+  background: currentColor;
+  border-radius: 1px;
+}
+.schedule-btn::before {              
+  width: calc(var(--sb-d) * 0.42); height: calc(var(--sb-d) * 0.066);
+  transform: translate(-50%, -50%);
+}
+.schedule-btn::after {               
+  width: calc(var(--sb-d) * 0.066); height: calc(var(--sb-d) * 0.42);
+  transform: translate(-50%, -50%);
+}
+
+.bubble.added .schedule-btn::after { display: none; }
+@media (prefers-color-scheme: dark) {
+  .schedule-btn { background: rgba(255,255,255,.12); }
+}
+.bubble.added .schedule-btn {
+  background: var(--accent); color: white;
+}
+.schedule-btn:active { transform: translateY(-50%) scale(.92); }
+
+.empty {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(14px * var(--fs));
+}
+
+.sync-banner {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: calc(12px * var(--fs));
+  text-align: center;
+}
+
+.me-settings {
+  margin: 24px 0 24px;
+}
+
+.me-about { margin-bottom: 32px; }
+
+.fs-control {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+}
+.fs-control .fs-btn {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  
+  height: 36px;
+  padding: 0 18px;
+  border-radius: var(--radius-base);
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  -webkit-tap-highlight-color: var(--accent-soft);
+}
+.fs-control .fs-btn svg { display: block; width: 20px; height: 20px; }
+.fs-control .fs-btn:active:not(:disabled) {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+}
+.fs-control .fs-btn:disabled { opacity: .4; cursor: default; }
+.fs-control .fs-pct {
+  flex: 0 0 auto;
+  min-width: 52px; text-align: center;
+  
+  font-size: 15px; font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notes-head > span:first-child { flex: 0 1 auto; }
+.notes-copy-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  
+  font-size: calc(11px * var(--fs));
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  -webkit-tap-highlight-color: var(--accent-soft);
+  transition: color .12s, border-color .12s, background .12s;
+}
+.notes-copy-all:hover { color: var(--text); }
+.notes-copy-all:active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.notes-copy-ico {
+  display: inline-flex;
+  font-size: calc(13px * var(--fs));   
+  line-height: 0;
+}
+.notes-copy-label { white-space: nowrap; }
+
+.me-attribution {
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(14px * var(--fs));
+  margin: 0;
+}
+
+.me-rights {
+  margin-top: 10px;
+}
+
+.me-attribution-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 2px;
+}
+.me-attribution-link:active { color: var(--accent); }
+
+.search-controls {
+  position: sticky; top: 0;
+  background: var(--bg);
+  padding: 4px 0 10px;
+  z-index: 5;
+}
+.search-controls input[type=search] {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  font-size: calc(15px * var(--fs));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  outline: none;
+}
+.search-controls input[type=search]:focus {
+  border-color: var(--accent);
+}
+
+.search-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 2px 4px;
+}
+.search-suggest:empty { display: none; }
+.search-suggest .suggest-bubble {
+  font: inherit;
+  font-size: calc(12px * var(--fs));
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: var(--accent-soft);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-suggest .suggest-bubble:hover,
+.search-suggest .suggest-bubble:active {
+  border-color: var(--accent);
+}
+
+.detail-head {
+  position: relative;
+  padding: 14px calc(56px * var(--sp)) 16px 16px;
+  border-radius: var(--radius);
+  background: var(--c-neutral-bg);
+  border-left: 4px solid var(--c-neutral-fg);
+  margin-bottom: 16px;
+}
+.detail-head.clr-blue    { background: var(--c-blue-bg);    border-left-color: var(--c-blue-fg); }
+.detail-head.clr-violet  { background: var(--c-violet-bg);  border-left-color: var(--c-violet-fg); }
+.detail-head.clr-emerald { background: var(--c-emerald-bg); border-left-color: var(--c-emerald-fg); }
+.detail-head.clr-amber   { background: var(--c-amber-bg);   border-left-color: var(--c-amber-fg); }
+.detail-head.clr-slate   { background: var(--c-slate-bg);   border-left-color: var(--c-slate-fg); }
+.detail-head.clr-rose    { background: var(--c-rose-bg);    border-left-color: var(--c-rose-fg); }
+.detail-head.clr-teal    { background: var(--c-teal-bg);    border-left-color: var(--c-teal-fg); }
+.detail-head.clr-indigo  { background: var(--c-indigo-bg);  border-left-color: var(--c-indigo-fg); }
+.detail-head.clr-pink    { background: var(--c-pink-bg);    border-left-color: var(--c-pink-fg); }
+.detail-head.clr-lime    { background: var(--c-lime-bg);    border-left-color: var(--c-lime-fg); }
+.detail-head.clr-gold    { background: var(--c-gold-bg);    border-left-color: var(--c-gold-fg); }
+.detail-head.clr-orange  { background: var(--c-orange-bg);  border-left-color: var(--c-orange-fg); }
+
+.dh-id-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: calc(11px * var(--fs)); font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--text);
+  opacity: .9;
+  margin-right: 2px;
+}
+.dh-title {
+  margin: 0 0 6px;
+  font-size: calc(18px * var(--fs)); line-height: 1.3; font-weight: 700;
+}
+.dh-meta {
+  font-size: calc(12.5px * var(--fs)); color: var(--muted);
+  margin-top: 2px;
+}
+.dh-meta strong { color: var(--text); font-weight: 600; }
+.dh-add {
+  
+  --dh-d: calc(38px * var(--sp));
+  position: absolute; top: calc(12px * var(--sp)); right: calc(12px * var(--sp));
+  width: var(--dh-d); height: var(--dh-d);
+  border-radius: 50%;
+  background: rgba(255,255,255,.55);
+  color: var(--text);
+  display: block;
+}
+.dh-add::before,
+.dh-add::after {
+  content: "";
+  position: absolute; top: 50%; left: 50%;
+  background: currentColor;
+  border-radius: 1px;
+}
+.dh-add::before {                    
+  width: calc(var(--dh-d) * 0.42); height: calc(var(--dh-d) * 0.066);
+  transform: translate(-50%, -50%);
+}
+.dh-add::after {                     
+  width: calc(var(--dh-d) * 0.066); height: calc(var(--dh-d) * 0.42);
+  transform: translate(-50%, -50%);
+}
+.dh-add.added::after { display: none; }   
+@media (prefers-color-scheme: dark) {
+  .dh-add { background: rgba(255,255,255,.14); }
+}
+.dh-add.added { background: var(--accent); color: white; }
+.dh-add:active { transform: scale(.92); }
+
+.section-title {
+  font-size: calc(11px * var(--fs)); font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+  margin: 18px 2px 6px;
+}
+
+body[data-active-view="session-detail"] .detail-head {
+  margin-bottom: 6px;
+}
+
+.session-expansion {
+  margin: 0 0 calc(5px * var(--sp)) 0;
+  padding-left: calc(22px * var(--sp));
+  position: relative;
+}
+
+.author-line {
+  font-size: calc(14px * var(--fs)); line-height: 1.55;
+  margin: 0 2px;
+}
+.author-line .aff {
+  font-size: calc(9.5px * var(--fs)); font-weight: 600;
+  color: var(--muted);
+  margin-left: 1px;
+  letter-spacing: .01em;
+}
+
+.author-name.clickable,
+.presider-name.clickable,
+.presider-aff.clickable {
+  cursor: pointer;
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 2px;
+  -webkit-tap-highlight-color: var(--accent-soft);
+}
+.author-name.clickable:hover,
+.author-name.clickable:active,
+.presider-name.clickable:hover,
+.presider-name.clickable:active,
+.presider-aff.clickable:hover,
+.presider-aff.clickable:active {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.author-name.speaker {
+  text-decoration: underline solid var(--text);
+  text-decoration-thickness: 1.5px;
+}
+.author-name.speaker:hover,
+.author-name.speaker:active {
+  text-decoration-color: var(--accent);
+}
+
+.click-search-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 2px 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.click-search-banner .csb-kind {
+  font-size: calc(11px * var(--fs));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.click-search-banner .csb-query {
+  font-size: calc(15px * var(--fs));
+  font-weight: 600;
+  color: var(--text);
+}
+
+.inst-list {
+  margin: 0;
+  padding-left: 22px;
+  list-style-position: outside;
+}
+.inst-list li {
+  font-size: calc(13px * var(--fs));
+  line-height: 1.45;
+  color: var(--text);
+  padding: 3px 0;
+}
+.inst-list li::marker {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.inst-list li.clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  -webkit-tap-highlight-color: var(--accent-soft);
+}
+.inst-list li.clickable:hover,
+.inst-list li.clickable:active {
+  background: var(--accent-soft);
+}
+.inst-list .inst-short {
+  display: inline-block;
+  font-size: calc(11px * var(--fs));
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+
+.abstract-body {
+  font-size: calc(14px * var(--fs)); line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.notes-section { margin-top: 18px; }
+
+.section-title.notes-title--bright {
+  position: relative;
+  z-index: 1;
+}
+.notes-textarea {
+  display: block;
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: calc(14px * var(--fs));
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  resize: none;            
+  outline: none;
+  -webkit-user-select: text; user-select: text;
+  box-sizing: border-box;
+  transition: border-color .15s ease, background .15s ease;
+}
+.notes-textarea::placeholder { color: var(--muted); opacity: .75; }
+.notes-textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.notes-textarea--tall { min-height: 104px; }
+
+#scroll-indicator {
+  
+  flex: 0 0 auto;
+  height: var(--ind-h);
+  display: none;
+  align-items: center; justify-content: flex-start;
+  padding: 0 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  
+  font-size: calc(13px * var(--fs)); font-weight: 600;
+  color: var(--text);
+  z-index: 28;
+  -webkit-user-select: none; user-select: none;
+}
+#scroll-indicator .sep {
+  color: var(--muted);
+  margin: 0 8px;
+}
+
+#scroll-indicator .ind-hint {
+  margin-left: auto;
+  font-size: calc(11px * var(--fs)); font-weight: 600;
+  color: var(--muted);
+  opacity: .8;
+  white-space: nowrap;
+}
+@media (max-width: 360px) {
+  #scroll-indicator .ind-hint { display: none; }
+}
+body.has-indicator #scroll-indicator { display: flex; }
+
+.types-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  margin-left: 4px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: calc(13px * var(--fs));
+}
+.types-toggle:active { background: var(--accent-soft); }
+
+.dr-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  margin-left: 4px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: calc(13px * var(--fs));
+  background: transparent;
+}
+.dr-toggle:active     { background: var(--accent-soft); }
+.dr-toggle.active     { color: var(--accent); }
+.dr-toggle.active #dr-arrow { color: var(--accent); }
+
+.dr-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.dr-day {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 6px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.dr-day:active { background: var(--accent-soft); }
+.dr-day.selected {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.dr-day-dow {
+  font-size: calc(11px * var(--fs));
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .85;
+}
+.dr-day-num {
+  font-size: calc(14px * var(--fs));
+  font-weight: 500;
+}
+#types-panel {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(var(--tab-h) + var(--safe-bottom) + var(--bot-h));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgba(0,0,0,.08);
+  max-height: 55vh;
+  overflow-y: auto;
+  z-index: 19;
+  
+  display: none;
+  padding: 8px 12px 12px;
+}
+#types-panel.open {
+  display: block;
+  animation: types-slide-up .22s ease;
+}
+@keyframes types-slide-up {
+  from { transform: translateY(110%); }
+  to   { transform: translateY(0); }
+}
+.types-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: calc(14px * var(--fs));
+  cursor: pointer;
+}
+.types-row:last-child { border-bottom: none; }
+.types-row .swatch {
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  flex: 0 0 14px;
+  border: 1px solid rgba(0,0,0,.1);
+}
+.types-row .label { flex: 1; }
+.types-row .count { color: var(--muted); font-size: calc(12px * var(--fs)); }
+.types-row input[type=checkbox] {
+  width: 18px; height: 18px;
+  accent-color: var(--accent);
+  flex: 0 0 18px;
+}
+.types-row.off { opacity: .55; }
+
+#bottom-controls {
+  flex: 0 0 auto;
+  touch-action: none;   
+  height: var(--bot-h);
+  background: rgb(246,246,244);
+  border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(13px * var(--fs)); color: var(--muted);
+  z-index: 20;
+}
+@media (prefers-color-scheme: dark) {
+  #bottom-controls { background: rgb(17,17,17); }
+}
+#bottom-controls[hidden] { display: none !important; }
+#bottom-controls label {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+#show-me-label { margin-right: 2px; white-space: nowrap; }
+
+#bottom-controls.compact #show-me-label { display: none; }
+#bottom-controls input[type=checkbox] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+}
+
+#tabbar {
+  flex: 0 0 auto;
+  touch-action: none;   
+  height: calc(var(--tab-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  z-index: 25;
+}
+.tab-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  font-size: calc(11px * var(--fs));
+  color: var(--muted);
+  height: 100%;
+}
+.tab-btn .glyph {
+  font-size: calc(19px * var(--fs)); line-height: 1;
+}
+.tab-btn.active { color: var(--accent); }
+.tab-btn:active { background: var(--accent-soft); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--tab-h) + var(--safe-bottom) + var(--bot-h) + 16px);
+  transform: translate(-50%, 10px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: calc(13px * var(--fs));
+  opacity: 0;
+  transition: opacity .25s ease, transform .25s ease;
+  z-index: 100;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+.toast.show {
+  opacity: .96;
+  transform: translate(-50%, 0);
+}
+
+.sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 110;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+  animation: sheet-fade .15s ease;
+}
+@media (min-width: 520px) {
+  .sheet-overlay { align-items: center; }
+}
+@keyframes sheet-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sheet-rise {
+  from { transform: translateY(20px); opacity: .6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.sheet-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.32);
+  animation: sheet-rise .18s ease;
+}
+.sheet-title {
+  font-size: calc(16px * var(--fs)); font-weight: 700; margin: 0 0 4px;
+}
+.sheet-hint {
+  font-size: calc(13px * var(--fs)); color: var(--muted); margin: 0 0 10px;
+}
+.sheet-textarea {
+  width: 100%; min-height: 90px;
+  padding: 10px 12px;
+  font: calc(12px * var(--fs))/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  resize: none;
+  -webkit-user-select: text; user-select: text;
+  word-break: break-all;
+}
+.sheet-textarea:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sheet-btns {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 12px;
+}
+.sheet-btn {
+  height: 38px; padding: 0 16px;
+  border-radius: var(--radius);
+  font: 600 14px inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.sheet-btn-cancel { color: var(--muted); }
+.sheet-btn-cancel:active { background: var(--surface-2); }
+.sheet-btn-primary { background: var(--accent); color: #fff; }
+.sheet-btn-primary:active { filter: brightness(.92); }
+
+:root {
+  
+  --me-w: 33.3333vw;
+  
+  --me-grip: 10px;
+}
+
+@media (min-width: 900px) and (orientation: landscape) {
+  
+  #topbar {
+    position: fixed; top: 0; left: 0;
+  }
+  #scroll-indicator {
+    position: fixed; top: calc(var(--top-h) + var(--safe-top)); left: 0;
+  }
+  #tabbar {
+    position: fixed; bottom: 0; left: 0;
+  }
+
+  #topbar,
+  #scroll-indicator,
+  #types-panel { right: var(--me-w); }
+
+  #tabbar {
+    right: var(--me-w);
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  #tabbar .tab-btn[data-tab="me"] { display: none; }
+
+  #bottom-controls {
+    position: fixed;
+    bottom: calc(var(--tab-h) + var(--safe-bottom));
+    left: 0; right: 0;
+    z-index: 26;
+  }
+
+  body { padding-right: var(--me-w); }
+
+  body {
+    
+    position: static;
+    display: block;
+    height: auto;
+    inset: auto;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;            
+  }
+  #content {
+    position: fixed;
+    top: calc(var(--top-h) + var(--safe-top));
+    left: 0;
+    right: var(--me-w);          
+    bottom: calc(var(--bot-h) + var(--tab-h) + var(--safe-bottom));
+    overflow-y: auto;
+    overflow-x: hidden;
+    
+    min-height: 0;
+  }
+  
+  body.has-indicator #content {
+    top: calc(var(--top-h) + var(--safe-top) + var(--ind-h));
+  }
+
+  #me-pane {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: var(--me-w);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border-left: 1px solid var(--line);
+    z-index: 24;
+  }
+
+  #me-pane-header {
+    flex: 0 0 auto;
+    height: calc(var(--top-h) + var(--safe-top));
+    padding-top: var(--safe-top);
+    padding-left: 14px; padding-right: 8px;
+    display: flex; align-items: center; gap: 8px;
+    background: rgb(246,246,244);
+    border-bottom: 1px solid var(--line);
+  }
+  #me-pane-header .me-pane-title {
+    flex: 0 0 auto;
+    font-size: calc(16px * var(--fs)); font-weight: 600; letter-spacing: .01em;
+  }
+  
+  #me-pane-header .me-pane-sync {
+    flex: 1 1 auto;
+    text-align: right;
+    font-size: calc(11px * var(--fs)); color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0;
+  }
+  #me-pane-header .me-pane-extra {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  #me-scroll-indicator {
+    flex: 0 0 auto;
+    height: var(--ind-h);
+    display: none;
+    align-items: center; justify-content: flex-start;
+    padding: 0 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    font-size: calc(13px * var(--fs)); font-weight: 600;
+    color: var(--text);
+    -webkit-user-select: none; user-select: none;
+  }
+  #me-scroll-indicator .sep { color: var(--muted); margin: 0 8px; }
+  body.has-me-indicator #me-scroll-indicator { display: flex; }
+
+  #me-resizer {
+    position: absolute;
+    top: 0; bottom: 0; left: calc(var(--me-grip) / -2);
+    width: var(--me-grip);
+    cursor: col-resize;
+    z-index: 27;
+    touch-action: none;
+  }
+  #me-resizer::before {
+    content: "";
+    position: absolute; top: 0; bottom: 0; left: 50%;
+    width: 1px; transform: translateX(-.5px);
+    background: var(--line);
+  }
+  #me-resizer:hover::before,
+  body.me-resizing #me-resizer::before {
+    background: var(--accent-faint);
+    width: 2px;
+  }
+  body.me-resizing { cursor: col-resize; -webkit-user-select: none; user-select: none; }
+
+  #me-content {
+    position: relative;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 12px calc(var(--bot-h) + var(--tab-h) + var(--safe-bottom) + 16px);
+  }
+
+  #me-tabbar {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: calc(var(--tab-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 1fr;
+    z-index: 25;
+  }
+}
+@media (prefers-color-scheme: dark) and (min-width: 900px) and (orientation: landscape) {
+  #me-pane-header { background: rgb(17,17,17); }
+}
+
+@media (max-width: 899.98px), (orientation: portrait) {
+  #me-pane { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <button id="back-btn" hidden>‹&nbsp;Back</button>
+  <h1 id="page-title">Sessions</h1>
+  <div id="topbar-extra"></div>
+</header>
+<div id="scroll-indicator" aria-hidden="true"></div>
+
+<main id="content"></main>
+
+<footer id="bottom-controls">
+  <label><span id="show-me-label">Show me:</span><input type="checkbox" id="show-past"> Concluded</label>
+  <button id="date-range-toggle" class="dr-toggle" type="button">
+    <span id="dr-label">Days</span><span id="dr-arrow">▾</span>
+  </button>
+  <button id="types-toggle" class="types-toggle" type="button">
+    <span>Types</span><span id="types-toggle-arrow">▾</span>
+  </button>
+</footer>
+
+<div id="types-panel"></div>
+
+<nav id="tabbar">
+  <button class="tab-btn" data-tab="sessions"><span class="glyph">▦</span><span>Sessions</span></button>
+  <button class="tab-btn" data-tab="talks"><span class="glyph">▤</span><span>Talks</span></button>
+  <button class="tab-btn" data-tab="search"><span class="glyph">⌕</span><span>Search</span></button>
+  <button class="tab-btn" data-tab="me"><span class="glyph">★</span><span>Me</span></button>
+</nav>
+
+<aside id="me-pane" aria-label="My Schedule">
+  <div id="me-resizer" role="separator" aria-orientation="vertical"
+       aria-label="Resize My Schedule pane" title="Drag to resize"></div>
+  <div id="me-pane-header">
+    <span class="me-pane-title">My Schedule</span>
+    <span id="me-pane-sync" class="me-pane-sync"></span>
+    <span class="me-pane-extra" id="me-pane-extra"></span>
+  </div>
+  <div id="me-scroll-indicator" aria-hidden="true"></div>
+  <div id="me-content"></div>
+  <nav id="me-tabbar">
+    <button class="tab-btn active" data-tab="me"><span class="glyph">★</span><span>Me</span></button>
+  </nav>
+</aside>
+
+<script>
+/*! tiny-inflate (raw DEFLATE decompressor) | MIT License | Copyright (c) 2015-present Devon Govett | https://github.com/foliojs/tiny-inflate
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+const __tinf_uncompress = (function () {
+var TINF_OK = 0;
+var TINF_DATA_ERROR = -3;
+
+function Tree() {
+  this.table = new Uint16Array(16);   
+  this.trans = new Uint16Array(288);  
+}
+
+function Data(source, dest) {
+  this.source = source;
+  this.sourceIndex = 0;
+  this.tag = 0;
+  this.bitcount = 0;
+  
+  this.dest = dest;
+  this.destLen = 0;
+  
+  this.ltree = new Tree();  
+  this.dtree = new Tree();  
+}
+
+var sltree = new Tree();
+var sdtree = new Tree();
+
+var length_bits = new Uint8Array(30);
+var length_base = new Uint16Array(30);
+
+var dist_bits = new Uint8Array(30);
+var dist_base = new Uint16Array(30);
+
+var clcidx = new Uint8Array([
+  16, 17, 18, 0, 8, 7, 9, 6,
+  10, 5, 11, 4, 12, 3, 13, 2,
+  14, 1, 15
+]);
+
+var code_tree = new Tree();
+var lengths = new Uint8Array(288 + 32);
+
+function tinf_build_bits_base(bits, base, delta, first) {
+  var i, sum;
+
+  for (i = 0; i < delta; ++i) bits[i] = 0;
+  for (i = 0; i < 30 - delta; ++i) bits[i + delta] = i / delta | 0;
+
+  for (sum = first, i = 0; i < 30; ++i) {
+    base[i] = sum;
+    sum += 1 << bits[i];
+  }
+}
+
+function tinf_build_fixed_trees(lt, dt) {
+  var i;
+
+  for (i = 0; i < 7; ++i) lt.table[i] = 0;
+
+  lt.table[7] = 24;
+  lt.table[8] = 152;
+  lt.table[9] = 112;
+
+  for (i = 0; i < 24; ++i) lt.trans[i] = 256 + i;
+  for (i = 0; i < 144; ++i) lt.trans[24 + i] = i;
+  for (i = 0; i < 8; ++i) lt.trans[24 + 144 + i] = 280 + i;
+  for (i = 0; i < 112; ++i) lt.trans[24 + 144 + 8 + i] = 144 + i;
+
+  for (i = 0; i < 5; ++i) dt.table[i] = 0;
+
+  dt.table[5] = 32;
+
+  for (i = 0; i < 32; ++i) dt.trans[i] = i;
+}
+
+var offs = new Uint16Array(16);
+
+function tinf_build_tree(t, lengths, off, num) {
+  var i, sum;
+
+  for (i = 0; i < 16; ++i) t.table[i] = 0;
+
+  for (i = 0; i < num; ++i) t.table[lengths[off + i]]++;
+
+  t.table[0] = 0;
+
+  for (sum = 0, i = 0; i < 16; ++i) {
+    offs[i] = sum;
+    sum += t.table[i];
+  }
+
+  for (i = 0; i < num; ++i) {
+    if (lengths[off + i]) t.trans[offs[lengths[off + i]]++] = i;
+  }
+}
+
+function tinf_getbit(d) {
+  
+  if (!d.bitcount--) {
+    
+    d.tag = d.source[d.sourceIndex++];
+    d.bitcount = 7;
+  }
+
+  var bit = d.tag & 1;
+  d.tag >>>= 1;
+
+  return bit;
+}
+
+function tinf_read_bits(d, num, base) {
+  if (!num)
+    return base;
+
+  while (d.bitcount < 24) {
+    d.tag |= d.source[d.sourceIndex++] << d.bitcount;
+    d.bitcount += 8;
+  }
+
+  var val = d.tag & (0xffff >>> (16 - num));
+  d.tag >>>= num;
+  d.bitcount -= num;
+  return val + base;
+}
+
+function tinf_decode_symbol(d, t) {
+  while (d.bitcount < 24) {
+    d.tag |= d.source[d.sourceIndex++] << d.bitcount;
+    d.bitcount += 8;
+  }
+  
+  var sum = 0, cur = 0, len = 0;
+  var tag = d.tag;
+
+  do {
+    cur = 2 * cur + (tag & 1);
+    tag >>>= 1;
+    ++len;
+
+    sum += t.table[len];
+    cur -= t.table[len];
+  } while (cur >= 0);
+  
+  d.tag = tag;
+  d.bitcount -= len;
+
+  return t.trans[sum + cur];
+}
+
+function tinf_decode_trees(d, lt, dt) {
+  var hlit, hdist, hclen;
+  var i, num, length;
+
+  hlit = tinf_read_bits(d, 5, 257);
+
+  hdist = tinf_read_bits(d, 5, 1);
+
+  hclen = tinf_read_bits(d, 4, 4);
+
+  for (i = 0; i < 19; ++i) lengths[i] = 0;
+
+  for (i = 0; i < hclen; ++i) {
+    
+    var clen = tinf_read_bits(d, 3, 0);
+    lengths[clcidx[i]] = clen;
+  }
+
+  tinf_build_tree(code_tree, lengths, 0, 19);
+
+  for (num = 0; num < hlit + hdist;) {
+    var sym = tinf_decode_symbol(d, code_tree);
+
+    switch (sym) {
+      case 16:
+        
+        var prev = lengths[num - 1];
+        for (length = tinf_read_bits(d, 2, 3); length; --length) {
+          lengths[num++] = prev;
+        }
+        break;
+      case 17:
+        
+        for (length = tinf_read_bits(d, 3, 3); length; --length) {
+          lengths[num++] = 0;
+        }
+        break;
+      case 18:
+        
+        for (length = tinf_read_bits(d, 7, 11); length; --length) {
+          lengths[num++] = 0;
+        }
+        break;
+      default:
+        
+        lengths[num++] = sym;
+        break;
+    }
+  }
+
+  tinf_build_tree(lt, lengths, 0, hlit);
+  tinf_build_tree(dt, lengths, hlit, hdist);
+}
+
+function tinf_inflate_block_data(d, lt, dt) {
+  while (1) {
+    var sym = tinf_decode_symbol(d, lt);
+
+    if (sym === 256) {
+      return TINF_OK;
+    }
+
+    if (sym < 256) {
+      d.dest[d.destLen++] = sym;
+    } else {
+      var length, dist, offs;
+      var i;
+
+      sym -= 257;
+
+      length = tinf_read_bits(d, length_bits[sym], length_base[sym]);
+
+      dist = tinf_decode_symbol(d, dt);
+
+      offs = d.destLen - tinf_read_bits(d, dist_bits[dist], dist_base[dist]);
+
+      for (i = offs; i < offs + length; ++i) {
+        d.dest[d.destLen++] = d.dest[i];
+      }
+    }
+  }
+}
+
+function tinf_inflate_uncompressed_block(d) {
+  var length, invlength;
+  var i;
+
+  while (d.bitcount > 8) {
+    d.sourceIndex--;
+    d.bitcount -= 8;
+  }
+
+  length = d.source[d.sourceIndex + 1];
+  length = 256 * length + d.source[d.sourceIndex];
+
+  invlength = d.source[d.sourceIndex + 3];
+  invlength = 256 * invlength + d.source[d.sourceIndex + 2];
+
+  if (length !== (~invlength & 0x0000ffff))
+    return TINF_DATA_ERROR;
+
+  d.sourceIndex += 4;
+
+  for (i = length; i; --i)
+    d.dest[d.destLen++] = d.source[d.sourceIndex++];
+
+  d.bitcount = 0;
+
+  return TINF_OK;
+}
+
+function tinf_uncompress(source, dest) {
+  var d = new Data(source, dest);
+  var bfinal, btype, res;
+
+  do {
+    
+    bfinal = tinf_getbit(d);
+
+    btype = tinf_read_bits(d, 2, 0);
+
+    switch (btype) {
+      case 0:
+        
+        res = tinf_inflate_uncompressed_block(d);
+        break;
+      case 1:
+        
+        res = tinf_inflate_block_data(d, sltree, sdtree);
+        break;
+      case 2:
+        
+        tinf_decode_trees(d, d.ltree, d.dtree);
+        res = tinf_inflate_block_data(d, d.ltree, d.dtree);
+        break;
+      default:
+        res = TINF_DATA_ERROR;
+    }
+
+    if (res !== TINF_OK)
+      throw new Error('Data error');
+
+  } while (!bfinal);
+
+  if (d.destLen < d.dest.length) {
+    if (typeof d.dest.slice === 'function')
+      return d.dest.slice(0, d.destLen);
+    else
+      return d.dest.subarray(0, d.destLen);
+  }
+  
+  return d.dest;
+}
+
+tinf_build_fixed_trees(sltree, sdtree);
+
+tinf_build_bits_base(length_bits, length_base, 4, 3);
+tinf_build_bits_base(dist_bits, dist_base, 2, 1);
+
+length_bits[28] = 0;
+length_base[28] = 258;
+
+return tinf_uncompress;
+
+})();
+
+function __decodeData(b64, origLen) {
+  const bin = atob(b64);
+  const src = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) src[i] = bin.charCodeAt(i);
+  const dest = new Uint8Array(origLen);
+  __tinf_uncompress(src, dest);
+  return JSON.parse(new TextDecoder("utf-8").decode(dest));
+}
+
+const DATA = __decodeData("1X3LciM3l+arIGozdkylrUpKKndtJkjq6tKtRFbptzv+cIAkJMLKTPDPi6pYHR3R7zDzArObXsyyezWr9n4eop9kzgHyAiBBCqSSrn8iHLbFc5IXfMDBuZ9/ejUVyT1LWTJlvyU0Zq/evToenl+TcC88fPX6VcayjIske/XuH//pFZ8BdRRkRRJkeTFjSR58FuljNhcLYM15HuHjI0Uidw1pKiKRAkmkNHlgyLtc6KzHT/Bv/LScpvlvOXzaK/z8YO8weLM/ftN7t7cH/wADS2Zt8uG7XknOafT4G5/ht/3r61eRmNIcvjywn52Sk94e+e4mYglNl6RfzHguUl7E38Nji5RlfMbS3+j9/W/wldMcHrFezyrCP/71n18bSzGBtZsHuQgmRcYTWC9tLQZII7kgg5JGRst4ITL44HXLovGsWJKD+jf/PS7Jgn/9SrVluGI5bhSePJAbJJEjniQsXbcEYspp9NzGeLt+Y/zD86vwiSUFQ4AmjNAkEQWcg9mLfn8skkAsWAI/VluBa/UKGcJRA47lmp+usbh+9sF476c1P1uSYXt8G/Dxx1++6Ws//Dhi0zwVwfUi51NyKWZFROGTMm0BJlGh/fwxm84TPgXwR0r2rFuH3pp1eLPnWofmSwbjvTdA0/8Orb971t/71t8H1t+H1t9vX7WXHT8zFws+hb/VUr10uQfacl/whznI05jnOfs7WOSBtcgDa5EH1iIPrEUeyEVuLeLxmx/MZRx0sIxDbRlv5iIXsEDkiD3xKcvIvUjJh4ImeRGT82++rENrWYfWsg6tZR1ayzq09u5Q7l3XMofGMg9fvsyhLhwuaAa7lJyT78x9+30HKwxLuH+wZoVD1+XQfEtzhUNLOoSWdAgt6RBa0iHsu1fYlAZhB9Ig1KXBTSoeUhrHdBIxUu1ptZnPE/h3LL8KAbYprqa8sb7tulsCI7QERmgJjNASGOHAWvfByp1trnwHAiT0FyDn33ydLQkSWhIktCRIaEmQ0JIgoacECTuQID2XBOlkRXvrZfLBOpncsyRGz5IYPUti9CyJ0bMkRs/SJ3pe+kSvAwnS0yXICBZOSo/zJGcgS3I2swTJUMRxgQuM3ykDJXpG+udg5mQ5i7NvjoolT3qWPOlZ8qRnyZOepwLS60B+9DaQH99+u1sCpGcJkJ4lQHqWAOlZAqTnKUB6LxcgYFqDjhFMIp5/Dd4Eb/RVlyQyQBJREFerTOOJNFjLZdY5V6/wwbvwYO0K7/tY6W+6/snh6p8cvvwn76/fVAcetml5vDr50Tq+Q3F/zxj5r6T8LeURIc8D/exhan6Y83cfPv+7T8QSrzKekPtUJDkR96Rtnr94VXgyK7I8XRrrcl6+SMbw5bJ1y2Fyrl6Ow/XL8da1HK1vaIgY4+XQ/XLP/fK+++UD98uH7pdX3b0dwRGuhiP8+4AjdMMRuuEI3XCEbjhCNxyhG47QDUc3UkMdOfNaKI+hS1w8cRGxXJMXinc1FD+921sHxU/vDlaq7fV3k0j8eR69zyyaiphpK3KnXiG3bMoWuRKML3DlGr/btSzh3vOuXIf8rAC7FULqotsvQ16wYGw4NvuzJ4rO4kYdfrFOdrjeLXS42i1Ufr36hDZ/h9bfPevvfevvg2dMjPELXZbqkwZGcOBLHpyyhKXKG6FZGlew+S54wmj6d7TKA2uVB9YqD6xVHlir3Lgomr+fd1GMX+jjVJ+lmxgDLoLGlEO7bcSSTpxAL13hobXCQ2uFh9YKD60VHq402kJjRYcvX1HDnXnEcjbtJLhxuN69c7javVN+K3MFQ0sShJYkCC1JEHpJgrADSWC4K+G4R+q0y2jRt19G66iH1lEPraMeWkc9tI66pzdyHHZw1A1v5CWLU57l/En3AuOJv2JFKmKRLuZ82qmIfdm6WwIgtARAaAmA0BIAmney+ft558I4fLlAuNP1xrvr2/ejs+sb8uYdKeOgsHr/+S//vfbuVHcdfKV35A5AmBO5xrD6D0tyx6OIXDA6I/mckTu6/G8aMiyGCzOaNeBo+RYrMOmtF8oH78KVmNy9MSC5e2MgcqeMr64NJPnWoWtBw2q1KpdYs2r/+S//o15ekZLbE3jhjGZyCW9EDkooaqMyJYNHM0LrtxiKeFGArf8NFzk0Fzk0Fzk0dv2dMqW6t4LwzQ2HUbjaRxa+0Ed2uD6T5RAt173d+8gcPzlc/ZPDv4uf3CXOoYePLHyhj8z4Yc7f/fb53717HxmuSu1o6K1yytSr0nuHOS0sAr3l4TU5gnd/SJQu3QqAbOO6OVzvujlc7boxf4chV4yXQ/fLuxHmlQMjXONcCbd2rhyuTwiT5P2Vi1V/tz/RuYKfO+X5MshFkWpr8muR4uU2BBIZK9ILvCuH0um0bl3+4fmTd8lYTmhOnjBh7sU/+oFGen7gKfzZSU6g8VtcPzXsefzUEbkBlYCS2znjL/qpn9kMdCPdRLyjT+yhgKeU/n2Kul/y8HKN++16k/vtapO7/I61hGj+Dq2/e9bf+9bfB9bfh9bfz0Wv717oWlKfNDBkdu1KGp99JZqTCRdfmeum8/LbrP7AWv2BtfoDa/UH1uoPrNX3szPvXuhSkp9lOEBO6CQtMwHgXqY5phh1sbfXWpNvV1uT5Tc0Vze09nZo7e3Q2tuhtbdDa2+HXns77GBvG86Sk5T9rWDJdImGy0QlCMAm/+arbe3l0NrLobWXS5/Js3s17GKv6j6RYzDtHmRGerVR5RLWbv0h6JepiFDFlMmJ33xhh9bCDq2FHVoLO7S28dDaxn5OkbsXOkXkZxkpW9bG7WJde+uF78E64duzxEPPEg89Szz0LPHQs8RDzyfV867XgTgwErWuk2A65wt5z43ACIFl6zCt86VrbAmFniUUepZQ6FkXXM+64HqeF1zv5UJjGonMLOUYqlc6KOV4uz5D6O2flCGEPzOik8xIq5xIw0NpqegZo8mSfOIZz7M1v/c6n0sNfsWPPVwv/n56XjU/Hp8RZRxt8Yv/qt7YqGUza0HKarffVlaz9MHaT0TE8zkemmipBytvGZbS8YcilQmTIx7xKepBlTNyRSWMvHU+sTSD3xix1+QMLptgtGDwjpITzqaRYqkt/4Injx1UGGQLRh8ZvuEvokjgTiTvedy8/ttCwLN7r1/d8zTLf6NFPhdt5oiupqmX1bqXNYYmA0+yPKswwj8UaiX+1fcAOBXA6rPUX+3io1K0eGD55odDMp7w/MeMnF8eHZG7o0syhi2dqTIEAuiN5zwJTngUgxIAoKOnGU1DQI7tEojRnD/RRUozOiMfY5bNyVkRLWn0PCprnjQhWsPowGsNd9fg9XzAk6fkhqWyiAH0NXJJp/PgVzZP4OBrh+ujFNVnS7BLZnq0BdW682SGgMIBzRZzEBiId3lqd4ntAN6IDGj2PJYap4mdRnBgpVG7xmbfGxslwQZF9AjrfAOLTDOmlf+ROzhO5EJ8Jp9ElNMHRi5Y8gAvgdIyK6bSs7v3Q3hInn6YxrtEox9x8p5SQL5IEpZPuXiIiuehWfWYidMqLgdoq1i7RvDAB8Hmklt5a8H+AnzxxIiowBMVHLGUPyHmdMyve+Q4wWtwRiZLckUTweNFyhN0dklJinVJi/lyl8h+4mjfcUpOaARHmj0PquMJE08HgwNKB1fXKB76oPgxylMaSOUNDtTx/T2fclltvwJSJStP+ISlwZh9yYsUs9sm3/2avh7z7wFSVTfWrgPZJYrvxYSRI0ZOGcvy5yG02U38bKoDPJula+TebihBr4MBquAoQ/UrLqhh2+Xi/yzmFKRRRo4Xi4g/v/otfnP5W2TH+rd4ugRgsE7PN6xpteoY2gsuxPQRgJCVZkpFuCJPcLov+RQOkdQX74FyU4q3XeJxJJKHiSB3VH7MM2CYzCYSJs0Bg8nQNQahDwbogONJIYoM7KxxIa8TEv7wlvzHv8XklI4mP45472q/Uu4UPkqGURm8DtQddTS4VVilSLplmUh2fW5u2ewzXOXnWUQ9DCmL20TKIjqgsji6xqrng9UlnwXnt+S+du1NRTx5Ryqn1KKIQPt70MIvOfmJ/N//E5PP9IlFSvMrJHQjfsrIok5SW5TOWQ0tDmr7g+j2XLEILIAErYg05RkIV9grHvJu5XPWaVvF5jp4q3i7xnXfB1fttk8N98ZrAofuYZ7jfwWdTaS0VJsgqbM4M1GkU5btFrvhXKY2wgk4TXmk0gWegc31iImYi8MBlouta5wOfHAa1CDcUrCHSVkWXSvpUqH4UPukrnieosGrxGIlEXeqx/3Cya9z5nNvaZyWU6khuDxKDbVLCIbrVAYjnpROeBEHM7GAJc/KhU7A8lk41OQdnIN+MksZzeCC44C9csM+Y8O2n7DM1zaDy3Jtc3UNQOgDwHnyBCo7f5AZFXLHlxYKGYoCzJ5bEGMydazOwQg08Ta6Gt0cZbtV3mKQ5I9kwDNP/c3it1U4i+zU4iyeroHp+QHTMhmbfF1e1rZf0PSBBdhugJFzdLymdLFTOEZwMDkjQ/pEMXvP47Z3PGG5VNsMLldqm6trWPZ9YOnrpVavyRXoG+Iz3iGYxzgVacoiDTNyQ3lKRvJGl4A1/gQtgboJU6CKNwbVDhRBeeCUkrdTRH+mGWx3+I5x7CP+bHbLVrWoLlPVYukaxQMfFLWcJnFPmtj6cZLDkY9YLFsxorMV1ALADDOenliN2UzkQS0PSf65KglDhhm+r6pRSOl017GnK7gwYUkI5hB5+OpsdhM9m+pAz2bpGr1DH/S+u/weNOZWOQimn/B0WvBc0+HOk5t3ZAjmVCklL/jfALSqaE8GaitU++g7KTuy7DSUAcYJmJ1PcNsmj+LJI6LResAKbLTorvhGi6lD7MJ1sWAj2e2WpiwAMweOFp4+pfjRGFb+npdJ6lhz0o/C694Wdqx/fyf9TkO38ylNp3/8b0oGEU2mwudecz5l321OJuf95uTsGqPQB6M+Kd3frzHWFFwJUFHJmz1yeva1dBjJMAWeH8QKS5GJKVHrs9lO6F97nLaCj6YUA6sYfPaAzeS24DKJLphMjq7h6fnAc0fvWVqKs0uaFPeAVCHddLDyKnxRW7ZlZsSN+IyoKWPrSJ45TWoqu3eXGP2FJ2lBfvZQFzVOExuN4MBFo3aNyb4PJqWPILhOHyju+9K9agaNjr/ArsEcM9BisUhh9+v+K52nFC9DnnqsvcVtrr9FdGBgcXSNw4EPDnK3L3C3V7p5gG61z3wGF04vOCi930qKoUIuH5hSkHaISJM7NMfu3nmV2FJl+e0MqF9g/4CNXfg4empO29FTE5yOnpraNTCHPsCMizQJHtnSqba1IkaaAkdBxsXLbM6eyHU25dFG4butzgxAX5AP3AMLndU6LRrFdVQ0cpdwrAvVre5x2kq6uzy+HJVxoBGPiwiMIiaKjFzC/3K4TDicjAGjMead/K6qQZS1dJOyKSoL58mMLWDF8Qgt4LIayvBkRNQ9VCaJ7xLEMWVLJjxz8kxmE0iT5oDSZOgazNAHzDGPGdzqMeWJu+MkLPhTmXACwq0/nbIIlbXdnqN+klBywrPp3M+tanDbLlWD6HSnGhxdw9DzgaGvnAS8QWBh9PzkWvPgRZ1lLk3Qv5UmaFK3/N+tyXPBKSateEUWDF4TF4PkQMWgd43JfgdyjsG9kpGPORC+IhanDBMjMb8RvannYJZi3mpd+6bUOakhwIZjNNogc2GrI7RIeQQ2GOiUHifIYLYOkEFznR+DoWuoDnyg0n3ZRwWN4J6JaMq/1t222025q2INoVmkoxgTOaXeNmVwHlNyUiRT1WYX5OPwv14QzFLZqdrdj9jv8BmpICPYPyL+41+DTzSC7zJjPkmS6x62UyXX8ToTJtc90DXuh364oy7e+GDLHC0EHdQG9KGyehfUiSrrd8MusT1lIn3gIiMXyxhUG/rIPXKS3Q+ZWLp5HBi6GbvEbl341igH7JPLGJNRcJCP6j6lTt6smLK08uVJl8QcI4sffnwit+yBx2y3iscs/eNfMbUsFn7xXI27HcvViCviuBpH1yiEPijUB+AClrLqL67qMGVyA6MzUajWjgVsGLgCMVkcT9KHYsLz7B0Zi880BWW/7Fv+mkTiMzljNIcrgc5IP53OOZZ9FynbqeC8ZV8pOaO/85xmc/r4KFJO3mP3CO6TELbmWTs9bA2rM1lsDX/XkPd8IMcWomBbSTmIA7KMopsRtszKZdkNfOMEVFGjEfo2cY5twGzyfM7g9yY+VoDrkVU5Rg3H2hyjhq1roPZ9gKoDvq8BFnW2TKdg6XIKZFYRytJagsobjytgycuqqbaBD6QKm8C3Ae19xj30zxa/CVyL7ECtxdM1ZAc+kDlNaBSklXfwhk4fqayCx2N1QosIFE6BJrUZ118U+c4tuUsK8hzTvlkyYaBAexwy1yMmVi4OB1wutq4RO/RBTMZ3QQXB/xox/NKJVWHyni3JEciFlE+kM4Rco33w094jHKnP8LhImarkIKOF2K2D6pQXEQb8Crh3qYcCabFbqqNFdSmNFkuHOPXWBX+NJgajZTKdw91UZ6ebcSj0z19cXZ8rH7D36ntP5GhW/wNfgkz9S+Fhjums5qrrFMeK6+SuVzv0WW1Y2RQ+C+6YNz0Vu1UJxnBK0gVeLFTLMQqqWoEmNHJyObyDZ476t7uE4pcCrmiP66Xms6Ie1cuumEdF63r5ez7L36/df7pLcMbh41J8MohBNXuAl+5ZnIsME8VnJMZISKQiIdHuT0HxmshQhM8x0Hjtc6CRnAdBo3cNxb6X3CkmwWN5AFQoUJM6GJVNZmwWYMnLDS59lBl1MdtrXVtgclY8CEzrFNO/+Ugnm91ExqY6wLFZusbnwAefJkehjto2UA2wSEAUvMzPV4LrRBRgeC+DetKWnaR/004d6hyr/iNYg0vQKiKRzz08DRa75WqwqC5fg8XSNVaHPlh9TNCpmsk+HiMW3QfnSRUCLCO4rgivgk7GCJsUWNSpEXp4p2peAWdfBSu97KQ/zYuNundsA+KIw29kZMAx48orobn1gJVE1KK78ohaTF2D+dYHzAFYMtj1JZAzRFHYfRqOji9IP03psvIkBcreqVqrSDe6dNMHHxekHFK9S4Qwx4lF5L2Y+1TTWty2YWMQnTaNwdElKuuC863xgYgFptQ9LANWH5j+OclUQh1G1esuHp/xWDnCjgS2ViJTl3m+3MAM3QKj95guQwbwfWMfZc5mtwrOLaqr4Nxi6Rqn0Acn2Z4jKF2tEdMdBCl8TSnDmpwVeW4qXeKKiwlgFcB7nifZZjXp2+ED+5qcRox/8XLEtfhthCyyEyKLp2uMel4YaUHEQN44CjVYdUwBlxH7OtsLW+vBRVQpfmbXKr3uqZlLUA+DkUnmO72o2JLNYjHHsBcmsMNfPEnoE50xD+XjmaetK2w9s+s+W/9E19Dv+0B/AhdbhH2i+59pyuThjHnWRPP1PNpPIHFndfoyrdXJpspjmAq7K2DnEA+l0zqhoBXNaPTgEb1yPGH5y9sMLnd5m6tryA78JGrlb8VQ/RYe1C0W/Yo/igwb4gPAPhU0BrddQGMQnfUzBkeXi7wuaGtMyT2T0zmsGjUtf18aWBgAPBEil/2HyIcAW6nUh2Gn2t7Hq+PjATnp315ff/BQ9yx2S9+zqC6Fz2LpGpLQBxKtddTo43dvXr/5XhWQgYASoEjUN9L4s3B15ch2KpTmLLlnnAwL7hPA05nt0J1OcwbtdIaugej5AHHEU2XMohbXKuEsG7BlxSTY39sjSUxuWMrFDHNPRFRWYFgq3k4dEBH8HkzngQuLwofl3Cu9qP1MK6uozeJOJmrzdQ3bvg9sddAt5VIDx1x+moEYwyNSF982VUmtkX07uFd+oQl81iMsTURjnwBq+wHL1d2iu3zeLaauATnwAWTEMQRXlcXqzauTJ+X+xqNSwXYkcnJRwNdl2ZShRaukXYVXMEzB6oUTecJV1enuLh8+nVMw/++EmEVs6XH9tB6wLqAW3XUFtZi6xuzQDzMt1d8JmRzRs0DTh0bBmMULkWIT7DldlLJPwV4ClylNwpKHukq9Y4tJrmsEF+YjGIG/T78uHz0BtZ9xYGqzrILV5usO2dbEbwfAzrnl0tueyT55oNUpo/iU9rNgIoPl0ns0g1utnLaCHRdoMp0znaLBBpos62CGtpHSwDHdimGHAD+Xn/1AK53BoruTGSymCqo3NVY8L1TWlHzu1bs3r5urcMIzNDFL77VqXdPGeAVjC3o3m7EfVnzkmk0SbrBJjotULNh/AUGAa20U9IxPLq7IzfmwCsLsci+ArZL88T/hBoFL3GMn2OxWOMyiusJhFssme2A4vO2fjF2gl5QWyuXrBqzVu6zBsbcBjiMuocqb+ZjSW4zd4SM48Mr9T+hUVqNgIK1fH/cbTRCg+pRVPROa/MFdQl91SLqk3L8rk2J2N2RStDW9mBTDJpCfn9248MaXW2DjiwbS8uE1MO9vKtNv4YjCC+jpxLZNKvH6Hj6wKqr0aEXbOYwn8L6Yh3kc0yL10Kha/CaYLbIDzxbPJpBesmTOtcnppH/qgthma+Pd4jDAb1HX7YSDDXZClAve29t7J1Pv5dq2ExjIzdF7uRmKeoeUd0ggZFIqiIxs52ebk/c8g8998jzeOr/jhOvkVYdc59lkU1wUX3IcV/kgrZNR37UjWjytHdHiMHZE+zPW7IjDDXaEGs6kG1TOljnyXriBLxSr2ri66/xOdT0Olw3YCDQST3zqo55b/LZqbpGdarnFs5F0oOkTgGR2YvsOI7GgNC6JijahyWsw9E+/d8qQrd+sLWy2fitTKm3/89Zs1reb6CtVQk/GYl5WqoCgilSR2KVskUsYTkEptZL+OZnRnGI5BCsn70zYEh7c5bY9ijkOoX1Pv1KvDk4tfqsroU12dSW0eTYyT5YR9p1dcZeVVIcVUhJMu6N8cRXioYc5Gjqrl+hSzkOeFqmZr9A9fDgxgs6ER9dbndUCTaO48NLIG1kRywlLb/nsgTktiYbatiYammlRaO+4BrNwA8xOUhGTRPaFygXJ1OQ0eYGg1iF7HJMYVOoiVa30pPnBVYbhDm1FPuM4rT7PfCxFndm2E3Wa00rUGTZBt5xRfA5MaYFL43QSOLhaaDt4DNRdn7QG/d4G6J/Cx2Qklp38QR4vRIJvL6Xxvaye0POO0Amo5Sbp3Q4Wf4b9cQt3VjIT5ISlfu3J2w9YxYMtuqtisMW0yS45Ob4cX9/cnl+NV+iaJkNrb5hkY1tYb71mR+xvI8NdiiXui/0jch7LmqmdYs3iIiOqRyXLpoVP0WjrCbtUtMXgLBBtcW2Ct+qoM4xEMXOhrZNbWOtEA2njTdfgfLABzmfiM7kopmxGwbiWbbYyKfHRxfREo4KR6ZzyHbuFsNFLxBeUDEFbpdHcq8jb9ZBtRLp4nJaki3Ezc1IuoWb8u8xJi8dhTlocljlpf8aaPXC4wR4YpPAlqt6PQ7FYYGI3jaJ3sCUmbDbT8iBlDkN5GSg5UKv3WJg3ETSdKZX9ZnjOVPn6LvfOlQzFYHQr+uPffZxR7QfaCT8mfUXOj8m0yV75BBZX3VzBrb/rLO1tYlCNLWJQ1m2Ptxtsj/PyRTKm0WP3YL4oZLaIsGh/bcSsZtFvN/UauVAdELQflTM1XdL9o356t7fuR/307qBddC2TfUaM5189Kq4NZqvc2qC5aq0Nhm7CknnBgvGqubAl0ZG10bQMydCcKFPRmFHJ65urcbi+JfPhirb2NMas/9Plg18PWYPb7iFrEJ09ZA2Orpc+9Fn6E/T5ytEzyX1KcWTdEXvimOGEfa/Oz4Mn2Bq6A2azeqrtUIAri6J6wT0Kog1eqyuZTnJ1JdPpXa9+z2f1cbRjIC1yEOnAm8kSKdWZvMp1UbM/R3N+n5f1uNao5HU69y5Rgo0Cx3VORil/gtWgT9Rn5JPjGXvck4PFOerJwdc1ivs+KB6hBMVRIRmGTEaYwAmHR6Znopcy04d5Kj0pOEnZtwPu/78mzA0gBz6AjNH3JOBoiPumBgq1yyZBQndF5LoPmyfoSZ5WKedVndVur50BS3NyfX+fMp/8QIvbmgFgEl0DAEyOLhEarLvx9fz+syWegjs+Y3Ls1pBmUzpzF0711UyAaZ2TXqXaysrTGxFJkWkHNuvksp2eJKXRc/K++JqwPPOJALgecdkSJsdKa8Jk6xrL0AfLK21Klz0TTfWPAERysdAk4i4x6UfsizTIRRQJrzRog72VAW1Q3cnPBkvXGPR8MCjHgNc1iKoUXraSCK5THOo+KrIpg9M14VHpjK1a1d+ie/j6C6/y/IzXyzL6nSJ2QQv4jAzOLHxT2UHIQ+1zPWOpfy4Wlxro4usaxX0vFGlCZtKLQqOMgPzDwMk9RW38HgMtGd5dD3A5FQs1dEPAPwt5cylpOG1KUBdViBYO5T0cwInV63QHt1iVPjXmeR75p2pV7O5krYq6Jl2rYukaswMfzNpN2ar85lsALk/p9LGpzylHSdXzeIeIpD5G5TiZYyX3jDQjKdUpJmc0VfkYTYHWLs/kdcRxSvMZu/epJbG4TSQtogNIi6NrHA99cBx95vl0LlGRc/+whdtVNYu1lJgKrlnzel0eqqZZ325TjLUdPrfF3zgahR6RjYbTimg0BFcko6F2icdwnYZoFmA9cFXqkTywVFUfHn/Jy1FqUq+gzi738D/LTCqRH5NpJNRBq1o/7xKSM/i+PAMzkIzoXHioHu0HrPBzi+4KQbeYuoYr9IFroNoz0+CJp0WmT73D6nm4h2ShIs1lsKAsCppihtEFe2IRWsaV6o+jK1UZSWIXhuzgzjqOY9Xo44zOfvc4TS1+E7IW2YFYi6drwHo+gIGNDBcKwzdDp4XSM0gfdAv5AtpPqlEF9mASWdZqrPQnOy3kdGLfIcgmc2sii0Zzz2TRGLoGZ98HnP4sE+mEYWsCdPrJCsaqpJFINC4ZXFYJz2LEqBwd7krj7t68SnI5oW6MI06zYFhMuJ+dteo5W+1bwebU/1bwdo3ZgQ9m14lqO/rxUzAs54irEjmRTcViib4oiWYwjKgMjsoDRTVPBUEl6DSVE5iVKXYiwDSBDdBOmegcV6y5juXchI9+1d0Nc7u6u6GtqO5uGDrEKlwXcLIGG+4fBNgJsxlmXel2pywY8VbxC8Om50K538PgP/5NTeVF/dwXk7W9YQ9XTWdJljiO/pePPtNZNF57OotGck5n0ehd4xH64DGmHJYQVl9GAHm8YDPZ0KpfzQOVC19pCIZHULnSe4d75HTyY6blrasK/uBIQie70il4doeWkM1/QAv64gGXwWzhZdBcgBkMXSPW80EM1AJyRNNHMizSVHY1/0nNBT1lPzrODxaPKeP3zQ89Qn+8I8NgoGYSZAsBkFudyToHpx9j84Y5nTPmM0LH5LauKJPouphMjq4B2vcBaJguxQPDg3B70p6fApfRKT1P+tlo8iN2dPmY8ADOHqjiKJiHNJXXjl74993H8TC4Ocq+VzBesc/kOmHBDfwQ4I/4pGwaM3Zk+O4EzbrJ1CUHoUF+9Wt/tebJNsorGFcgvoK7a/QPfNAP9wIpDtvzk+oeZ5iqh9Mj5GikssHtdTC6vkHv1AbKxjb4XVEw7aXHJ30oQNb79FtyPGLFTRwcrriJg61LjNbFwIx5R5oB1cdu6LGcF6+N6S39943nD246vMYwqX5zL+A2OJ3i2LY76mNy6axWU3qN4mpIr5G7xiH0wcF2sNZhKqWN3KtWw0dNv+5jWXXEUF8ZigQLjjBOuaXzbxtYfuYTyh7JSPgAYzKb0Jg0BzgmQ9fw9HzgaTzh93UrkmnTikQGsq5UEUKqslFTUTzMCfYw4dhGnSS1u7aKnPj7lLaBZ0hjMEQZrNpizhkZpH/8Lw8Bt+Ipy7hyM7msLDdn1xDu+0A4xrwLESuNr8qPqfKbzIZznTjUtwHtl4KRD17dmWpGewBB9bpzAkFF7BqAAx8ArIyxy/poNJGMoXWkTGff9r3mtkNjhP6TfE7JaAK6KPVKxbQeaGVjWnR3QqbF1DVahz5oXQEeQUjQy4B9uXEiW4DuhrZCYB4dGR2OZKOme44jVf4SDItcmwe2VUe6LY8TAzOevBdL6pG/bDJbx8qguY6WwdAlYOtiVcbYIVhcirnJmBt+yWLsoVrlvtyIHAgcvRbatDWEy2zYAwZVASqgSBdz+Ydspr7TI3YJ1jvWIvgOZm7xt3ormWR3ayWTp2u0Qh+0XDHDusWsBK3s6oz9FxZzGuGI0cV8CUJRlreeiJRNMWyyWxtpSFHpBL3Gp9umzmtrDBrJqSdo9K7x6Png0c+aaVDkpogXwU0qJiDtFvyRkaMlfNGyETB8VVF62U8pCLUjsZAxkqqPHGJnnKONIyLbAHULXxYzKvNiwb3mU9r8dlmpRXZWlVo8XQO37wNcfXpk/Qb/ipkRsPpwREr5pVxF+vQPK0XmT8EHx44/Uu43XcpktloOGTRXvyGDoWtMDnwwKUUXyNdY+srFHP5L4vpS2q3lc46OlU/YUOX5lTZ4zYU2SI51NuhdL/PhhnfIJZ3Og1/ZPMHMvaZZDgZtG+26n0s1AFug6kPIlYNBdlXZ6RG4KHiGOvwjKBypT02NyW6X1ZhUZ2WNydIdRndvVitld3qt3h3qT3OxQN83T8mPCA0qy8Z4jTW1iIfrO40eYqfRcO/vMZHfq1/d4BItOdia07mzcd3g0tG4Dl40G9fBCy58wk3wuaEJdrvK8l3ickHhRP7KsaUnmHiJT36x/YCdXGzTnZnFNtO36ilYQ9PzgOZXhv085jR5YFrFjBRY0vGWlH3Rs9JJsGH7ju0QPEkxIpxNBfkVNkyee6ScuB6xbnQHh+ted7Bt1tYhwqnpsESCzDiRjceEu8GDi9HR6sHFZjV9cH6ktSPCNcI0dI8lOH1/o6bFV63w35E+nGHs+GPOjiemerhiEnLn++SSwlUrwAxPhFcb/Ba/bdZaZKdZa/Fssjf+QhM6K1yboaS00C9fN+Cu3sWBb+iB77NtW0Cvl72++7mI/1w832N4aOw1S6zhtIZUNQTXeKqGugluH4rjlLpgU4QWauplA7TyLRyY9XwwAyn9lD3CKdfb50u9s/pbhQrLc7pLkE7pJOVwVZBbMMuFT7DQ4rcjhhbZGTa0eDYB73h8RlRfLBeCGrUFo0YzsNTf0QHovgego2Ihm6RgoT16opSUNVqn7BLDnwXc+NhM8aS0Pp4JK1rsVmDRorpCixbLRqrRaEz62F2EO4+gTm6rShrRVJn0NzUxrBuc9FZfmA2P3iHt5iPpT6doBlkORyVdiZy1oJzC3uCu65Fy6G548zN8tSIjAzH3EKQmswWsQXPBajBs1PDw+nJ0faGCUwtZw5GR03hy5mx/KOJMRAavow+ig8lsiOhgWId8uAHyqtmuyqEvnTJBlcA4NHvlHdGc4mtxkVQBgp3uBUYxTYvD7/BxBtjs1n6wqK4dYbFstCfKbCX3HihpDuBLioV29V5rIO5tAPEWHY62Q+wkZTOGOSYXgn9ltPAxfVpP2JZPi8Fp+LS4NmpvhvoH+nvd7ap0crupmUY0+5npb2oiWfVsWmPW1CwvbeskodrbW4vkfrvNNRjO5GcMLvuU7lnclmViEl12icmxCXIfhxfOfpPy9RZW8lUDJPV8g85nNgvuVjWEKomrhrUe1QNHmgnwYGTmmM6KNWUJhh3yACNCMlFLFGB9BiO4xxftcfCb9oV4u76Y4u2K6kwesSUBzfwSIJnOmUdQqP2EFRZqM7gCQ22ubnyvDYChD4DlTRctyV3K0fetNJ+U3cuqwCdW1bnUoyjSWMzk1VjWtsuRUStTF1zF1bsEdMxpsuTk17lXLqTFbQJpER0gWhxdA9jzAdBoCRZVNYCu0LlWv4STwVxNw7INu4Zth9ElhS0SwRn/mE6oj/u9/UDL92PR3c4fi6lrvPZ98Cobf2Bif5Pd1UTGZaAp5vJNyLEcLSGtryirIuq7RGaUs3vQAW9F7iMKLW4rj8skupK4TI6u0Tjwur/qWnQKnE9Yfx5FQdVZ74jHOEFJ+tBblRl1KwgwGwvZ/VCzFioDorEadwlblUJ6S2dgwOb+KazNA+7s1Ya+JnG1YeoawkMfCC9o+sBIP2XUuKpktdlogbXSajAvLXsl2orGhZANrVbfYH+GSLzAvAw4DHec+YS8dGY73KXTnKEunaFrxN76IFZmCjWNBGQZiyyqlecxViXTsoLwK7bNWcYsNettZa9FEIcy9HWp9d/ZqXQECQD6WvH7jPvkuerMdo6rTnPmt+oMXYI0WKfZryh6sQ+EzDH+jHmuCMWYgdnC0vyrM0lobe7KltJOlv37FbsYvO3y53XlLga9awhCHwjOvgb13VJfVM1yq6J1tK/hflp+hSMykONAsbbvZZnE2+HSj9hjxjhm/Pm4q2z2Vj83g+ru52awdI1RzwejUTEJ+vGEw60fXMnxKpdwKXI5Al7lgtfI1TV8KOhuhYjlQF70NxcpKA9Uzt4wPJA7lWY/F2C7JL6WksVt+5oNotPZbHB0DdW+D1RyuKJU0kCP02CS2jdqMVwpdkdVD4H6OFW5rI5Za3D4wGhO6C6ROgMxC1oMNgT06FVkMFt9igyaq0eRwdA1Sgc+KFXtbvAYlJ6JoZC9Q6vWN8cxz6Wa1/vhJzI++0o+DC+q2CnoFKxUAqVfokL77OyCnIki804F31JDYBPMNwf16jQSwqcxeesBS1No0V3aQoupa+QOfZDTck8uYzxTwVi2GahLX1BbaLo8CCvcooXc4KztVPT9zulnlpCIezjoDV4THIPkwMWgdwhJuM49a1SXN5DIg6R7hTJWzERwizOP4rJ1eSnUjOLzC37Uv1VeCXV7+eKyNvv1rTv79QYsakE+FCwVHm0pLW5rmoJJdI1TMDm6xif0wkcWT9bVyzfYPE92VLsnb/YO90kSV4OAHYbry7uSb4fSPWyROaHwfs9jZPCaCBkkBz4GvWt0ej7oVM0/+zneSdV0HABKSL0he1fNUw/kNZPLady3YlJkOcg5nLGnjNVblhXRbjH5GbRHbE8KP/zRB5cWv6XQ2WSXSmfzdI3Rvg9G4d4eiWPVPqMcR8mvyBnig11VmCgaZzgKtsqZI31En7iaoK4iUzRtHOl6DeAucXsP75+jRyYRGek/Yue4GfeoQV/5nJVQt4rNlV63irdrXA98cD2J+EIp3Tp6Si7uoVz8NBwdX1TOoKb7DUJcOoxwJLZqR1XkgbgPAPqE1XGrXaKKcSG8+T9wn3RIi7sdhNKIK4JQGkfXaB1upmeooEYkT6KOHGjj2FC0H4XXveYQTpZgh32RIF7SfDqX7oqyinOXAPUnDGuAaDaPqE8vIovdclVYVJerwmLpGqS3PiBhJzCEJMnQ0aCcFefJDL1DcIKyxRyViqDl7cPxQklWWruN669xSKmIFUb5dwmZdIkOMEoTeTpfa2aH87WmrXK+1gxdQrXO+Wo0FpBthYLj+3s+Rc+SPqJmIEdlk+tpLhsNSB8gBpoWYP6p5lA1MpdgNk+LiO32BqN8ycndR5+075rTTvuuCc6075raNRahDxZ1p/chdhrSzFl04x3rfgoUY00+hUp3wP5dba/RThG5+IG8L6LYq35QY7XiSBrFFUXSyF2j0vNBpcqcv6PRo1z4vspWweLB4EJMHyvAjLL0Fc2hlBMp+HSMOsUuobn8gdzCT/dok6JxWrkODcGV5NBQu4Zl3weWpgeUNrapLjtTA8cXoIdh0pgc6FQFM6oJ01M1YIhE0uz1DyRtgwYmgoBZjb0XPRCxuE1ULKIDGYujS3SG664Vo/0JlmJMG2ecq9ukFk5vJmYccRqLZPbNXA7DiBag4GOOpEw6ELKf29wDtTVPWuHA1Yyu4OBq7q6RDX2QrS+pWiGQJ5HVgfURi8ACst18jgZSWpaYBrLsDxEewbOjUG6JncKNHVnpV3IGa81mHtqexW7pexbVpfFZLF1D2POBsFnt16TAUNU9TvwEVSIQZZ5ELnsuq5ZFeHwfgLmUqSJ9wIwJwr5MsWdbUA8VwkJg2AYZsu5WmoK0gGMwyv/493uWRh5pLO0HLNO3RXdZvy2mrsHb9wGvP+N0ItuCjvhVcMGvJmDmqh7ZqoeEMUr7bAly+NtJ0xHFtsenYPPNvfq1acytXm0azd2nTWPoGpkDH2Qw35InhSiyYMxjzW69gI9b2j4KSobFeXITjg5JoKFiNDtMd+w9GsEH4KRUuIBpDDsmXhReCUcrHrMgW8HlAm8Fa9cwHvrAWCVSYgkwwBh8oukS/zjD61dOl0jKtOY1iXx6gHGXCN4WnPziU0tQ8dnznsqXndOeSlqHKPTWxRN7/VVW11D6I/AiyucMjrndN08fqrHB1dNbH889cMRzzxPsEj19jJhfz5AWv9XVyCa7OhvZPF3jEfrgcVI32h3lFLM2Gj2eau2R7e5eN5x9rVMs0HIuNnNKbAHRBzisX2BT+AwzNnhNaAySAxaD3jUkPR9IPiYYJc/QJTenizKYi8PbVd1Tg9jQf77qdkt+xNmDAKynXEynPlVs7Qesgd8tumvad4upaxj2fWDQdnusV8iYKScmGpVzT0/9ajqD6bx6B94tMyy3QRTObZoycnR+dH5865EgYbFbGRIW1ZUiYbF0jeSBD5KYYXnC4lxkqv27mkM3KltR8qyWeHirB6hjsz/zlMmpwrKl3Efs3PPkOcjYfMIxy9hkWDXO2OTqGp9DH3xw7twtW7BcWjrkts4QV/EKOY1TJeFdCcyiCBofrKaRlT3GRwuOzgtrOPVOpaTAiUoeylrDaEnF+nWXNKyJXWKzLo7UMzLIcUbFB6mj1eMBByl9eKhLZbDT+4Jm2NwjwpwWnPwYHvyDnBAk1enK9Dm+v2eli52pmOGGZTHbgDP4gXwqHsUTn3r06NN5rQ59OsnVn0+ndw1U6ANUE1eVRuoRi+iyKXTB8a73eZk5PsqVKSRnDzvKrKUVW7saWkljfwJq/XnMcjAaU/5IzjPu0aPG8YQlEtsMLpHY5uoazZ4Pmlh7JvMb6npcrWojTwvZvQCOXOmOByQxEQITJ4JLKqezRirvr84I3CVcIw62zIlIRZGDsBqAmpT4DFhd9Zjlb1jB5fI3rGDtGsJ9HwgxehsVZaGn9K1j33jZClard8KzudHIx231vpzGE9BBL4tH+OjfGfNR/hzP2Bqgg8WpBjr4ukblwAeVvtNnqtX/ST9rg9CA0Ri21FQm/kt5OsoZS3cM1y/0K976FIt7PIpxbXZrrIJFdQ1WsFi6hubQBxotMQJ08WnjdZW32pvgTSjD7GldZiPjFhglTrNiIkPGddBCNsJ21nTuwHl0yR/nlEewV6JHr2YENr8Vn7fJrii9zfMSxP7agJMvF0x9kIRpEhXq0E9YJIf74MA/WZWu+Bu0n7ioysAVb9lpp+EA8QeK+UxjqfsC/6g6Aze8ICzKjBLFWbdfAk6RYZ5YzSpSrODVeK8x11r+KDAHHu1fVMPfvPUTBxHQvOGianKn6LLbAp8UBk/Z9sn19cwfUnYVai0KfDtYfdCs5E7+LSv7Nr77J+Pl+yKKfkPngWzI048mPLNmieDO7i8j2fxRdk8aDm/7J2P8n1Ut1l7rPbOGS1joWz6TK2g0PDw5vhxf39yeX43JCI01o43067ILsdlgz+zjdFFM2YwaJb0XxZccG0BjTwqm3vaSpk84G15uLTiiDxwHUKo+6dGS3NRRSIOhf/o9PsuSOU+bT1CfeyNAJJAhaLUz+Ze7f27Vo7PsZ/QJPqUqmVRvU7deVSuCGYxYKou9GV799Z//+f8B", 81935);
+
+const STORAGE_KEY = "conference.state.v1";
+
+const FS_MIN = 0.5;
+const FS_MAX = 2.0;
+const FS_STEP = 0.1;
+
+const CONFERENCE_NOTES_KEY = "__conference__";
+
+const CONFERENCE_END_MS = (() => {
+  let max = null;
+  for (const x of [...DATA.sessions, ...DATA.talks]) {
+    if (!x.end_ts) continue;
+    const t = new Date(x.end_ts).getTime();
+    if (!isNaN(t) && (max == null || t > max)) max = t;
+  }
+  return max;
+})();
+
+function conferenceIsOver() {
+  return CONFERENCE_END_MS != null && Date.now() > CONFERENCE_END_MS;
+}
+
+function defaultState() {
+  return {
+    schedule: [],
+
+    scheduleLog: {},
+
+    showPast: conferenceIsOver(),
+    activeTab: "sessions",
+    tabStacks: {
+      sessions: [{ view: "list", scrollY: 0 }],
+      talks:    [{ view: "list", scrollY: 0 }],
+      search:   [{ view: "list", scrollY: 0 }],
+      me:       [{ view: "list", scrollY: 0 }],
+    },
+    searchQuery: "",
+    hiddenTypes: [],          
+    typesPanelOpen: false,
+    lastSyncAt: null,         
+    selectedDates: [],        
+    notes: {},                
+
+    expandedSessions: [],
+
+    meWidth: null,
+
+    fontScale: 1,
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const s = { ...defaultState(), ...JSON.parse(raw) };
+
+    if (s.showPast && typeof s.showPast === "object") {
+      s.showPast = Object.values(s.showPast).some(Boolean);
+    } else {
+      s.showPast = !!s.showPast;
+    }
+
+    if (s.notes && typeof s.notes === "object") {
+      const sessionIds = new Set(DATA.sessions.map(x => x.id));
+      for (const key of Object.keys(s.notes)) {
+        if (sessionIds.has(key)) delete s.notes[key];
+      }
+    }
+
+    if (!Array.isArray(s.selectedDates)) {
+      const dr = s.dateRange;
+      if (dr && typeof dr === "object"
+          && dr.start && dr.end && dr.start === dr.end) {
+        s.selectedDates = [dr.start];
+      } else {
+        s.selectedDates = [];
+      }
+    }
+    delete s.dateRange;
+
+    if (!s.scheduleLog || typeof s.scheduleLog !== "object") {
+      const base = (typeof s.lastSyncAt === "number") ? s.lastSyncAt : 0;
+      s.scheduleLog = {};
+      for (const id of (Array.isArray(s.schedule) ? s.schedule : [])) {
+        s.scheduleLog[id] = { op: "add", ts: base };
+      }
+    }
+    if (!Array.isArray(s.expandedSessions)) s.expandedSessions = [];
+
+    if (typeof s.fontScale !== "number" || !isFinite(s.fontScale)) {
+      s.fontScale = 1;
+    } else {
+      s.fontScale = Math.max(FS_MIN, Math.min(FS_MAX, s.fontScale));
+    }
+    return s;
+  } catch (_) { return defaultState(); }
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (_) {}
+}
+
+let state = loadState();
+
+const sessionMap = Object.fromEntries(DATA.sessions.map(s => [s.id, s]));
+const talkMap    = Object.fromEntries(DATA.talks.map(t => [t.id, t]));
+
+if (Array.isArray(state.expandedSessions) && state.expandedSessions.length) {
+  const kept = state.expandedSessions.filter(isExpandableSession);
+  if (kept.length !== state.expandedSessions.length) {
+    state.expandedSessions = kept;
+    saveState();
+  }
+}
+
+const scheduledIds = () => new Set(state.schedule);
+
+const _DEFAULT_SESSION_TYPES = [
+  { id: "blue",    label: "Applications & Technology" },
+  { id: "violet",  label: "Fundamental Science" },
+  { id: "emerald", label: "Science & Innovations" },
+  { id: "amber",   label: "Symposia" },
+  { id: "orange",  label: "Other Sessions" },
+];
+const _DEFAULT_TALK_TYPES = [
+  { id: "orange", label: "Plenary & Tutorial" },
+  { id: "indigo", label: "Invited" },
+  { id: "rose",   label: "Postdeadline" },
+  { id: "teal",   label: "Poster" },
+  { id: "slate",  label: "Short Course" },
+  { id: "pink",   label: "Contributed" },
+];
+const _SESSION_TYPES = (Array.isArray(DATA.session_types) && DATA.session_types.length)
+  ? DATA.session_types : _DEFAULT_SESSION_TYPES;
+const _TALK_TYPES = (Array.isArray(DATA.talk_types) && DATA.talk_types.length)
+  ? DATA.talk_types : _DEFAULT_TALK_TYPES;
+
+(function injectTypeColors() {
+  const entries = [...(_SESSION_TYPES || []), ...(_TALK_TYPES || [])];
+  const seen = new Set();
+  const rootLines = [];
+  const darkLines = [];
+  const classLines = [];
+  for (const t of entries) {
+    if (!t || !t.id || seen.has(t.id)) continue;
+    if (!t.fg && !t.bg_light && !t.bg_dark) continue;   
+    seen.add(t.id);
+    const id = t.id;
+    if (t.fg)       rootLines.push(`--c-${id}-fg: ${t.fg};`);
+    if (t.bg_light) rootLines.push(`--c-${id}-bg: ${t.bg_light};`);
+    if (t.bg_dark)  darkLines.push(`--c-${id}-bg: ${t.bg_dark};`);
+    classLines.push(
+      `.bubble.clr-${id}{background:var(--c-${id}-bg);border-left-color:var(--c-${id}-fg);}`);
+    classLines.push(
+      `.detail-head.clr-${id}{background:var(--c-${id}-bg);border-left-color:var(--c-${id}-fg);}`);
+  }
+  if (!rootLines.length && !darkLines.length && !classLines.length) return;
+  const css =
+    `:root{${rootLines.join("")}}` +
+    (darkLines.length
+      ? `@media (prefers-color-scheme: dark){:root{${darkLines.join("")}}}`
+      : "") +
+    classLines.join("");
+  const styleEl = document.createElement("style");
+  styleEl.id = "dynamic-type-colors";
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+})();
+
+const TYPE_LABELS_SESSION = Object.fromEntries(_SESSION_TYPES.map(t => [t.id, t.label]));
+const TYPE_LABELS_TALK    = Object.fromEntries(_TALK_TYPES.map(t => [t.id, t.label]));
+const TYPE_LABELS = {
+  ...TYPE_LABELS_SESSION,
+  ...TYPE_LABELS_TALK,
+};
+
+for (const id in TYPE_LABELS_TALK) {
+  if (TYPE_LABELS_SESSION[id] && TYPE_LABELS_SESSION[id] !== TYPE_LABELS_TALK[id]) {
+    TYPE_LABELS[id] = TYPE_LABELS_SESSION[id] + " / " + TYPE_LABELS_TALK[id];
+  }
+}
+function labelForType(color, tab) {
+  if (tab === "sessions") return TYPE_LABELS_SESSION[color] || color;
+  if (tab === "talks")    return TYPE_LABELS_TALK[color]    || color;
+  return TYPE_LABELS[color] || color;
+}
+
+const SESSION_TYPE_ORDER = _SESSION_TYPES.map(t => t.id);
+const TALK_TYPE_ORDER    = _TALK_TYPES.map(t => t.id);
+
+const SESSION_TYPE_COUNTS = (() => {
+  const c = {}; for (const x of DATA.sessions) { const k = x.color || "neutral"; c[k] = (c[k]||0)+1; } return c;
+})();
+const TALK_TYPE_COUNTS = (() => {
+  const c = {}; for (const x of DATA.talks) { const k = x.color || "neutral"; c[k] = (c[k]||0)+1; } return c;
+})();
+function typesForTab(tab) {
+  if (tab === "sessions") {
+    return SESSION_TYPE_ORDER
+      .filter(c => SESSION_TYPE_COUNTS[c] > 0)
+      .map(c => ({ color: c, count: SESSION_TYPE_COUNTS[c] }));
+  }
+  if (tab === "talks") {
+    return TALK_TYPE_ORDER
+      .filter(c => TALK_TYPE_COUNTS[c] > 0)
+      .map(c => ({ color: c, count: TALK_TYPE_COUNTS[c] }));
+  }
+  
+  const merged = {};
+  for (const k in SESSION_TYPE_COUNTS) merged[k] = (merged[k]||0) + SESSION_TYPE_COUNTS[k];
+  for (const k in TALK_TYPE_COUNTS)    merged[k] = (merged[k]||0) + TALK_TYPE_COUNTS[k];
+  const order = [...SESSION_TYPE_ORDER, ...TALK_TYPE_ORDER.filter(c => !SESSION_TYPE_ORDER.includes(c))];
+  return order.filter(c => merged[c] > 0).map(c => ({ color: c, count: merged[c] }));
+}
+
+function isTypeHidden(color) {
+  return state.hiddenTypes.includes(color || "neutral");
+}
+
+let _nowOverride = null;   
+
+function nowMs() {
+  return _nowOverride != null ? _nowOverride : Date.now();
+}
+
+function tsToDate(ts) { return ts ? new Date(ts) : null; }
+
+function isPast(item) {
+  const d = tsToDate(item.end_ts);
+  return d && d.getTime() < nowMs();
+}
+
+function isWithdrawn(item) {
+  return !!item.withdrawn;
+}
+
+function displayTitle(item) {
+  const raw = (item && item.title) || "";
+  if (isWithdrawn(item) && !/withdrawn/i.test(raw)) {
+    return raw ? `(WITHDRAWN) ${raw}` : "(WITHDRAWN)";
+  }
+  return raw;
+}
+
+function isInProgress(item) {
+  const s = tsToDate(item.start_ts);
+  const e = tsToDate(item.end_ts);
+  if (!s || !e) return false;
+  const now = nowMs();
+  return s.getTime() <= now && now < e.getTime();
+}
+
+const _DAY = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const _MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function dateLabel(d) {
+  return `${_DAY[d.getDay()]} · ${_MON[d.getMonth()]} ${d.getDate()}`;
+}
+function timeLabel(d) {
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m.toString().padStart(2,"0")} ${ap}`;
+}
+function timeRange(item) {
+  const s = tsToDate(item.start_ts), e = tsToDate(item.end_ts);
+  if (s && e) return `${timeLabel(s)} – ${timeLabel(e)}`;
+  if (s) return timeLabel(s);
+  return "";
+}
+function cmpTs(a, b) {
+  a = a || ""; b = b || "";
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function parseNowOverride(raw) {
+  const m = /^NOW\s+(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})$/.exec(
+    (raw || "").trim());
+  if (!m) return null;
+  const [, y, mo, da, hh, mm] = m;
+
+  const d = new Date(+y, +mo - 1, +da, +hh, +mm, 0, 0);
+
+  if (d.getFullYear() !== +y || d.getMonth() !== +mo - 1 ||
+      d.getDate() !== +da || d.getHours() !== +hh ||
+      d.getMinutes() !== +mm) {
+    return NaN;
+  }
+  return d.getTime();
+}
+
+function toggleScheduled(id) {
+  const s = new Set(state.schedule);
+  let op;
+  if (s.has(id)) { s.delete(id); op = "del"; }
+  else           { s.add(id);    op = "add"; }
+  state.schedule = [...s];
+
+  state.scheduleLog = state.scheduleLog || {};
+  state.scheduleLog[id] = { op, ts: Date.now() };
+  saveState();
+  render();
+}
+
+function isSessionExpanded(id) {
+  return (state.expandedSessions || []).includes(id);
+}
+
+function isExpandableSession(id) {
+  const s = sessionMap[id];
+  if (!s) return false;
+  return (s.talk_ids || []).some(tid => talkMap[tid]);
+}
+
+function toggleSessionExpanded(id) {
+  const opening = !isSessionExpanded(id);
+
+  if (opening && !isExpandableSession(id)) return;
+
+  snapshotScroll();
+  const set = new Set(state.expandedSessions || []);
+  if (set.has(id)) set.delete(id); else set.add(id);
+  state.expandedSessions = [...set];
+  saveState();
+
+  const svg = document.querySelector("#session-list-connectors");
+  if (svg) svg.remove();
+  render();
+}
+
+const $  = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+function esc(s) {
+  return (s == null ? "" : String(s))
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function el(tag, props = {}, children = []) {
+  const e = document.createElement(tag);
+  for (const k in props) {
+    if (k === "class") e.className = props[k];
+    else if (k === "html") e.innerHTML = props[k];
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), props[k]);
+    else if (k === "data") for (const d in props.data) e.dataset[d] = props.data[d];
+    else e.setAttribute(k, props[k]);
+  }
+  for (const c of [].concat(children)) {
+    if (c == null) continue;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+
+let _partialSessionIds = null;
+function invalidatePartial() { _partialSessionIds = null; }
+function partialSessionIds() {
+  if (_partialSessionIds) return _partialSessionIds;
+  const scheduled = new Set(state.schedule);
+  const out = new Set();
+  for (const s of DATA.sessions) {
+    if (scheduled.has(s.id)) continue;
+    const tids = s.talk_ids || [];
+    for (const tid of tids) {
+      if (scheduled.has(tid)) { out.add(s.id); break; }
+    }
+  }
+  _partialSessionIds = out;
+  return out;
+}
+
+function makeBubble(item, opts = {}) {
+  const isTalk = !!item.session_id;
+  const added  = state.schedule.includes(item.id);
+
+  const partial = !isTalk && !added && partialSessionIds().has(item.id);
+
+  const expandable = !!opts.expandable && !isTalk;
+  const expanded   = expandable && isSessionExpanded(item.id);
+
+  const cls = [
+    "bubble",
+    `clr-${item.color || "neutral"}`,
+    added    ? "added"    : "",
+    partial  ? "partial"  : "",
+    expanded ? "expanded" : "",
+  ].filter(Boolean).join(" ");
+
+  const wrap = el("article", {
+    class: cls,
+    "data-kind": isTalk ? "talk" : "session",
+    "data-bubble-id":  item.id,
+    "data-session-id": isTalk ? (item.session_id || "") : "",
+    onclick: () => {
+
+      if (wrap._lpFired) { wrap._lpFired = false; return; }
+      if (expandable) { toggleSessionExpanded(item.id); return; }
+      navigate(isTalk ? `talk:${item.id}` : `session:${item.id}`);
+    },
+  });
+
+  if (expandable || isTalk) {
+    const detailView = isTalk ? `talk:${item.id}` : `session:${item.id}`;
+    let lpTimer = null, sx = 0, sy = 0;
+    const LP_MS = 500, MOVE_TOL = 10;
+
+    const cancel = () => {
+      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    };
+    wrap.addEventListener("pointerdown", (e) => {
+      
+      if (e.target.closest(".schedule-btn")) return;
+      sx = e.clientX; sy = e.clientY;
+      wrap._lpFired = false;
+      cancel();
+      lpTimer = setTimeout(() => {
+        lpTimer = null;
+        wrap._lpFired = true;        
+        navigate(detailView);
+      }, LP_MS);
+    });
+    wrap.addEventListener("pointermove", (e) => {
+      if (lpTimer && (Math.abs(e.clientX - sx) > MOVE_TOL ||
+                      Math.abs(e.clientY - sy) > MOVE_TOL)) cancel();
+    });
+    wrap.addEventListener("pointerup", cancel);
+    wrap.addEventListener("pointercancel", cancel);
+    wrap.addEventListener("pointerleave", cancel);
+
+    wrap.addEventListener("contextmenu", (e) => {
+      if (wrap._lpFired) e.preventDefault();
+    });
+  }
+
+  let chipText;
+  if (opts.inlineTime) {
+    const sd = tsToDate(item.start_ts);
+    chipText = sd ? timeLabel(sd) : "";
+  } else {
+    chipText = item.location || "";
+  }
+  const locChip = chipText
+    ? `<span class="bubble-loc">${esc(chipText)}</span>`
+    : "";
+
+  const titleHTML =
+    `${locChip}${esc(displayTitle(item))}`;
+  wrap.appendChild(el("div", { class: "bubble-title", html: titleHTML }));
+
+  const subHTML = subtitleFor(item);
+  if (subHTML) {
+    wrap.appendChild(el("div", { class: "bubble-sub", html: subHTML }));
+  }
+
+  wrap.appendChild(el("button", {
+    class: "schedule-btn",
+    "aria-label": added ? "Remove from schedule" : "Add to schedule",
+    onclick: (e) => { e.stopPropagation(); toggleScheduled(item.id); },
+  }));
+
+  return wrap;
+}
+
+function subtitleFor(item) {
+  if (item.session_id) {
+    return talkByline(item);
+  }
+
+  const ctx = _bylineSearchCtx;
+  const affilSearch = ctx && ctx.mode === "affil" ? _norm(ctx.query) : null;
+  const qName       = ctx ? ctx.qName : null;
+
+  const presiderRaw = item.presider || "";
+
+  const affDeduped = item.presider_aff_short || item.presider_aff || "";
+  const affList = Array.isArray(item.presider_affs_short)
+    ? item.presider_affs_short : [];
+
+  if (!presiderRaw) {
+    
+    return "&nbsp;";
+  }
+
+  const names = presiderRaw.split(/;| and /i)
+    .map(n => n.trim()).filter(Boolean);
+
+  const affHit = affilSearch != null &&
+    (item.presider_aff_short || "").split(/[;/|]+/)
+      .some(s => _norm(s) === affilSearch);
+  const nameHTML = (nm) => {
+    const hit = affHit ||
+      (qName && personNamesMatch(qName, parsePersonName(nm)));
+    return hit ? `<span class="author-hit">${esc(nm)}</span>` : esc(nm);
+  };
+
+  let s;
+  if (names.length > 1) {
+
+    s = names.map((nm, idx) => {
+      const a = (affList[idx] || "").trim();
+      return a ? `${nameHTML(nm)} · ${esc(a)}` : nameHTML(nm);
+    }).join(", ");
+  } else {
+    
+    s = nameHTML(names[0] || presiderRaw);
+    const a = (affDeduped || (affList[0] || "")).trim();
+    if (a) s += ` · ${esc(a)}`;
+  }
+  return s || "&nbsp;";
+}
+
+function talkAuthorsWithAffs(item) {
+  const authors = Array.isArray(item.authors) ? item.authors : [];
+  if (!authors.length) return [];
+  
+  const idxToShort = {};
+  const shorts = Array.isArray(item.inst_shorts) ? item.inst_shorts : [];
+  (Array.isArray(item.institutions) ? item.institutions : [])
+    .forEach((inst, i) => {
+      const num = (inst && inst.n != null) ? String(inst.n) : String(i + 1);
+      if (shorts[i]) idxToShort[num] = shorts[i];
+    });
+  return authors.map(a => {
+    const name = (a.name || "").trim();
+    const idxs = Array.isArray(a.insts) ? a.insts.map(String) : [];
+
+    const affs = [];
+    idxs.forEach(ix => {
+      const sh = idxToShort[ix];
+      if (sh && !affs.includes(sh)) affs.push(sh);
+    });
+    return { name, affs };
+  });
+}
+
+function talkByline(item) {
+
+  const ctx = _bylineSearchCtx;
+  const affilSearch = ctx && ctx.mode === "affil" ? _norm(ctx.query) : null;
+  const qName       = ctx ? ctx.qName : null;   
+  if (!affilSearch && !qName) return legacyTalkByline(item);
+
+  const authors = talkAuthorsWithAffs(item);
+  if (!authors.length) return legacyTalkByline(item);
+
+  const isHit = (a) =>
+       (affilSearch && a.affs.some(s => _norm(s) === affilSearch))
+    || (qName && personNamesMatch(qName, parsePersonName(a.name)));
+
+  const speakerNorm = _norm(item.speaker || "");
+  const isSpk = (a) => speakerNorm && _norm(a.name) === speakerNorm;
+  const lastI = authors.length - 1;
+  const spkI = authors.findIndex(isSpk);
+
+  const shownIdx = new Set();
+  shownIdx.add(0);
+  if (lastI > 0) shownIdx.add(lastI);
+  if (spkI > 0 && spkI < lastI) shownIdx.add(spkI);
+
+  if (affilSearch) {
+    const shownHasAff = [...shownIdx].some(i => isHit(authors[i]));
+    if (!shownHasAff) {
+      let lastMid = -1;
+      for (let i = 1; i < lastI; i++) if (isHit(authors[i])) lastMid = i;
+      if (lastMid >= 0) shownIdx.add(lastMid);
+    }
+  }
+  if (qName) {
+    authors.forEach((a, i) => { if (isHit(a)) shownIdx.add(i); });
+  }
+
+  const order = [...shownIdx].sort((x, y) => x - y);
+  const fmtName = (a) => {
+    const cls = [];
+    if (isSpk(a)) cls.push("speaker");     
+    if (isHit(a)) cls.push("author-hit");  
+    return cls.length
+      ? `<span class="${cls.join(" ")}">${esc(a.name)}</span>`
+      : esc(a.name);
+  };
+
+  let html = "";
+  let prev = -1;
+  order.forEach((i, k) => {
+    if (k === 0) { if (i > 0) html += "…"; }
+    else if (i > prev + 1) html += "…";   
+    else html += ", ";                    
+    html += fmtName(authors[i]);
+    prev = i;
+  });
+  if (prev < lastI) html += "…";
+
+  const tail = item.speaker_aff || item.last_aff || "";
+  if (tail) html += `, ${esc(tail)}`;
+  return html;
+}
+
+function legacyTalkByline(item) {
+  const first   = item.first_author || "";
+  const last    = item.last_author  || "";
+  const speaker = item.speaker      || "";
+  const pos     = (item.speaker_pos == null ? -1 : item.speaker_pos);
+
+  const isFirstSpeaker = pos === 0 || _norm(speaker) === _norm(first);
+  const isLastSpeaker  = last && (_norm(speaker) === _norm(last));
+  const speakerIsMiddle = speaker && !isFirstSpeaker && !isLastSpeaker && last;
+
+  const fmt = (name, isSpeaker) => isSpeaker
+    ? `<span class="speaker">${esc(name)}</span>`
+    : esc(name);
+
+  const parts = [];
+  if (first) parts.push(fmt(first, isFirstSpeaker));
+  if (speakerIsMiddle) parts.push(fmt(speaker, true));
+  if (last) parts.push(fmt(last, isLastSpeaker));
+  let html = parts.join("…");
+
+  const aff = item.speaker_aff || item.last_aff || "";
+  if (aff) html += `, ${esc(aff)}`;
+  return html;
+}
+
+function _norm(s) {
+  return (s || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+let _bylineSearchCtx = null;
+
+function renderTimeGrouped(container, items, opts = {}) {
+  const showConcluded = !!state.showPast;
+
+  let filtered = (opts.alwaysAll || showConcluded)
+    ? items
+    : items.filter(it => !isPast(it) && !isWithdrawn(it));
+  if (!opts.ignoreTypes) {
+    filtered = filtered.filter(it => !isTypeHidden(it.color));
+  }
+
+  if (!opts.alwaysAll) {
+    const sel = state.selectedDates || [];
+    if (sel.length) {
+      const selSet = new Set(sel);
+      filtered = filtered.filter(it => {
+        if (!it.start_ts) return true;     
+        return selSet.has(it.start_ts.slice(0, 10));
+      });
+    }
+  }
+
+  if (filtered.length === 0) {
+    container.appendChild(el("p", { class: "empty" },
+      showConcluded ? "Nothing scheduled here." : "Nothing upcoming. Try showing Concluded."));
+    return;
+  }
+
+  let nowItems = [];
+  if (!opts.skipDateHeaders && !showConcluded) {
+    const live  = filtered.filter(it => isInProgress(it));
+    const rest  = filtered.filter(it => !isInProgress(it));
+    nowItems = live;
+    filtered = rest;
+  }
+
+  const scheduledSet = new Set(state.schedule);
+  const inViewIds    = new Set();
+  for (const it of nowItems) inViewIds.add(it.id);
+  for (const it of filtered) inViewIds.add(it.id);
+  const connectorIds = new Set();
+
+  const viewItems = nowItems.concat(filtered);
+  for (const it of viewItems) {
+    if (!it.session_id) continue;                   
+    if (!scheduledSet.has(it.id)) continue;         
+    const sid = it.session_id;
+    if (!inViewIds.has(sid)) continue;              
+    if (!scheduledSet.has(sid)) continue;           
+    connectorIds.add(sid);
+  }
+
+  const reorderBucket = (bucket) => {
+    if (bucket.length < 2) return bucket;
+    const sessionIdsHere = new Set();
+    for (const it of bucket) {
+      if (!it.session_id) sessionIdsHere.add(it.id);
+    }
+
+    if (sessionIdsHere.size === 0) return bucket;
+    const childrenOf = {};   
+    for (const it of bucket) {
+      if (it.session_id && sessionIdsHere.has(it.session_id)) {
+        (childrenOf[it.session_id] = childrenOf[it.session_id] || []).push(it);
+      }
+    }
+    const front = [];
+    const sessionsNoConn = [];   
+    const sessionsConn   = [];   
+    for (const it of bucket) {
+      if (!it.session_id) continue;                              
+      if (sessionIdsHere.has(it.session_id)) continue;           
+      front.push(it);                                            
+    }
+    for (const it of bucket) {
+      if (it.session_id) continue;                               
+      (connectorIds.has(it.id) ? sessionsConn : sessionsNoConn).push(it);
+    }
+    const back = [];
+    for (const s of sessionsNoConn) {
+      back.push(s);
+      const kids = childrenOf[s.id];
+      if (kids) for (const k of kids) back.push(k);
+    }
+    for (const s of sessionsConn) {
+      back.push(s);
+      const kids = childrenOf[s.id];
+      if (kids) for (const k of kids) back.push(k);
+    }
+    return front.concat(back);
+  };
+
+  if (nowItems.length > 1) {
+    nowItems = reorderBucket(nowItems);
+  }
+  if (filtered.length > 1) {
+
+    const out = [];
+    let i = 0;
+    while (i < filtered.length) {
+      const di = tsToDate(filtered[i].start_ts);
+      const tk = di ? timeLabel(di) : null;
+      let j = i + 1;
+      while (j < filtered.length) {
+        const dj = tsToDate(filtered[j].start_ts);
+        const tkj = dj ? timeLabel(dj) : null;
+        if (tkj !== tk) break;
+        j++;
+      }
+      const run = filtered.slice(i, j);
+      out.push(...(run.length > 1 ? reorderBucket(run) : run));
+      i = j;
+    }
+    filtered = out;
+  }
+
+  const frag = document.createDocumentFragment();
+  let curDate = null, curTime = null;
+
+  if (nowItems.length > 0) {
+
+    const todayLabel = dateLabel(new Date(nowMs()));
+    frag.appendChild(el("h2", { class: "date-header" }, todayLabel));
+    curDate = todayLabel;
+    const th = el("h3", { class: "time-header" });
+    th.appendChild(el("span", { class: "th-text" }, "Now"));
+    frag.appendChild(th);
+    curTime = "Now";
+    for (const it of nowItems) {
+      frag.appendChild(makeBubble(it, {
+        inlineTime: !!opts.inlineTime,
+        expandable: !!opts.expandable,
+      }));
+
+      if (opts.expandable && !it.session_id && isSessionExpanded(it.id)) {
+        const exp = buildSessionExpansion(it);
+        if (exp) frag.appendChild(exp);
+      }
+    }
+  }
+
+  for (const it of filtered) {
+    const d = tsToDate(it.start_ts);
+    if (!d) continue;
+    const dk = opts.skipDateHeaders ? null : dateLabel(d);
+    const tk = timeLabel(d);
+    if (dk && dk !== curDate) {
+      frag.appendChild(el("h2", { class: "date-header" }, dk));
+      curDate = dk; curTime = null;
+    }
+
+    if (!opts.inlineTime && tk !== curTime) {
+      const th = el("h3", { class: "time-header" });
+      th.appendChild(el("span", { class: "th-text" }, tk));
+      frag.appendChild(th);
+      curTime = tk;
+    }
+    frag.appendChild(makeBubble(it, {
+      inlineTime: !!opts.inlineTime,
+      expandable: !!opts.expandable,
+    }));
+
+    if (opts.expandable && !it.session_id && isSessionExpanded(it.id)) {
+      const exp = buildSessionExpansion(it);
+      if (exp) frag.appendChild(exp);
+    }
+  }
+  container.appendChild(frag);
+}
+
+function renderSessionsList(c) {
+  renderTimeGrouped(c, DATA.sessions, { expandable: true });
+}
+function renderTalksList(c) {
+  renderTimeGrouped(c, DATA.talks);
+}
+
+function appendSessionMetaLines(s, container, opts = {}) {
+
+  if (s.presider) {
+    const meta = el("div", { class: "dh-meta presider-meta" });
+    meta.appendChild(el("strong", {}, "Presider:"));
+    meta.appendChild(document.createTextNode(" "));
+    const names = s.presider.split(/;| and /i)
+      .map(p => p.trim()).filter(Boolean);
+    
+    const affList = Array.isArray(s.presider_affs_short)
+      ? s.presider_affs_short : [];
+
+    const appendName = (nm) => {
+      meta.appendChild(el("span", {
+        class: "presider-name clickable",
+        title: `Find sessions & talks by ${nm}`,
+        onclick: (e) => { e.stopPropagation(); searchFor(nm, "name"); },
+      }, nm));
+    };
+    const appendAff = (affText) => {
+      meta.appendChild(el("span", {
+        class: "presider-aff clickable",
+        title: `Search for “${affText}”`,
+        onclick: (e) => { e.stopPropagation(); searchFor(affText, "affil"); },
+      }, affText));
+    };
+
+    if (names.length > 1) {
+      names.forEach((nm, idx) => {
+        appendName(nm);
+        const affText = (affList[idx] || "").trim();
+        if (affText) {
+          meta.appendChild(document.createTextNode(" · "));
+          appendAff(affText);
+        }
+        if (idx < names.length - 1) {
+          meta.appendChild(document.createTextNode(", "));
+        }
+      });
+    } else {
+      appendName(names[0] || s.presider);
+      const affDisplay = (s.presider_aff_short
+        || (affList[0] || "")
+        || s.presider_aff || "").trim();
+      if (affDisplay) {
+        meta.appendChild(document.createTextNode(" · "));
+        appendAff(affDisplay);
+      }
+    }
+    container.appendChild(meta);
+  }
+
+  const sd = tsToDate(s.start_ts);
+  if (sd) container.appendChild(el("div", { class: "dh-meta" },
+    `${dateLabel(sd)} · ${timeRange(s)}${s.location ? " · " + s.location : ""}`));
+
+  const typeText = s.type
+    ? `${s.type}${s.topic ? " · " + s.topic : ""}`
+    : "";
+  if (opts.idInline) {
+    const row = el("div", { class: "dh-meta dh-idmeta" });
+    row.appendChild(el("span", { class: "dh-id-chip" }, s.id));
+    if (typeText) {
+      row.appendChild(document.createTextNode(" "));
+      row.appendChild(document.createTextNode(typeText));
+    }
+    container.appendChild(row);
+  } else if (typeText) {
+    container.appendChild(el("div", { class: "dh-meta" }, typeText));
+  }
+
+  if (s.details)
+    container.appendChild(el("div", { class: "dh-meta" }, s.details));
+}
+
+function buildSessionHead(s) {
+  const added = state.schedule.includes(s.id);
+  const head = el("section", { class: `detail-head clr-${s.color}` });
+
+  head.appendChild(el("h2", { class: "dh-title" }, s.title || "(untitled)"));
+  appendSessionMetaLines(s, head, { idInline: true });
+  head.appendChild(el("button", {
+    class: `dh-add${added ? " added" : ""}`,
+    "aria-label": added ? "Remove from schedule" : "Add to schedule",
+    onclick: (e) => { e.stopPropagation(); toggleScheduled(s.id); },
+  }));
+  return head;
+}
+
+function renderSessionDetail(c, sid) {
+  const s = sessionMap[sid];
+  if (!s) { c.appendChild(el("p", { class: "empty" }, "Session not found.")); return; }
+
+  c.appendChild(buildSessionHead(s));
+
+  if (!s.talk_ids || s.talk_ids.length === 0) {
+    c.appendChild(el("p", { class: "empty" }, "No talks listed for this session."));
+    return;
+  }
+
+  const talks = s.talk_ids.map(id => talkMap[id]).filter(Boolean)
+                 .sort((a,b) => cmpTs(a.start_ts, b.start_ts));
+  renderTimeGrouped(c, talks, { skipDateHeaders: true, alwaysAll: true, ignoreTypes: true, inlineTime: true });
+}
+
+function buildSessionExpansion(s) {
+  const talks = (s.talk_ids || []).map(id => talkMap[id]).filter(Boolean)
+                 .sort((a,b) => cmpTs(a.start_ts, b.start_ts));
+  if (talks.length === 0) return null;
+  const box = el("div", {
+    class: `session-expansion clr-${s.color}`,
+    "data-expansion-for": s.id,
+  });
+  for (const t of talks) {
+    box.appendChild(makeBubble(t, { inlineTime: true }));
+  }
+  return box;
+}
+
+function renderTalkDetail(c, tid) {
+  const t = talkMap[tid];
+  if (!t) { c.appendChild(el("p", { class: "empty" }, "Talk not found.")); return; }
+  const s = sessionMap[t.session_id];
+  const added = state.schedule.includes(t.id);
+
+  const head = el("section", { class: `detail-head clr-${t.color}` });
+
+  head.appendChild(el("h2", { class: "dh-title" }, displayTitle(t) || "(untitled)"));
+  const idRow = el("div", { class: "dh-meta dh-idmeta" });
+  idRow.appendChild(el("span", { class: "dh-id-chip" }, t.id));
+  head.appendChild(idRow);
+  const sd = tsToDate(t.start_ts);
+  if (sd) head.appendChild(el("div", { class: "dh-meta" },
+    `${dateLabel(sd)} · ${timeRange(t)}${t.location ? " · " + t.location : ""}`));
+  if (t.status && t.status.toLowerCase() !== "sessioned")
+    head.appendChild(el("div", { class: "dh-meta" }, `Status: ${t.status}`));
+  head.appendChild(el("button", {
+    class: `dh-add${added ? " added" : ""}`,
+    "aria-label": added ? "Remove from schedule" : "Add to schedule",
+    onclick: () => toggleScheduled(t.id),
+  }));
+  c.appendChild(head);
+
+  c.appendChild(el("div", { class: "section-title" }, "Authors"));
+  const detailAuthors = Array.isArray(t.authors) ? t.authors : [];
+  if (detailAuthors.length) {
+    const speakerNorm = _norm(t.speaker || "");
+    const line = el("p", { class: "author-line" });
+    detailAuthors.forEach((a, idx) => {
+      const name = (a.name || "").trim();
+
+      const aff  = (Array.isArray(a.insts) ? a.insts : []).join(",");
+      const isSpeaker = speakerNorm && _norm(name) === speakerNorm;
+      const nameEl = el("span", {
+        class: "author-name clickable" + (isSpeaker ? " speaker" : ""),
+        title: `Find other talks by ${name}`,
+        onclick: () => searchFor(name, "name"),
+      }, name);
+      line.appendChild(nameEl);
+      if (aff) {
+        line.appendChild(el("sup", { class: "aff" }, aff));
+      }
+      if (idx < detailAuthors.length - 1) {
+        line.appendChild(document.createTextNode(", "));
+      }
+    });
+    c.appendChild(line);
+  } else if (Array.isArray(t.author_aliases) && t.author_aliases.length) {
+
+    const line = el("p", { class: "author-line" });
+    const names = t.author_aliases.map(p => p.trim()).filter(Boolean);
+    names.forEach((nm, idx) => {
+      const clean = nm.replace(/\*+$/, "").trim();
+      line.appendChild(el("span", {
+        class: "author-name clickable",
+        title: `Find other talks by ${clean}`,
+        onclick: () => searchFor(clean, "name"),
+      }, clean));
+      if (idx < names.length - 1) {
+        line.appendChild(document.createTextNode(", "));
+      }
+    });
+    c.appendChild(line);
+  }
+
+  const detailInsts = Array.isArray(t.institutions) ? t.institutions : [];
+  if (detailInsts.length) {
+    c.appendChild(el("div", { class: "section-title" }, "Institutions"));
+    const list = el("ol", { class: "inst-list" });
+    const shorts = Array.isArray(t.inst_shorts) ? t.inst_shorts : [];
+    detailInsts.forEach((inst, i) => {
+      const num       = (inst && inst.n != null) ? String(inst.n) : String(i + 1);
+      const longForm  = (inst.name || "").trim();
+      const shortForm = (shorts[i] || "").trim();
+
+      const li = el("li", {
+        class: "inst-item" + (shortForm ? " clickable" : ""),
+        value: num,
+        title: shortForm ? `Search for “${shortForm}”` : "",
+      });
+      li.appendChild(el("span", { class: "inst-long" }, longForm));
+      if (shortForm && shortForm !== longForm.replace(/\.$/, "").trim()) {
+        li.appendChild(el("span", { class: "inst-short" }, shortForm));
+      }
+      if (shortForm) {
+        li.addEventListener("click", () => searchFor(shortForm, "affil"));
+      }
+      list.appendChild(li);
+    });
+    c.appendChild(list);
+  }
+
+  if (t.abstract) {
+    c.appendChild(el("div", { class: "section-title" }, "Abstract"));
+    const safe = esc(t.abstract).replace(
+      /&lt;(\/?(?:sup|sub|i|b|em|strong))&gt;/gi, "<$1>");
+    c.appendChild(el("p", { class: "abstract-body", html: safe }));
+  }
+
+  if (s) {
+    c.appendChild(el("div", { class: "section-title" }, "Session"));
+    c.appendChild(makeBubble(s));
+  }
+
+  appendNotesBox(c, t.id);
+}
+
+const _FOLD_MAP = {
+  "ß":"ss","ẞ":"SS","ø":"o","Ø":"O","æ":"ae","Æ":"AE",
+  "œ":"oe","Œ":"OE","đ":"d","Đ":"D","ð":"d","Ð":"D",
+  "ł":"l","Ł":"L","þ":"th","Þ":"Th",
+};
+function searchFold(s) {
+  return (s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ßẞøØæÆœŒđĐðÐłŁþÞ]/g, ch => _FOLD_MAP[ch] || ch)
+    .toLowerCase();
+}
+
+function _splitGivenTokens(str) {
+  
+  const out = [];
+  for (const chunk of searchFold(str).split(/[\s.\-]+/)) {
+    const c = chunk.replace(/[^a-z]/g, "");
+    if (c) out.push(c);
+  }
+  return out;
+}
+function parsePersonName(raw) {
+
+  let s = (raw || "").replace(/\*/g, "").trim();
+  const eq = s.indexOf("=");
+  if (eq >= 0) s = s.slice(0, eq).trim();
+  if (!s) return null;
+  if (s.includes(",")) {
+    const bits = s.split(",");
+    s = (bits.slice(1).join(" ") + " " + bits[0]).trim();
+  }
+  const toks = s.split(/\s+/).filter(Boolean);
+  if (!toks.length) return null;
+  
+  let surnameIdx = -1;
+  for (let i = toks.length - 1; i >= 0; i--) {
+    if (searchFold(toks[i]).replace(/[^a-z]/g, "")) { surnameIdx = i; break; }
+  }
+  if (surnameIdx < 0) return null;
+  const surname = searchFold(toks[surnameIdx]).replace(/[^a-z]/g, "");
+  const given = [];
+  for (let i = 0; i < surnameIdx; i++) {
+    for (const g of _splitGivenTokens(toks[i])) given.push(g);
+  }
+  return { surname, given };
+}
+function _givenConsistent(a, b) {
+
+  if (!a.length || !b.length) return true;
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a[i], y = b[i];
+    if (x === y) continue;
+    const xInit = x.length === 1;
+    const yInit = y.length === 1;
+
+    if (xInit && y.startsWith(x)) continue;
+    if (yInit && x.startsWith(y)) continue;
+    return false;
+  }
+  return true;
+}
+function personNamesMatch(qName, candName) {
+  if (!qName || !candName) return false;
+  if (qName.surname !== candName.surname) return false;
+  return _givenConsistent(qName.given, candName.given);
+}
+
+function recordPersonNames(rec) {
+  const names = [];
+  const push = (s) => { if (s) names.push(s); };
+  if (rec.session_id) {
+    const authors = Array.isArray(rec.authors) ? rec.authors : [];
+    if (authors.length) {
+
+      authors.forEach(a => push((a.name || "").trim()));
+    } else {
+
+      (Array.isArray(rec.author_aliases) ? rec.author_aliases : [])
+        .map(p => (p || "").trim()).filter(Boolean).forEach(push);
+      push(rec.speaker); push(rec.first_author); push(rec.last_author);
+    }
+  } else {
+    
+    (rec.presider || "").split(/;| and /i)
+      .map(p => p.trim()).filter(Boolean).forEach(push);
+  }
+  return names;
+}
+function recordMatchesPersonName(rec, qName) {
+  for (const nm of recordPersonNames(rec)) {
+    if (personNamesMatch(qName, parsePersonName(nm))) return true;
+  }
+  return false;
+}
+
+let _suggestPools = null;
+function suggestPools() {
+  if (_suggestPools) return _suggestPools;
+  const affMap  = new Map();   
+  const nameMap = new Map();
+  const addAff = (s) => {
+    const disp = (s || "").trim();
+    if (!disp) return;
+    const f = searchFold(disp);
+    if (f && !affMap.has(f)) affMap.set(f, disp);
+  };
+  const addName = (s) => {
+    const disp = (s || "").trim();
+    if (!disp) return;
+    const f = searchFold(disp);
+    if (f && !nameMap.has(f)) nameMap.set(f, disp);
+  };
+  for (const t of DATA.talks) {
+    (Array.isArray(t.inst_shorts) ? t.inst_shorts : []).forEach(addAff);
+    addAff(t.speaker_aff);
+    addAff(t.last_aff);
+    (Array.isArray(t.authors) ? t.authors : []).forEach(a => addName(a && a.name));
+  }
+  for (const s of DATA.sessions) {
+    (Array.isArray(s.presider_affs_short) ? s.presider_affs_short : []).forEach(addAff);
+  }
+  const toArrAff = (m) => [...m.entries()]
+    .map(([fold, disp]) => ({ fold, disp }))
+    .sort((a, b) => a.disp.localeCompare(b.disp));
+
+  const toArrName = (m) => [...m.entries()]
+    .map(([fold, disp]) => ({ fold, disp, pname: parsePersonName(disp) }))
+    .sort((a, b) => a.disp.localeCompare(b.disp));
+  _suggestPools = { affs: toArrAff(affMap), names: toArrName(nameMap) };
+  return _suggestPools;
+}
+
+function _surnameSuggestMatch(qSur, candSur) {
+  if (!qSur || !candSur) return false;
+  if (qSur === candSur) return true;
+  return qSur.length >= 3 && candSur.startsWith(qSur);
+}
+
+function _nameSuggestMatch(qName, cand) {
+  if (!qName || !cand || !cand.pname) return false;
+  if (!_surnameSuggestMatch(qName.surname, cand.pname.surname)) return false;
+  return _givenConsistent(qName.given, cand.pname.given);
+}
+
+function _namePrefixSuggestMatch(qName, cand) {
+  if (!qName || !cand || !cand.pname) return false;
+  if (!qName.given.length || !qName.surname) return false;
+  if (!cand.pname.given.length) return false;
+  const cs = cand.pname.surname;
+  if (!cs || !cs.startsWith(qName.surname)) return false;
+  return _givenConsistent(qName.given, cand.pname.given);
+}
+
+const _suggestCountCache = new Map();
+function _suggestionResultCount(disp, mode) {
+  const key = mode + "\u0000" + disp;
+  if (_suggestCountCache.has(key)) return _suggestCountCache.get(key);
+  let n = 0;
+  if (mode === "affil") {
+    const { talkHit, sessHit } = _affilHitPredicates(disp);
+    for (const s of DATA.sessions) if (sessHit(s)) n++;
+    for (const t of DATA.talks) if (talkHit(t)) n++;
+  } else {
+    const qName = parsePersonName(disp);
+    if (qName) {
+      for (const s of DATA.sessions) if (recordMatchesPersonName(s, qName)) n++;
+      for (const t of DATA.talks) if (recordMatchesPersonName(t, qName)) n++;
+    }
+  }
+  _suggestCountCache.set(key, n);
+  return n;
+}
+
+function suggestionsFor(raw, limit = 3) {
+  const q = searchFold((raw || "").trim());
+  if (q.length < 3) return [];          
+  const pools = suggestPools();
+  const cand = [];
+  const seen = new Set();               
+  const add = (disp, mode) => {
+    const k = mode + "\u0000" + searchFold(disp);
+    if (seen.has(k)) return;
+    seen.add(k);
+    cand.push({ disp, mode });
+  };
+
+  for (const it of pools.affs) {
+    if (it.fold.startsWith(q)) add(it.disp, "affil");
+  }
+
+  const qName = parsePersonName(raw);
+  const singleWord = (raw || "").trim().split(/\s+/).filter(Boolean).length === 1;
+
+  const hasGiven = !!(qName && qName.given.length);
+  if (qName && qName.surname && (qName.surname.length >= 2 || hasGiven)) {
+    for (const it of pools.names) {
+      
+      if (_nameSuggestMatch(qName, it)) { add(it.disp, "name"); continue; }
+      
+      if (_namePrefixSuggestMatch(qName, it)) { add(it.disp, "name"); continue; }
+      
+      if (singleWord && it.pname && it.pname.given.length &&
+          _surnameSuggestMatch(qName.surname, it.pname.given[0])) {
+        add(it.disp, "name");
+      }
+    }
+  }
+
+  cand.sort((a, b) =>
+    _suggestionResultCount(b.disp, b.mode) - _suggestionResultCount(a.disp, a.mode));
+  return cand.slice(0, limit);
+}
+
+function renderSuggestions(raw) {
+  const wrap = $("#search-suggest");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  const sugg = suggestionsFor(raw);
+  if (!sugg.length) return;
+  for (const s of sugg) {
+    wrap.appendChild(el("button", {
+      type: "button",
+      class: "suggest-bubble",
+      title: s.mode === "affil"
+        ? `Search affiliation “${s.disp}”`
+        : `Find sessions & talks by ${s.disp}`,
+      onclick: () => searchFor(s.disp, s.mode),
+    }, s.disp));
+  }
+}
+
+function renderSearch(c) {
+  const ctrl = el("section", { class: "search-controls" });
+  const input = el("input", {
+    type: "search",
+    id: "search-input",
+    placeholder: "Title, authors, affiliation, abstract…",
+    autocomplete: "off",
+    autocorrect: "off",
+    autocapitalize: "off",
+    spellcheck: "false",
+  });
+  input.value = state.searchQuery || "";
+
+  let _searchDebounce = null;
+  const SEARCH_DEBOUNCE_MS = 300;
+  input.addEventListener("input", () => {
+    state.searchQuery = input.value;
+    saveState();
+    clearTimeout(_searchDebounce);
+    _searchDebounce = setTimeout(() => {
+      renderSuggestions(state.searchQuery);
+      rebuildSearchResults();
+    }, SEARCH_DEBOUNCE_MS);
+  });
+  ctrl.appendChild(input);
+
+  c.appendChild(ctrl);
+
+  c.appendChild(el("div", { id: "search-suggest", class: "search-suggest" }));
+  c.appendChild(el("div", { id: "search-results" }));
+  renderSuggestions(input.value);
+  rebuildSearchResults();
+}
+
+function applyNowOverride(ms) {
+  _nowOverride = ms;
+  renderMePane();      
+  drawMeConnectors();
+  if (currentTopView() !== "list" || state.activeTab !== "search") {
+    
+    render();
+  }
+}
+
+function rebuildSearchResults() {
+  const wrap = $("#search-results");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  const raw = (state.searchQuery || "").trim();
+
+  if (raw.toUpperCase() === "DEBUG TFCA") {
+    const on = toggleDebugOverlay();
+    wrap.appendChild(el("p", { class: "empty" },
+      on ? "Debug overlay ON. It shows live viewport heights at the top-left. "
+         + "Type DEBUG TFCA again (or reload) to turn it off."
+         : "Debug overlay OFF."));
+    return;
+  }
+
+  const nowParsed = parseNowOverride(raw);
+  if (nowParsed !== null) {
+    if (Number.isNaN(nowParsed)) {
+      wrap.appendChild(el("p", { class: "empty" },
+        "Couldn’t read that date. Use NOW YYYY-MM-DD HH:MM "
+        + "(24-hour), e.g. NOW 2026-05-12 14:30."));
+      return;
+    }
+    applyNowOverride(nowParsed);
+    const when = `${dateLabel(new Date(nowParsed))}, `
+               + `${timeLabel(new Date(nowParsed))}`;
+    const box = el("div", { class: "now-override-note" });
+    box.appendChild(el("p", { class: "empty" },
+      `Clock pinned to ${when}. Time-based views now behave as if that’s `
+      + `the current time. Reload the page to return to the real clock.`));
+    wrap.appendChild(box);
+    return;
+  }
+
+  if (raw.length < 2) {
+    wrap.appendChild(el("p", { class: "empty" },
+      "Type at least 2 characters to search."));
+    return;
+  }
+
+  const q = searchFold(raw);
+  const { talkHit, sessHit } =
+    _textHitPredicates(q);
+
+  const qName = parsePersonName(raw);
+  const nameShaped = !!(qName && qName.surname && qName.given.length);
+  const talkPred = nameShaped
+    ? (t => talkHit(t) || recordMatchesPersonName(t, qName))
+    : talkHit;
+  const sessPred = nameShaped
+    ? (s => sessHit(s) || recordMatchesPersonName(s, qName))
+    : sessHit;
+
+  const hits = [
+    ...DATA.sessions.filter(sessPred),
+    ...DATA.talks.filter(talkPred),
+  ].sort((a, b) => cmpTs(a.start_ts, b.start_ts));
+
+  if (hits.length === 0) {
+    wrap.appendChild(el("p", { class: "empty" }, `No matches for “${raw}”.`));
+    return;
+  }
+
+  _bylineSearchCtx = { mode: "text", query: raw, qName: parsePersonName(raw) };
+  try {
+    renderTimeGrouped(wrap, hits);
+  } finally {
+    _bylineSearchCtx = null;
+  }
+}
+
+function _textHitPredicates(q) {
+  const inText = (s) => searchFold(s).includes(q);
+  const inArr  = (arr) => Array.isArray(arr) && arr.some(s => inText(s));
+  
+  const inAuthors = (t) => (Array.isArray(t.authors) ? t.authors : [])
+    .some(a => inText(a.name));
+  const inInsts = (t) => (Array.isArray(t.institutions) ? t.institutions : [])
+    .some(i => inText(i.name));
+  const talkHit = t =>
+       inText(t.title) || inAuthors(t) || inArr(t.author_aliases)
+    || inInsts(t)
+    || inText(t.id)
+    || inText(t.speaker) || inText(t.first_author) || inText(t.last_author)
+    || inText(t.speaker_aff) || inText(t.last_aff)
+    || inArr(t.inst_shorts)
+    || inText(t.abstract);   
+  const sessHit = s =>
+       inText(s.title) || inText(s.id) || inText(s.topic)
+    || inText(s.presider) || inText(s.presider_aff)
+    || inText(s.presider_aff_short) || inText(s.type);
+  return { talkHit, sessHit };
+}
+
+function _affilHitPredicates(rawQuery) {
+  const target = searchFold(rawQuery).trim();
+  if (!target) return { talkHit: () => false, sessHit: () => false };
+
+  const nameEquals = (s) => {
+    if (!s) return false;
+    return searchFold(s).split(/[;/|]+/).some(e => e.trim() === target);
+  };
+  const nameEqualsArr = (arr) =>
+    Array.isArray(arr) && arr.some(nameEquals);
+
+  const talkHit = t =>
+       nameEqualsArr(t.inst_shorts)
+    || nameEquals(t.speaker_aff)
+    || nameEquals(t.last_aff);
+  const sessHit = s =>
+       nameEquals(s.presider_aff_short)
+    || nameEquals(s.presider_aff);
+  return { talkHit, sessHit };
+}
+
+function renderClickSearchResults(c, payload) {
+  
+  const ci = payload.indexOf(":");
+  const mode  = ci < 0 ? "text" : payload.slice(0, ci);
+  const query = ci < 0 ? payload : payload.slice(ci + 1);
+  const raw = (query || "").trim();
+
+  const KIND_LABEL = {
+    name:  "Co-author Search",
+    affil: "Affiliation Search",
+    text:  "Search",
+  };
+  const banner = el("div", { class: "click-search-banner" });
+  banner.appendChild(el("span", { class: "csb-kind" },
+    KIND_LABEL[mode] || "Search"));
+  banner.appendChild(el("span", { class: "csb-query" }, raw));
+  c.appendChild(banner);
+
+  const wrap = el("div", { id: "search-results" });
+  c.appendChild(wrap);
+
+  if (!raw) {
+    wrap.appendChild(el("p", { class: "empty" }, "Nothing to search for."));
+    return;
+  }
+
+  let talkHit, sessHit;
+  if (mode === "name") {
+    const qName = parsePersonName(raw);
+    if (!qName) {
+      wrap.appendChild(el("p", { class: "empty" },
+        `Couldn't parse a name from “${raw}”.`));
+      return;
+    }
+    talkHit = t => recordMatchesPersonName(t, qName);
+    sessHit = s => recordMatchesPersonName(s, qName);
+  } else if (mode === "affil") {
+    const preds = _affilHitPredicates(raw);
+    talkHit = preds.talkHit;
+    sessHit = preds.sessHit;
+  } else {
+    const preds = _textHitPredicates(searchFold(raw));
+    talkHit = preds.talkHit;
+    sessHit = preds.sessHit;
+  }
+
+  const hits = [
+    ...DATA.sessions.filter(sessHit),
+    ...DATA.talks.filter(talkHit),
+  ].sort((a, b) => cmpTs(a.start_ts, b.start_ts));
+
+  if (hits.length === 0) {
+    wrap.appendChild(el("p", { class: "empty" }, `No matches for “${raw}”.`));
+    return;
+  }
+  _bylineSearchCtx = {
+    mode,
+    query: raw,
+    qName: mode === "name" ? parsePersonName(raw) : null,
+  };
+  try {
+    renderTimeGrouped(wrap, hits);
+  } finally {
+    _bylineSearchCtx = null;
+  }
+}
+
+function renderMe(c) {
+
+  const ids = scheduledIds();
+  const items = [
+    ...DATA.sessions.filter(s => ids.has(s.id)),
+    ...DATA.talks   .filter(t => ids.has(t.id)),
+  ].sort((a, b) => cmpTs(a.start_ts, b.start_ts));
+
+  if (items.length === 0) {
+    c.appendChild(el("p", { class: "empty" },
+      "Nothing in your schedule. Tap + on any session or talk to add it."));
+
+  } else {
+    renderTimeGrouped(c, items, { ignoreTypes: true });
+  }
+
+  appendNotesBox(c, CONFERENCE_NOTES_KEY, {
+    title: "Notes",
+    placeholder: "General conference notes…",
+    tall: true,
+    copyAll: true,
+  });
+
+  appendSettingsSection(c);
+
+  const about = el("div", { class: "me-settings me-about" });
+  about.appendChild(el("div", { class: "me-attribution" }, [
+    el("a", {
+      class: "me-attribution-link",
+      href: "https://github.com/burghoff/fine_conference_app",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    }, "The Fine Conference App v0.1"),
+    el("br"),
+    el("a", {
+      class: "me-attribution-link",
+      href: "https://burghoff.org",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    }, "David Burghoff, UT Austin"),
+    el("div", { class: "me-rights" }, [
+      "App: MIT License",
+      el("br"),
+      "Data: Copyrighted by conference and its publishers",
+    ]),
+  ]));
+  c.appendChild(about);
+}
+
+function buildNotesText(stats) {
+  const ids = scheduledIds();
+  const notes = state.notes || {};
+
+  const talkSet = new Map();   
+  for (const t of DATA.talks) {
+    if (ids.has(t.id)) talkSet.set(t.id, t);
+  }
+  for (const s of DATA.sessions) {
+    if (!ids.has(s.id)) continue;
+    for (const tid of (s.talk_ids || [])) {
+      const t = talkMap[tid];
+      if (t && !talkSet.has(t.id)) talkSet.set(t.id, t);
+    }
+  }
+  const talks = [...talkSet.values()]
+    .sort((a, b) => cmpTs(a.start_ts, b.start_ts));
+
+  const out = [];
+  out.push((DATA.conference_name || "Conference") + " — My Notes");
+  out.push("=".repeat(60));
+  out.push("");
+
+  let anyEmitted = false;
+  let talkCount = 0;            
+  let hasGeneral = false;
+
+  const general = (notes[CONFERENCE_NOTES_KEY] || "").trim();
+  if (general) {
+    out.push("General notes");
+    for (const ln of general.split("\n")) out.push(`  ${ln}`);
+    out.push("");                                
+    anyEmitted = true;
+    hasGeneral = true;
+  }
+
+  for (const t of talks) {
+    const note = (notes[t.id] || "").trim();
+    if (!note) continue;                       
+    out.push(formatTalkReference(t));
+    for (const ln of note.split("\n")) out.push(`  ${ln}`);
+    out.push("");                              
+    anyEmitted = true;
+    talkCount++;
+  }
+  if (!anyEmitted) out.push("(No notes yet.)");
+  if (stats) { stats.talkCount = talkCount; stats.hasGeneral = hasGeneral; }
+  return out.join("\n");
+}
+
+function formatTalkReference(t) {
+  const parts = [t.id || "", displayTitle(t) || "(untitled)"];
+
+  let authorsStr = "";
+  const names = (Array.isArray(t.authors) ? t.authors : [])
+    .map(a => (a.name || "").trim()).filter(Boolean);
+  if (names.length) {
+    const speakerKey = (t.speaker || "").replace(/\s+/g, " ").trim().toLowerCase();
+    authorsStr = names.map(name => {
+      const isSpeaker = speakerKey
+        && name.replace(/\s+/g, " ").trim().toLowerCase() === speakerKey;
+      return isSpeaker ? `${name}*` : name;
+    }).join("; ");
+  } else if (Array.isArray(t.author_aliases) && t.author_aliases.length) {
+    authorsStr = t.author_aliases.join("; ");
+  }
+  if (authorsStr) parts.push(authorsStr);
+
+  return parts.join(", ");
+}
+
+async function doCopyNotes() {
+  const stats = {};
+  const text = buildNotesText(stats);
+
+  const bits = [];
+  if (stats.hasGeneral) bits.push("conference notes");
+  if (stats.talkCount) bits.push(`${stats.talkCount} talk${stats.talkCount === 1 ? "" : "s"}`);
+  const scope = bits.length ? bits.join(" + ") : "no notes yet";
+  try {
+    await navigator.clipboard.writeText(text);
+    flashToast(`Copied: ${scope}.`);
+  } catch (_) {
+    showSyncSheet({
+      title: "Copy notes",
+      hint:  "Long-press the box below to select all and copy.",
+      value: text,
+      readOnly: true,
+      primaryLabel: "Done",
+      onPrimary: () => {},
+    });
+  }
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const SPINE_W       = 1.5;   
+
+const SPINE_INSET   = 2;
+
+const FADE_BLUR_STD = 3.2;   
+const FADE_OPACITY  = 0.78;  
+
+function ensureBlurDefs(svg) {
+  if (svg.querySelector("#conn-blur")) return;
+  const defs = document.createElementNS(SVG_NS, "defs");
+  const filter = document.createElementNS(SVG_NS, "filter");
+  filter.setAttribute("id", "conn-blur");
+
+  filter.setAttribute("x", "-0.5");
+  filter.setAttribute("y", "-0.5");
+  filter.setAttribute("width", "2");
+  filter.setAttribute("height", "2");
+  const blur = document.createElementNS(SVG_NS, "feGaussianBlur");
+  blur.setAttribute("stdDeviation", String(FADE_BLUR_STD));
+  filter.appendChild(blur);
+  defs.appendChild(filter);
+  svg.insertBefore(defs, svg.firstChild);
+}
+
+function addFadeChip(svg, box, bg) {
+  const padX = 4, padY = 2;
+  const rect = document.createElementNS(SVG_NS, "rect");
+  rect.setAttribute("x", String(box.left - padX));
+  rect.setAttribute("y", String(box.top - padY));
+  rect.setAttribute("width",  String(box.width + padX * 2));
+  rect.setAttribute("height", String(box.height + padY * 2));
+  rect.setAttribute("rx", "4");
+  rect.setAttribute("fill", bg);
+  rect.setAttribute("opacity", String(FADE_OPACITY));
+  rect.setAttribute("filter", "url(#conn-blur)");
+  svg.appendChild(rect);
+}
+
+function fadeChipBoxes(content, rectIn) {
+  const boxes = [];
+  const push = (el) => {
+    if (!el) return;
+    const r = rectIn(el);
+    boxes.push({ left: r.left, top: r.top,
+                 width: r.right - r.left, height: r.bottom - r.top });
+  };
+  content.querySelectorAll(".time-header .th-text").forEach(push);
+  content.querySelectorAll(".section-title").forEach(push);
+  return boxes;
+}
+
+function drawMeConnectors(container) {
+  const content = container || $("#content");
+  if (!content) return;
+
+  const stale = content.querySelector("#me-connectors");
+  if (stale) stale.remove();
+
+  content.querySelectorAll(".bubble[data-scoot]").forEach(b => {
+    b.style.marginLeft = "";
+    b.removeAttribute("data-scoot");
+  });
+
+  const showsMeSchedule = (content.id === "me-content")
+    || (content.id === "content" && state.activeTab === "me"
+        && currentTopView() === "list");
+  if (!showsMeSchedule) return;
+
+  const scheduled = new Set(state.schedule);
+  if (scheduled.size === 0) return;
+
+  const sessionBubbles = [...content.querySelectorAll(
+    '.bubble.added[data-kind="session"]')];
+  if (sessionBubbles.length === 0) return;
+
+  const allBubbles  = [...content.querySelectorAll(".bubble")];
+  const talkBubbles = allBubbles.filter(
+    b => b.dataset.kind === "talk" && b.classList.contains("added"));
+
+  const groups = [];
+  for (const sb of sessionBubbles) {
+    const sid = sb.dataset.bubbleId;
+    const children = talkBubbles.filter(tb => tb.dataset.sessionId === sid);
+    if (children.length === 0) continue;
+    groups.push({ sb, sid, children });
+  }
+  if (groups.length === 0) return;
+
+  const offsetIn = (el) => {
+    let x = 0, y = 0, node = el;
+    while (node && node !== content) {
+      x += node.offsetLeft;
+      y += node.offsetTop;
+      node = node.offsetParent;
+      if (node && node !== content && !content.contains(node)) break;
+    }
+    return { x, y };
+  };
+  const rectIn = (el) => {
+    const o = offsetIn(el);
+    return {
+      top:    o.y,
+      bottom: o.y + el.offsetHeight,
+      left:   o.x,
+      right:  o.x + el.offsetWidth,
+    };
+  };
+
+  for (const g of groups) {
+    const sr = rectIn(g.sb);
+    g.xAnchor = sr.left;     
+    g.yStart  = sr.bottom;   
+    g.kids    = g.children.map(tb => {
+      const r = rectIn(tb);
+      return {
+        el:     tb,
+        left:   r.left,      
+        bottom: r.bottom,
+        top:    r.top,
+        right:  r.right,
+        midY:   (r.top + r.bottom) / 2,
+      };
+    });
+
+    g.yEnd = g.kids[g.kids.length - 1].midY;
+  }
+
+  groups.sort((a, b) => a.yStart - b.yStart);
+  const active = []; 
+  const PUSH_PAST = 6;
+  for (const g of groups) {
+    
+    for (let i = active.length - 1; i >= 0; i--) {
+      if (active[i].yEnd < g.yStart) active.splice(i, 1);
+    }
+
+    let sr = rectIn(g.sb);
+    let need = 0;
+    for (const a of active) {
+
+      if (a.xSpine > sr.left - SPINE_W && a.xSpine < sr.left + PUSH_PAST) {
+        const want = a.xSpine + PUSH_PAST - sr.left;
+        if (want > need) need = want;
+      }
+    }
+    if (need > 0) {
+      const cur = parseFloat(getComputedStyle(g.sb).marginLeft) || 0;
+      g.sb.style.marginLeft = `${Math.round(cur + need)}px`;
+      g.sb.dataset.scoot = "1";
+      sr = rectIn(g.sb); 
+    }
+    g.xAnchor = sr.left;
+
+    g.yStart  = (sr.top + sr.bottom) / 2;
+    g.xSpine  = sr.left + SPINE_INSET;
+    g.color = getComputedStyle(g.sb).borderLeftColor || "currentColor";
+    
+    active.push(g);
+  }
+
+  for (const g of groups) {
+    g._memberIds = new Set([g.sid, ...g.children.map(c => c.dataset.bubbleId)]);
+    g.kids = g.children.map(tb => {
+      const r = rectIn(tb);
+      return {
+        el: tb, left: r.left, bottom: r.bottom, top: r.top,
+        right: r.right, midY: (r.top + r.bottom) / 2,
+      };
+    });
+    g.yEnd = g.kids[g.kids.length - 1].midY;
+    
+    const rec = active.find(a => a === g);
+    if (rec) rec.yEnd = g.yEnd;
+  }
+
+  for (let pass = 0; pass < 2; pass++) {
+    let didScoot = false;
+    for (const b of allBubbles) {
+      const bid = b.dataset.bubbleId;
+      const r = rectIn(b);
+      let scoot = 0;
+      for (const g of groups) {
+        if (g._memberIds.has(bid)) continue;
+        if (r.bottom <= g.yStart || r.top >= g.yEnd) continue;
+        if (g.xSpine > r.left - SPINE_W && g.xSpine < r.left + PUSH_PAST) {
+          const need = g.xSpine + PUSH_PAST - r.left;
+          if (need > scoot) scoot = need;
+        }
+      }
+      if (scoot > 0) {
+        const cur = parseFloat(getComputedStyle(b).marginLeft) || 0;
+        b.style.marginLeft = `${Math.round(cur + scoot)}px`;
+        b.dataset.scoot = "1";
+        didScoot = true;
+      }
+    }
+    if (!didScoot) break;
+  }
+
+  for (const g of groups) {
+    g.kids = g.children.map(tb => {
+      const r = rectIn(tb);
+      return {
+        el: tb, left: r.left, bottom: r.bottom, top: r.top,
+        right: r.right, midY: (r.top + r.bottom) / 2,
+      };
+    });
+    g.yEnd = g.kids[g.kids.length - 1].midY;
+  }
+
+  const svgW = content.clientWidth;
+  const svgH = content.scrollHeight;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.id = "me-connectors";
+
+  svg.style.position = "absolute";
+  svg.style.top = "0";
+  svg.style.left = "0";
+  svg.style.display = "block";
+  svg.setAttribute("width",  svgW);
+  svg.setAttribute("height", svgH);
+  svg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+
+  svg.style.width  = svgW + "px";
+  svg.style.height = svgH + "px";
+
+  for (const g of groups) {
+    const path = document.createElementNS(SVG_NS, "path");
+    const parts = [];
+    const xS = g.xSpine;
+
+    parts.push(`M ${xS} ${g.yStart} L ${xS} ${g.yEnd}`);
+
+    for (const k of g.kids) {
+      const xC = k.left + 2;
+      parts.push(`M ${xS} ${k.midY} L ${xC} ${k.midY}`);
+    }
+
+    path.setAttribute("d", parts.join(" "));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", g.color);
+    path.setAttribute("stroke-width", String(SPINE_W));
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+  }
+
+  const bg = getComputedStyle(content).getPropertyValue("background-color");
+  const pageBg = (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent")
+    ? bg
+    : getComputedStyle(document.body).backgroundColor;
+  ensureBlurDefs(svg);
+  for (const box of fadeChipBoxes(content, rectIn)) {
+    addFadeChip(svg, box, pageBg);
+  }
+
+  content.insertBefore(svg, content.firstChild);
+}
+
+function drawSessionDetailConnectors() {
+  const content = $("#content");
+  if (!content) return;
+
+  const stale = content.querySelector("#session-connectors");
+  if (stale) stale.remove();
+
+  if (document.body.dataset.activeView !== "session-detail") return;
+
+  const head = content.querySelector(".detail-head");
+  if (!head) return;
+  const talkBubbles = [...content.querySelectorAll(
+    '.bubble[data-kind="talk"]')];
+  if (talkBubbles.length === 0) return;
+
+  const cr = content.getBoundingClientRect();
+  const sx = content.scrollLeft || 0;
+  const sy = content.scrollTop  || 0;
+  const rectIn = (el) => {
+    const r = el.getBoundingClientRect();
+    return {
+      top:    r.top    - cr.top  + sy,
+      bottom: r.bottom - cr.top  + sy,
+      left:   r.left   - cr.left + sx,
+      right:  r.right  - cr.left + sx,
+    };
+  };
+
+  const hr = rectIn(head);
+  const kids = talkBubbles.map(tb => {
+    const r = rectIn(tb);
+    return { left: r.left, midY: (r.top + r.bottom) / 2 };
+  });
+
+  const xS     = hr.left + SPINE_INSET;
+
+  const yStart = (hr.top + hr.bottom) / 2;
+  const yEnd   = kids[kids.length - 1].midY;
+  const color  = getComputedStyle(head).borderLeftColor || "currentColor";
+
+  const svgW = content.clientWidth;
+  const svgH = content.scrollHeight;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.id = "session-connectors";
+  svg.setAttribute("width",  svgW);
+  svg.setAttribute("height", svgH);
+  svg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+  svg.style.width  = svgW + "px";
+  svg.style.height = svgH + "px";
+
+  const path = document.createElementNS(SVG_NS, "path");
+  const parts = [`M ${xS} ${yStart} L ${xS} ${yEnd}`];
+  for (const k of kids) {
+    const xC = k.left + 2;   
+    parts.push(`M ${xS} ${k.midY} L ${xC} ${k.midY}`);
+  }
+  path.setAttribute("d", parts.join(" "));
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", color);
+  path.setAttribute("stroke-width", String(SPINE_W));
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(path);
+
+  const bg = getComputedStyle(content).getPropertyValue("background-color");
+  const pageBg = (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent")
+    ? bg
+    : getComputedStyle(document.body).backgroundColor;
+  ensureBlurDefs(svg);
+  for (const box of fadeChipBoxes(content, rectIn)) {
+    addFadeChip(svg, box, pageBg);
+  }
+
+  content.insertBefore(svg, content.firstChild);
+}
+
+function drawSessionListConnectors() {
+  const content = $("#content");
+  if (!content) return;
+  const stale = content.querySelector("#session-list-connectors");
+  if (stale) stale.remove();
+
+  if (state.activeTab !== "sessions" || currentTopView() !== "list") return;
+
+  const groups = [...content.querySelectorAll(".session-expansion")];
+  if (groups.length === 0) return;
+
+  const cr = content.getBoundingClientRect();
+  const sx = content.scrollLeft || 0;
+  const sy = content.scrollTop  || 0;
+  const rectIn = (el) => {
+    const r = el.getBoundingClientRect();
+    return {
+      top:    r.top    - cr.top  + sy,
+      bottom: r.bottom - cr.top  + sy,
+      left:   r.left   - cr.left + sx,
+      right:  r.right  - cr.left + sx,
+    };
+  };
+
+  const svgW = content.clientWidth;
+  const svgH = content.scrollHeight;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.id = "session-list-connectors";
+  svg.setAttribute("width",  svgW);
+  svg.setAttribute("height", svgH);
+  svg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+  svg.style.width  = svgW + "px";
+  svg.style.height = svgH + "px";
+
+  const sessionBubbleById = {};
+  for (const b of content.querySelectorAll('.bubble[data-kind="session"]')) {
+    sessionBubbleById[b.getAttribute("data-bubble-id")] = b;
+  }
+
+  for (const box of groups) {
+
+    const sid = box.getAttribute("data-expansion-for");
+    const sBubble = sessionBubbleById[sid];
+    if (!sBubble) continue;
+    const talkBubbles = [...box.querySelectorAll('.bubble[data-kind="talk"]')];
+    if (talkBubbles.length === 0) continue;
+
+    const hr = rectIn(sBubble);
+    const kids = talkBubbles.map(tb => {
+      const r = rectIn(tb);
+      return { left: r.left, midY: (r.top + r.bottom) / 2 };
+    });
+    const xS     = hr.left + SPINE_INSET;
+
+    const yTop   = hr.top + (hr.bottom - hr.top) * 0.33;
+    const xMid   = (hr.left + hr.right) / 2;
+    const yEnd   = kids[kids.length - 1].midY;
+    const color  = getComputedStyle(sBubble).borderLeftColor || "currentColor";
+
+    const path = document.createElementNS(SVG_NS, "path");
+
+    const parts = [
+      `M ${xS} ${yTop} L ${xMid} ${yTop}`,
+      `M ${xS} ${yTop} L ${xS} ${yEnd}`,
+    ];
+    for (const k of kids) {
+      const xC = k.left + 2;   
+      parts.push(`M ${xS} ${k.midY} L ${xC} ${k.midY}`);
+    }
+    path.setAttribute("d", parts.join(" "));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", color);
+    path.setAttribute("stroke-width", String(SPINE_W));
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+  }
+
+  content.insertBefore(svg, content.firstChild);
+}
+
+let _meResizeTimer = null;
+window.addEventListener("resize", () => {
+  if (_meResizeTimer) clearTimeout(_meResizeTimer);
+  _meResizeTimer = setTimeout(() => {
+    _meResizeTimer = null;
+    
+    if (state.activeTab === "me") drawMeConnectors();
+
+    if (isWide()) { const p = $("#me-content"); if (p) drawMeConnectors(p); }
+    if (document.body.dataset.activeView === "session-detail")
+      drawSessionDetailConnectors();
+    if (state.activeTab === "sessions" && currentTopView() === "list")
+      drawSessionListConnectors();
+  }, 120);
+});
+
+function formatLastSync(ts) {
+  if (!ts) return "";
+  const d   = new Date(ts);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60)   return "Synced just now";
+  if (diff < 3600) return `Synced ${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `Synced ${Math.floor(diff / 3600)}h ago`;
+  const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+  if (d.toDateString() === yest.toDateString()) {
+    return `Synced yesterday, ${timeLabel(d)}`;
+  }
+  return `Synced ${dateLabel(d)}`;
+}
+
+function renderTopbarExtras(tab, top) {
+  const slot = $("#topbar-extra");
+  slot.innerHTML = "";
+  if (tab === "me" && top.view === "list") {
+
+    slot.appendChild(el("span", {
+      class: "topbar-sync",
+      html: esc(formatLastSync(state.lastSyncAt)),
+    }));
+    slot.appendChild(el("button", {
+      class: "icon-btn",
+      title: "Paste sync code",
+      "aria-label": "Paste sync code",
+      onclick: doPaste,
+    }, "⇲"));
+    slot.appendChild(el("button", {
+      class: "icon-btn",
+      title: "Copy sync code",
+      "aria-label": "Copy sync code",
+      onclick: doCopy,
+    }, "⧉"));
+  } else if (canResetTab(tab)) {
+
+    slot.appendChild(el("button", {
+      class: "icon-btn",
+      title: "Reset this tab",
+      "aria-label": "Reset to top of this section",
+      html: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" '
+          + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+          + 'stroke-linejoin="round" aria-hidden="true">'
+          + '<path d="M3 11.5 12 4l9 7.5"></path>'
+          + '<path d="M5.5 9.7V20h13V9.7"></path></svg>',
+      onclick: resetTab,
+    }));
+  }
+}
+
+function exportState() {
+  const payload = {
+    v: 1,
+    schedule: state.schedule,
+
+    scheduleLog: state.scheduleLog || {},
+    showPast: state.showPast,
+    activeTab: state.activeTab,
+    tabStacks: state.tabStacks,
+    searchQuery: state.searchQuery,
+    hiddenTypes: state.hiddenTypes,
+    selectedDates: state.selectedDates,
+    notes: state.notes,
+    
+    meWidth: state.meWidth,
+  };
+  const json = JSON.stringify(payload);
+  
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return "CONF1:" + b64;
+}
+
+function importState(code) {
+  code = (code || "").trim();
+
+  const QUOTE_PAIRS = [
+    ['"',  '"'],
+    ["'",  "'"],
+    ["`",  "`"],
+    ["\u201C", "\u201D"],   
+    ["\u2018", "\u2019"],   
+    ["\u00AB", "\u00BB"],   
+  ];
+  for (const [open, close] of QUOTE_PAIRS) {
+    if (code.length >= 2 && code.startsWith(open) && code.endsWith(close)) {
+      code = code.slice(open.length, code.length - close.length).trim();
+      break;
+    }
+  }
+  if (!code.startsWith("CONF1:")) throw new Error("Not a valid sync code.");
+  const json = decodeURIComponent(escape(atob(code.slice(6))));
+  const data = JSON.parse(json);
+  if (data.v !== 1) throw new Error("Unsupported version.");
+
+  const incomingSchedule = Array.isArray(data.schedule) ? data.schedule : [];
+  const incomingHasLog = !!(data.scheduleLog && typeof data.scheduleLog === "object");
+  const incomingLog = incomingHasLog
+    ? data.scheduleLog
+    : Object.fromEntries(incomingSchedule.map(id => [id, { op: "add", ts: 0, legacy: true }]));
+
+  const localLog = state.scheduleLog || {};
+  const mergedLog = {};
+  const idsSeen = new Set([...Object.keys(localLog), ...Object.keys(incomingLog)]);
+  let added = 0, removed = 0;
+  const wasScheduled = new Set(state.schedule);
+  for (const id of idsSeen) {
+    const a = localLog[id];
+    const b = incomingLog[id];
+    let winner;
+    if (a && b) {
+
+      if (b.legacy && b.op === "add")      winner = b;
+      else if (a.legacy && a.op === "add") winner = a;     
+      else                                  winner = (b.ts >= a.ts) ? b : a;
+    } else {
+      winner = a || b;
+    }
+
+    if (!winner || (winner.op !== "add" && winner.op !== "del")) continue;
+
+    mergedLog[id] = { op: winner.op, ts: Number(winner.ts) || 0 };
+    const nowScheduled = (winner.op === "add");
+    if (nowScheduled && !wasScheduled.has(id))  added++;
+    if (!nowScheduled && wasScheduled.has(id))  removed++;
+  }
+  const merged = Object.keys(mergedLog)
+    .filter(id => mergedLog[id].op === "add");
+
+  let selDates;
+  if (Array.isArray(data.selectedDates)) {
+    selDates = data.selectedDates.slice();
+  } else if (data.dateRange && typeof data.dateRange === "object") {
+    const lo = data.dateRange.start || null;
+    const hi = data.dateRange.end   || null;
+    if (!lo && !hi) {
+      selDates = [];
+    } else {
+      const loCmp = lo || "0000-00-00";
+      const hiCmp = hi || "9999-99-99";
+      selDates = ALL_DATES.filter(d => d >= loCmp && d <= hiCmp);
+    }
+  } else {
+    selDates = [];
+  }
+
+  const mergedNotes = Object.assign({}, state.notes || {});
+  const incomingNotes = (data.notes && typeof data.notes === "object")
+    ? data.notes : {};
+  const _sessionIds = new Set(DATA.sessions.map(x => x.id));
+  for (const key in incomingNotes) {
+    if (_sessionIds.has(key)) continue;   
+    const incoming = (incomingNotes[key] || "").toString();
+    const existing = (mergedNotes[key] || "").toString();
+    if (!incoming) continue;
+    if (!existing || incoming.length > existing.length) {
+      mergedNotes[key] = incoming;
+    }
+  }
+
+  for (const key of Object.keys(mergedNotes)) {
+    if (_sessionIds.has(key)) delete mergedNotes[key];
+  }
+
+  const incomingStacks = data.tabStacks || defaultState().tabStacks;
+  const landTab = isWide() ? (data.activeTab || "sessions") : "me";
+  let landStacks = incomingStacks;
+  if (!isWide()) {
+
+    landStacks = Object.assign({}, incomingStacks, {
+      me: [{ view: "list", scrollY: 0 }],
+    });
+  }
+
+  Object.assign(state, {
+    schedule:       merged,
+    scheduleLog:    mergedLog,
+    showPast:       (typeof data.showPast === "object" && data.showPast)
+                      ? Object.values(data.showPast).some(Boolean)
+                      : !!data.showPast,
+    activeTab:      landTab,
+    tabStacks:      landStacks,
+    searchQuery:    data.searchQuery || "",
+    hiddenTypes:    Array.isArray(data.hiddenTypes) ? data.hiddenTypes : [],
+    selectedDates:  selDates,
+    notes:          mergedNotes,
+
+    meWidth:        (typeof data.meWidth === "number" && isFinite(data.meWidth))
+                      ? data.meWidth
+                      : (state.meWidth ?? null),
+    lastSyncAt:     Date.now(),
+  });
+  saveState();
+  applyMeWidth();
+  render();
+  return { added, removed };
+}
+
+async function doCopy() {
+  const code = exportState();
+  try {
+    await navigator.clipboard.writeText(code);
+
+    flashToast(`Copied (${code.length} chars).`);
+  } catch (_) {
+    showCopySheet(code);
+  }
+}
+
+async function doPaste() {
+  try {
+    const code = await navigator.clipboard.readText();
+    if (code && code.trim()) { doImport(code.trim()); return; }
+  } catch (_) {}
+  showPasteSheet();
+}
+
+function doImport(code) {
+  try {
+    const { added, removed } = importState(code);
+    const pluralize = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+    if (added === 0 && removed === 0) {
+      flashToast("Nothing new — already in sync.");
+    } else if (removed === 0) {
+      flashToast(`Added ${pluralize(added, "item")}.`);
+    } else if (added === 0) {
+      flashToast(`Removed ${pluralize(removed, "item")}.`);
+    } else {
+      flashToast(`Added ${added}, removed ${removed}.`);
+    }
+  }
+  catch (e) { window.alert("Couldn’t import: " + e.message); }
+}
+
+function showSyncSheet({ title, hint, value, readOnly, primaryLabel, onPrimary }) {
+  
+  document.querySelectorAll(".sheet-overlay").forEach(o => o.remove());
+
+  const overlay = el("div", { class: "sheet-overlay" });
+  const card    = el("div", { class: "sheet-card" });
+  card.appendChild(el("h2", { class: "sheet-title" }, title));
+  if (hint) card.appendChild(el("p", { class: "sheet-hint" }, hint));
+
+  const ta = el("textarea", {
+    class: "sheet-textarea",
+    rows: 4,
+    spellcheck: "false",
+    autocapitalize: "off",
+    autocorrect: "off",
+  });
+  if (value)    ta.value = value;
+  if (readOnly) ta.readOnly = true;
+  card.appendChild(ta);
+
+  const btns = el("div", { class: "sheet-btns" });
+  const cancel  = el("button", { class: "sheet-btn sheet-btn-cancel" }, "Cancel");
+  const primary = el("button", { class: "sheet-btn sheet-btn-primary" }, primaryLabel);
+  btns.appendChild(cancel);
+  btns.appendChild(primary);
+  card.appendChild(btns);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  cancel.addEventListener("click", close);
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  
+  card.addEventListener("click", e => e.stopPropagation());
+
+  requestAnimationFrame(() => {
+    ta.focus();
+    if (readOnly) ta.select();
+  });
+
+  if (!readOnly) {
+    ta.addEventListener("paste", () => {
+      
+      setTimeout(() => {
+        const v = ta.value.trim();
+        if (v) { close(); onPrimary(v); }
+      }, 30);
+    });
+  }
+
+  primary.addEventListener("click", () => {
+    if (readOnly) { close(); return; }
+    const v = ta.value.trim();
+    if (!v) { close(); return; }
+    close();
+    onPrimary(v);
+  });
+}
+
+function showCopySheet(code) {
+  showSyncSheet({
+    title: "Copy sync code",
+    hint:  "Long-press the text and choose Copy, then paste it on your other device.",
+    value: code,
+    readOnly: true,
+    primaryLabel: "Done",
+  });
+}
+
+function showPasteSheet() {
+  showSyncSheet({
+    title: "Paste sync code",
+    hint:  "Long-press the box and choose Paste — it’ll import automatically.",
+    readOnly: false,
+    primaryLabel: "Import",
+    onPrimary: doImport,
+  });
+}
+
+function _autosizeNotes(ta) {
+  ta.style.height = "auto";
+  const px = Math.min(ta.scrollHeight, window.innerHeight * 0.6);
+  ta.style.height = `${px}px`;
+}
+
+let _notesSaveTimer = null;
+function _scheduleNotesSave() {
+  if (_notesSaveTimer) clearTimeout(_notesSaveTimer);
+  _notesSaveTimer = setTimeout(() => { saveState(); _notesSaveTimer = null; }, 400);
+}
+
+function appendNotesBox(container, itemId, opts) {
+  opts = opts || {};
+  const title = opts.title || "Notes";
+  const placeholder = opts.placeholder || "Add a note…";
+  if (!state.notes) state.notes = {};
+  const initial = (state.notes[itemId] || "");
+
+  const section = el("section", { class: "notes-section" });
+
+  const titleClass = opts.tall ? "section-title notes-title--bright"
+                               : "section-title";
+
+  if (opts.copyAll) {
+    const head = el("div", { class: titleClass + " notes-head" });
+    head.appendChild(el("span", {}, title));
+    const copyBtn = el("button", {
+      class: "notes-copy-all",
+      type: "button",
+      title: "Copy all notes — these plus every talk's notes",
+      "aria-label": "Copy all notes, including every talk's notes",
+      onclick: () => doCopyNotes(),
+    }, [
+
+      el("span", { class: "notes-copy-ico", html:
+        '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" '
+        + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        + 'stroke-linejoin="round" aria-hidden="true">'
+        + '<rect x="9" y="9" width="11" height="11" rx="2"></rect>'
+        + '<path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>' }),
+      el("span", { class: "notes-copy-label" }, "Copy all"),
+    ]);
+    head.appendChild(copyBtn);
+    section.appendChild(head);
+  } else {
+    section.appendChild(el("div", { class: titleClass }, title));
+  }
+
+  const ta = el("textarea", {
+    class: opts.tall ? "notes-textarea notes-textarea--tall" : "notes-textarea",
+    placeholder: placeholder,
+    rows: opts.tall ? "4" : "2",
+    spellcheck: "true",
+    autocapitalize: "sentences",
+  });
+  
+  ta.value = initial;
+
+  ta.addEventListener("input", () => {
+    const v = ta.value;
+    if (v.trim() === "") {
+      delete state.notes[itemId];
+    } else {
+      state.notes[itemId] = v;
+    }
+    _scheduleNotesSave();
+    _autosizeNotes(ta);
+  });
+
+  ta.addEventListener("blur", () => {
+    if (_notesSaveTimer) {
+      clearTimeout(_notesSaveTimer);
+      _notesSaveTimer = null;
+      saveState();
+    }
+  });
+
+  section.appendChild(ta);
+  container.appendChild(section);
+
+  requestAnimationFrame(() => _autosizeNotes(ta));
+}
+
+const ALL_DATES = (() => {
+  const set = new Set();
+  for (const s of DATA.sessions) {
+    if (s.start_ts) set.add(s.start_ts.slice(0, 10));
+  }
+  for (const t of DATA.talks) {
+    if (t.start_ts) set.add(t.start_ts.slice(0, 10));
+  }
+  return [...set].sort();
+})();
+
+function _fmtDayShort(iso) {
+  
+  const d = new Date(iso + "T00:00:00");
+  return `${_DAY[d.getDay()].slice(0,3)} · ${_MON[d.getMonth()]} ${d.getDate()}`;
+}
+function _fmtMonDay(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return `${_MON[d.getMonth()]} ${d.getDate()}`;
+}
+
+function dateRangeIsActive() {
+  return (state.selectedDates || []).length > 0;
+}
+
+function updateDateRangeLabel() {
+  const btn = $("#date-range-toggle");
+  const lab = $("#dr-label");
+  if (!btn || !lab) return;
+  const sel = (state.selectedDates || []).slice().sort();
+  if (sel.length === 0) {
+    lab.textContent = "Days";
+    btn.classList.remove("active");
+    return;
+  }
+  btn.classList.add("active");
+  if (sel.length === 1) {
+    lab.textContent = _fmtDayShort(sel[0]);
+  } else if (sel.length === ALL_DATES.length) {
+
+    lab.textContent = "All days";
+  } else {
+    lab.textContent = `${sel.length} days`;
+  }
+}
+
+function fitBottomControls() {
+  const bar = $("#bottom-controls");
+  const lab = $("#show-me-label");
+  if (!bar || !lab) return;
+  requestAnimationFrame(() => {
+    if (bar.hidden) return;
+    bar.classList.remove("compact");          
+    if (bar.scrollWidth > bar.clientWidth + 1) {
+      bar.classList.add("compact");           
+    }
+  });
+}
+
+function showDateRangeSheet() {
+  document.querySelectorAll(".sheet-overlay").forEach(o => o.remove());
+
+  const overlay = el("div", { class: "sheet-overlay" });
+  const card    = el("div", { class: "sheet-card" });
+  card.appendChild(el("h2", { class: "sheet-title" }, "Days"));
+  card.appendChild(el("p", { class: "sheet-hint" },
+    "Tap days to show only those. Tap again to remove. "
+    + "Leave none selected to see every day."));
+
+  let working = new Set(state.selectedDates || []);
+
+  const grid = el("div", { class: "dr-day-grid" });
+
+  const renderGrid = () => {
+    grid.innerHTML = "";
+    
+    const allBtn = el("button", {
+      class: "dr-day" + (working.size === 0 ? " selected" : ""),
+      type: "button",
+      onclick: () => { working.clear(); renderGrid(); },
+    });
+    allBtn.appendChild(el("div", { class: "dr-day-dow" }, "All"));
+    allBtn.appendChild(el("div", { class: "dr-day-num" }, "days"));
+    grid.appendChild(allBtn);
+
+    for (const iso of ALL_DATES) {
+      const d = new Date(iso + "T00:00:00");
+      const dow = _DAY[d.getDay()].slice(0, 3);
+      const monDay = `${_MON[d.getMonth()]} ${d.getDate()}`;
+      const isSel = working.has(iso);
+      const tile = el("button", {
+        class: "dr-day" + (isSel ? " selected" : ""),
+        type: "button",
+        onclick: () => {
+          if (working.has(iso)) working.delete(iso);
+          else                  working.add(iso);
+          renderGrid();
+        },
+      });
+      tile.appendChild(el("div", { class: "dr-day-dow" }, dow));
+      tile.appendChild(el("div", { class: "dr-day-num" }, monDay));
+      grid.appendChild(tile);
+    }
+  };
+  renderGrid();
+  card.appendChild(grid);
+
+  const btns   = el("div", { class: "sheet-btns" });
+  const cancel = el("button", { class: "sheet-btn sheet-btn-cancel" }, "Cancel");
+  const done   = el("button", { class: "sheet-btn sheet-btn-primary" }, "Done");
+  btns.appendChild(cancel);
+  btns.appendChild(done);
+  card.appendChild(btns);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  cancel.addEventListener("click", close);
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  card.addEventListener("click", e => e.stopPropagation());
+  done.addEventListener("click", () => {
+
+    state.selectedDates = [...working].sort();
+    saveState();
+    close();
+    
+    rerenderPreservingAnchor();
+  });
+}
+
+function flashToast(msg) {
+  document.querySelectorAll(".toast").forEach(t => t.remove());
+  const t = el("div", { class: "toast" }, msg);
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => {
+    t.classList.remove("show");
+    setTimeout(() => t.remove(), 350);
+  }, 2200);
+}
+
+function updateScrollIndicatorIn(ind, scope, bodyCls) {
+  if (!ind || !scope) return;
+  const dates = scope.querySelectorAll(".date-header");
+  const times = scope.querySelectorAll(".time-header");
+  const hasAny = dates.length + times.length > 0;
+  if (bodyCls) document.body.classList.toggle(bodyCls, hasAny);
+  if (!hasAny) { ind.innerHTML = ""; return; }
+
+  const cursor = ind.getBoundingClientRect().bottom + 2;
+  let curDate = "", curTime = "";
+  dates.forEach(h => { if (h.getBoundingClientRect().top <= cursor) curDate = h.textContent; });
+  times.forEach(h => { if (h.getBoundingClientRect().top <= cursor) curTime = h.textContent; });
+  if (!curDate && dates.length) curDate = dates[0].textContent;
+  if (!curTime && times.length) curTime = times[0].textContent;
+
+  const buildHtml = (dateText) => {
+    const p = [];
+    if (dateText) p.push(`<span class="date">${esc(dateText)}</span>`);
+    if (curTime)  p.push(`<span class="time">${esc(curTime)}</span>`);
+    let h = p.join('<span class="sep">·</span>');
+    if (ind.id === "scroll-indicator"
+        && state.activeTab === "sessions" && currentTopView() === "list") {
+      h += `<span class="ind-hint">Hold for detail</span>`;
+    }
+    return h;
+  };
+  const wraps = () => ind.scrollHeight > ind.clientHeight + 1;
+
+  ind.innerHTML = buildHtml(curDate);
+  if (curDate && wraps()) {
+    
+    const shorter = curDate.includes("·")
+      ? curDate.slice(curDate.lastIndexOf("·") + 1).trim()
+      : curDate;
+    ind.innerHTML = buildHtml(shorter);
+    if (wraps()) ind.innerHTML = buildHtml("");   
+  }
+}
+
+function fitTitle(el, full, short) {
+  if (!el) return;
+  el.textContent = full;
+  const prevWS = el.style.whiteSpace;
+  el.style.whiteSpace = "nowrap";
+  const overflows = el.scrollWidth > el.clientWidth + 1;
+  el.style.whiteSpace = prevWS;
+  if (overflows) el.textContent = short;
+}
+
+function updateScrollIndicator() {
+
+  updateScrollIndicatorIn($("#scroll-indicator"), $("#content"), "has-indicator");
+
+  if (isWide()) {
+    updateScrollIndicatorIn($("#me-scroll-indicator"), $("#me-content"), "has-me-indicator");
+  }
+}
+
+function refreshTypesPanel() {
+  const panel = $("#types-panel");
+  const arrow = $("#types-toggle-arrow");
+  if (!panel) return;
+  
+  panel.innerHTML = "";
+  const entries = typesForTab(state.activeTab);
+  for (const { color: c, count } of entries) {
+    const off = state.hiddenTypes.includes(c);
+    const row = el("label", { class: `types-row${off ? " off" : ""}` });
+    row.appendChild(el("span", { class: `swatch`,
+      style: `background: var(--c-${c}-fg); border-color: var(--c-${c}-fg);` }));
+    row.appendChild(el("span", { class: "label" },
+      labelForType(c, state.activeTab)));
+    row.appendChild(el("span", { class: "count" }, String(count)));
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = !off;
+    cb.addEventListener("change", () => {
+      const set = new Set(state.hiddenTypes);
+      if (cb.checked) set.delete(c); else set.add(c);
+      state.hiddenTypes = [...set];
+      saveState();
+      
+      rerenderPreservingAnchor();
+    });
+    row.appendChild(cb);
+    panel.appendChild(row);
+  }
+  panel.classList.toggle("open", !!state.typesPanelOpen);
+  arrow.textContent = state.typesPanelOpen ? "▴" : "▾";
+}
+
+function toggleTypesPanel(force) {
+  state.typesPanelOpen = (typeof force === "boolean")
+    ? force : !state.typesPanelOpen;
+  saveState();
+  refreshTypesPanel();
+}
+
+function isWide() {
+  return window.matchMedia("(min-width: 900px) and (orientation: landscape)").matches;
+}
+
+function currentTopView() {
+  const stack = state.tabStacks[state.activeTab];
+  const top = stack && stack[stack.length - 1];
+  return top ? top.view : "";
+}
+
+function applyFontScale() {
+  let f = state.fontScale;
+  if (typeof f !== "number" || !isFinite(f)) f = 1;
+  f = Math.max(FS_MIN, Math.min(FS_MAX, f));
+  document.documentElement.style.setProperty("--fs", f);
+  return f;
+}
+
+function scrollParentOf(node) {
+  let n = node ? node.parentElement : null;
+  while (n && n !== document.body && n !== document.documentElement) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight + 1) {
+      return { top: () => n.scrollTop, by: (dy) => { n.scrollTop += dy; } };
+    }
+    n = n.parentElement;
+  }
+  
+  return {
+    top: () => window.scrollY || window.pageYOffset || 0,
+    by: (dy) => window.scrollBy(0, dy),
+  };
+}
+
+function redrawAllConnectors() {
+  drawMeConnectors();              
+  drawSessionDetailConnectors();   
+  drawSessionListConnectors();     
+  if (isWide()) { const p = $("#me-content"); if (p) drawMeConnectors(p); }  
+}
+function redrawConnectorsForFontScale() {
+  
+  requestAnimationFrame(() => {
+    requestAnimationFrame(redrawAllConnectors);
+  });
+
+  setTimeout(redrawAllConnectors, 220);
+}
+
+function stepFontScale(dir, btn) {
+  const cur = (typeof state.fontScale === "number" && isFinite(state.fontScale))
+                ? state.fontScale : 1;
+  const next = Math.max(FS_MIN, Math.min(FS_MAX,
+                 Math.round((cur + dir * FS_STEP) * 10) / 10));
+  if (next === state.fontScale) return;   
+
+  const anchor = btn || null;
+  const scroller = anchor ? scrollParentOf(anchor) : null;
+  const beforeTop = anchor ? anchor.getBoundingClientRect().top : 0;
+
+  const leftAnchor = (state.activeTab !== "me") ? captureListAnchor() : null;
+
+  state.fontScale = next;
+  applyFontScale();
+  saveState();
+  updateFontScaleControl();
+  redrawConnectorsForFontScale();
+  fitBottomControls();   
+
+  if (state.activeTab === "me" && currentTopView() === "list") {
+    fitTitle($("#page-title"), "My Schedule", "Me");
+  }
+  fitTitle($(".me-pane-title"), "My Schedule", "Me");
+  updateScrollIndicator();
+
+  if (anchor && scroller) {
+    const afterTop = anchor.getBoundingClientRect().top;
+    const delta = afterTop - beforeTop;
+    if (delta) scroller.by(delta);
+  }
+  
+  if (leftAnchor) restoreListAnchor(leftAnchor);
+}
+
+function updateFontScaleControl() {
+  const f = (typeof state.fontScale === "number" && isFinite(state.fontScale))
+              ? state.fontScale : 1;
+  for (const wrap of document.querySelectorAll(".fs-control")) {
+    const pct = wrap.querySelector(".fs-pct");
+    if (pct) pct.textContent = Math.round(f * 100) + "%";
+    const dec = wrap.querySelector(".fs-dec");
+    const inc = wrap.querySelector(".fs-inc");
+    if (dec) dec.disabled = f <= FS_MIN + 1e-9;
+    if (inc) inc.disabled = f >= FS_MAX - 1e-9;
+  }
+}
+
+function appendSettingsSection(c) {
+  const sec = el("div", { class: "me-settings" });
+
+  const zoomIcon = (sign) => {
+    const bar = sign === "in"
+      ? `<line x1="9" y1="6.5" x2="9" y2="11.5"/><line x1="6.5" y1="9" x2="11.5" y2="9"/>`  
+      : `<line x1="6.5" y1="9" x2="11.5" y2="9"/>`;                                          
+    return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round"
+       aria-hidden="true">
+      <circle cx="9" cy="9" r="6.5"/>
+      <line x1="14" y1="14" x2="20.5" y2="20.5"/>
+      ${bar}
+    </svg>`;
+  };
+
+  const row = el("div", { class: "fs-control" });
+  row.appendChild(el("button", {
+    class: "fs-btn fs-dec", type: "button",
+    "aria-label": "Decrease text size",
+    html: zoomIcon("out"),
+    onclick: (e) => stepFontScale(-1, e.currentTarget),
+  }));
+  row.appendChild(el("span", { class: "fs-pct", "aria-live": "polite" }, "100%"));
+  row.appendChild(el("button", {
+    class: "fs-btn fs-inc", type: "button",
+    "aria-label": "Increase text size",
+    html: zoomIcon("in"),
+    onclick: (e) => stepFontScale(1, e.currentTarget),
+  }));
+  sec.appendChild(row);
+  c.appendChild(sec);
+  updateFontScaleControl();
+}
+
+function ME_MIN() { return 280; }                       
+function ME_MAX() { return Math.round(window.innerWidth * 0.6); } 
+function applyMeWidth() {
+  const root = document.documentElement;
+  let w = state.meWidth;
+  if (typeof w !== "number" || !isFinite(w)) {
+
+    w = Math.round(window.innerWidth / 3);
+  }
+  w = Math.max(ME_MIN(), Math.min(ME_MAX(), w));
+  root.style.setProperty("--me-w", w + "px");
+  return w;
+}
+
+function initMeResize() {
+  const grip = $("#me-resizer");
+  if (!grip) return;
+  let dragging = false;
+
+  const onMove = (e) => {
+    if (!dragging) return;
+    
+    const w = Math.max(ME_MIN(), Math.min(ME_MAX(),
+      Math.round(window.innerWidth - e.clientX)));
+    document.documentElement.style.setProperty("--me-w", w + "px");
+    state.meWidth = w;            
+    if (e.cancelable) e.preventDefault();
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove("me-resizing");
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+
+    applyMeWidth();
+    saveState();
+    const pane = $("#me-content");
+    if (pane) drawMeConnectors(pane);
+  };
+
+  grip.addEventListener("pointerdown", (e) => {
+    if (!isWide()) return;        
+    dragging = true;
+    document.body.classList.add("me-resizing");
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    if (e.cancelable) e.preventDefault();
+  });
+
+  grip.addEventListener("dblclick", () => {
+    state.meWidth = null;
+    applyMeWidth();
+    saveState();
+    const pane = $("#me-content");
+    if (pane) drawMeConnectors(pane);
+  });
+}
+
+function initMePaneScroll() {
+  const pane = $("#me-content");
+  if (!pane) return;
+  pane.addEventListener("scroll", () => {
+    updateScrollIndicatorIn($("#me-scroll-indicator"), pane, "has-me-indicator");
+  }, { passive: true });
+}
+
+function renderMePane() {
+  const pane = $("#me-content");
+  if (!pane) return;
+  if (!isWide()) { pane.innerHTML = ""; return; }
+
+  const sync = $("#me-pane-sync");
+  if (sync) sync.textContent = formatLastSync(state.lastSyncAt);
+
+  fitTitle($(".me-pane-title"), "My Schedule", "Me");
+  const extra = $("#me-pane-extra");
+  if (extra) {
+    extra.innerHTML = "";
+    extra.appendChild(el("button", {
+      class: "icon-btn", title: "Paste sync code",
+      "aria-label": "Paste sync code", onclick: doPaste,
+    }, "⇲"));
+    extra.appendChild(el("button", {
+      class: "icon-btn", title: "Copy sync code",
+      "aria-label": "Copy sync code", onclick: doCopy,
+    }, "⧉"));
+  }
+
+  const prevScroll = pane.scrollTop;
+  const prevAnchor = captureListAnchor(pane);
+  const restorePane = () => {
+    if (!(prevAnchor && restoreListAnchor(prevAnchor, pane))) {
+      pane.scrollTop = prevScroll;
+    }
+  };
+
+  pane.innerHTML = "";
+  renderMe(pane);
+
+  restorePane();
+  
+  updateScrollIndicatorIn($("#me-scroll-indicator"), pane, "has-me-indicator");
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+
+      restorePane();
+      drawMeConnectors(pane);
+      updateScrollIndicatorIn($("#me-scroll-indicator"), pane, "has-me-indicator");
+    });
+  });
+
+  scheduleMeConnectorSettle(pane, prevScroll);
+}
+
+function scheduleMeConnectorSettle(pane, prevScroll) {
+  const h0 = pane.scrollHeight;
+  setTimeout(() => {
+    const p = $("#me-content");
+    if (!p || !isWide()) return;
+    if (p.scrollHeight === h0) return;   
+    const sc = p.scrollTop;
+    drawMeConnectors(p);
+    p.scrollTop = (typeof prevScroll === "number") ? prevScroll : sc;
+  }, 200);
+}
+
+function pageTitleFor(tab, top) {
+  if (top.view.startsWith("talk:"))    return talkMap[top.view.slice(5)]?.id || "Talk";
+  if (top.view.startsWith("session:")) return sessionMap[top.view.slice(8)]?.id || "Session";
+  if (top.view.startsWith("searchresults:")) {
+    
+    const rest = top.view.slice("searchresults:".length);
+    const ci = rest.indexOf(":");
+    const query = ci < 0 ? rest : rest.slice(ci + 1);
+    return query || "Search";
+  }
+  const conf = (DATA.conference_name || "").trim();
+  const sessionsTitle = conf ? conf + " Sessions" : "Sessions";
+  const talksTitle    = conf ? conf + " Talks"    : "Talks";
+  return ({ sessions: sessionsTitle, talks: talksTitle, search: "Search", me: "My Schedule" })[tab];
+}
+
+function render() {
+
+  invalidatePartial();
+
+  if (isWide() && state.activeTab === "me") {
+    state.activeTab = "sessions";
+  }
+
+  const tab = state.activeTab;
+  const stack = state.tabStacks[tab];
+  const top = stack[stack.length - 1];
+
+  $("#page-title").textContent = pageTitleFor(tab, top);
+
+  $("#back-btn").hidden = stack.length <= 1;
+
+  $$("#tabbar .tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.body.dataset.activeTab = tab;
+
+  const viewKind =
+      top.view.startsWith("session:")       ? "session-detail"
+    : top.view.startsWith("talk:")          ? "talk-detail"
+    : top.view.startsWith("searchresults:") ? "search-results"
+    : (tab === "search")                    ? "search-results"
+    : (tab === "me")                        ? "schedule"
+    :                                         "list";
+  document.body.dataset.activeView = viewKind;
+
+  if (tab === "me" && top.view === "list") {
+    fitTitle($("#page-title"), "My Schedule", "Me");
+  }
+
+  const showPastVisible = isWide()
+                          || top.view === "list"
+                          || top.view.startsWith("searchresults:");
+  $("#bottom-controls").hidden = !showPastVisible;
+  $("#show-past").checked = !!state.showPast;
+  updateDateRangeLabel();
+  fitBottomControls();
+  if (!showPastVisible && state.typesPanelOpen) {
+    state.typesPanelOpen = false;
+  }
+
+  renderTopbarExtras(tab, top);
+
+  const c = $("#content");
+  c.innerHTML = "";
+
+  if (top.view === "list") {
+    if      (tab === "sessions") renderSessionsList(c);
+    else if (tab === "talks")    renderTalksList(c);
+    else if (tab === "search")   renderSearch(c);
+    else if (tab === "me")       renderMe(c);
+  } else if (top.view.startsWith("session:")) {
+    renderSessionDetail(c, top.view.slice(8));
+  } else if (top.view.startsWith("talk:")) {
+    renderTalkDetail(c, top.view.slice(5));
+  } else if (top.view.startsWith("searchresults:")) {
+    renderClickSearchResults(c, top.view.slice("searchresults:".length));
+  }
+
+  refreshTypesPanel();
+  updateScrollIndicator();
+
+  renderMePane();
+
+  const target = top.scrollY || 0;
+  const anchor = top.scrollAnchor || null;
+  const place = () => {
+    if (!(anchor && restoreListAnchor(anchor))) setLeftScrollTop(target);
+  };
+  requestAnimationFrame(() => {
+    place();
+    requestAnimationFrame(() => {
+      place();
+      updateScrollIndicator();
+
+      drawMeConnectors();
+      
+      drawSessionDetailConnectors();
+      
+      drawSessionListConnectors();
+    });
+  });
+}
+
+function snapshotScroll() {
+  const stack = state.tabStacks[state.activeTab];
+  if (!stack.length) return;
+  const entry = stack[stack.length - 1];
+
+  entry.scrollY = leftScrollTop();
+
+  entry.scrollAnchor = captureListAnchor();
+}
+
+function leftScrollTop() {
+  const c = $("#content");
+  return c ? c.scrollTop : 0;
+}
+function setLeftScrollTop(y) {
+  const c = $("#content");
+  if (c) c.scrollTop = y;
+}
+
+function rerenderPreservingAnchor() {
+  snapshotScroll();
+  render();
+}
+
+function navigate(view) {
+  snapshotScroll();
+  state.tabStacks[state.activeTab].push({ view, scrollY: 0 });
+  saveState();
+  render();
+}
+
+function back() {
+  const stack = state.tabStacks[state.activeTab];
+  if (stack.length > 1) {
+    stack.pop();
+    saveState();
+    render();
+  }
+}
+
+function canResetTab(tab) {
+  const stack = state.tabStacks[tab];
+  if (tab === "me") return !!(stack && stack.length > 1);
+  if (stack && stack.length > 1) return true;
+  if ((state.expandedSessions || []).length) return true;
+  if (tab === "search" && (state.searchQuery || "").trim()) return true;
+  return false;
+}
+
+function leftScroller() {
+  return isWide() ? $("#content") : null;
+}
+
+function captureListAnchor(scroller) {
+  if (scroller === undefined) scroller = leftScroller();
+  const topEdge = scroller ? scroller.getBoundingClientRect().top : 0;
+  const bubbles = (scroller || document).querySelectorAll(".bubble[data-bubble-id]");
+  let best = null;
+  for (let i = 0; i < bubbles.length; i++) {
+    const b = bubbles[i];
+    const r = b.getBoundingClientRect();
+
+    if (r.bottom > topEdge + 1) {
+
+      const fallbacks = [];
+      for (let j = i + 1; j < bubbles.length && fallbacks.length < 8; j++) {
+        const id = bubbles[j].getAttribute("data-bubble-id");
+        if (id) fallbacks.push(id);
+      }
+      best = {
+        id:        b.getAttribute("data-bubble-id"),
+        sessionId: b.getAttribute("data-session-id") || "",
+        offset:    r.top - topEdge,   
+        fallbacks,                    
+      };
+      break;
+    }
+  }
+  return best;
+}
+
+function restoreListAnchor(anchor, scroller) {
+  if (!anchor) return false;
+  if (scroller === undefined) scroller = leftScroller();
+  const root = scroller || document;
+  const find = (id) =>
+    id ? root.querySelector(`.bubble[data-bubble-id="${cssEsc(id)}"]`)
+       : null;
+  let target = find(anchor.id);
+  if (!target && anchor.sessionId) target = find(anchor.sessionId);
+  let usedFallback = false;
+  if (!target && Array.isArray(anchor.fallbacks)) {
+
+    for (const fid of anchor.fallbacks) {
+      target = find(fid);
+      if (target) { usedFallback = true; break; }
+    }
+  }
+  if (!target) return false;
+  const topEdge = scroller ? scroller.getBoundingClientRect().top : 0;
+  const cur = target.getBoundingClientRect().top - topEdge;
+
+  const wantOffset = usedFallback ? 0 : anchor.offset;
+  const delta = cur - wantOffset;
+  if (scroller) {
+    scroller.scrollTop += delta;
+  } else {
+    setLeftScrollTop(leftScrollTop() + delta);
+  }
+  return true;
+}
+
+function cssEsc(s) {
+  if (window.CSS && CSS.escape) return CSS.escape(s);
+  return String(s).replace(/["\\\]]/g, "\\$&");
+}
+
+function resetTab() {
+  const tab = state.activeTab;
+  if (!canResetTab(tab)) return;
+
+  const onRootList = state.tabStacks[tab].length === 1;
+  const willKeepList = (tab === "sessions" || tab === "talks");
+  const anchor = (onRootList && willKeepList) ? captureListAnchor() : null;
+
+  const stack = state.tabStacks[tab];
+  stack.length = 1;
+  
+  if ((state.expandedSessions || []).length) state.expandedSessions = [];
+  
+  if (tab === "search") state.searchQuery = "";
+
+  stack[0].scrollY = leftScrollTop();
+  stack[0].scrollAnchor = anchor || null;
+
+  saveState();
+  render();
+
+  if (anchor) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      restoreListAnchor(anchor);
+      updateScrollIndicator();
+    }));
+  }
+}
+
+function switchTab(tab) {
+
+  if (tab === "me" && isWide()) return;
+  if (tab === state.activeTab) return;
+  snapshotScroll();
+  state.activeTab = tab;
+  saveState();
+  render();
+}
+
+function searchFor(query, mode) {
+  query = (query || "").trim();
+  if (!query) return;
+  const m = (mode === "name" || mode === "affil") ? mode : "text";
+  const view = "searchresults:" + m + ":" + query;
+  navigate(view);
+}
+
+document.addEventListener("pointerdown", (e) => {
+  const btn = e.target.closest(".schedule-btn, .dh-add");
+  if (!btn) return;
+  try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+}, true);
+
+$("#back-btn").addEventListener("click", back);
+
+$$("#tabbar .tab-btn").forEach(b => b.addEventListener("click",
+  () => switchTab(b.dataset.tab)));
+$("#show-past").addEventListener("change", e => {
+  state.showPast = e.target.checked;
+  saveState();
+
+  rerenderPreservingAnchor();
+});
+$("#date-range-toggle").addEventListener("click", showDateRangeSheet);
+
+let _scrollSaveTimer = null;
+function onLeftScroll() {
+  updateScrollIndicator();
+  clearTimeout(_scrollSaveTimer);
+  _scrollSaveTimer = setTimeout(() => {
+    snapshotScroll();
+    saveState();
+  }, 350);
+}
+window.addEventListener("scroll", onLeftScroll, { passive: true });
+$("#content").addEventListener("scroll", onLeftScroll, { passive: true });
+
+$("#types-toggle").addEventListener("click", () => toggleTypesPanel());
+
+document.addEventListener("click", (e) => {
+  if (!state.typesPanelOpen) return;
+  if (e.target.closest("#types-panel") || e.target.closest("#types-toggle")) return;
+  toggleTypesPanel(false);
+}, true);
+
+let _appHRaf = null;
+function syncAppHeight() {
+  if (_appHRaf) return;
+  _appHRaf = requestAnimationFrame(() => {
+    _appHRaf = null;
+    const vv = window.visualViewport;
+
+    if (vv && Math.abs(vv.scale - 1) > 0.01) return;
+
+    const layoutH = document.documentElement.clientHeight || 0;
+    const visualH = vv ? vv.height : window.innerHeight;
+    let h = layoutH > 0 ? Math.min(visualH, layoutH) : visualH;
+
+    h = Math.ceil(h);
+    if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+  });
+}
+syncAppHeight();
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", syncAppHeight);
+  window.visualViewport.addEventListener("scroll", syncAppHeight);
+}
+window.addEventListener("resize", syncAppHeight);
+window.addEventListener("orientationchange", syncAppHeight);
+
+window.addEventListener("pageshow", syncAppHeight);
+
+let _dbgEl = null;
+let _dbgTick = null;
+function updateDebugOverlay() {
+  if (!_dbgEl) return;
+  const vv = window.visualViewport;
+  const body = document.body.getBoundingClientRect();
+  const tab = document.getElementById("tabbar");
+  const tabRect = tab ? tab.getBoundingClientRect() : null;
+  const appH = getComputedStyle(document.documentElement)
+                 .getPropertyValue("--app-h").trim() || "(unset)";
+  const layoutH = document.documentElement.clientHeight;
+
+  const overflow = tabRect ? Math.round(tabRect.bottom - layoutH) : "n/a";
+
+  const cs = getComputedStyle(document.documentElement);
+  const safeB = cs.getPropertyValue("--safe-bottom").trim() || "?";
+  const safeT = cs.getPropertyValue("--safe-top").trim() || "?";
+  const tabH = cs.getPropertyValue("--tab-h").trim() || "?";
+
+  const band = (id) => {
+    const e = document.getElementById(id);
+    if (!e) return `${id}: (none)`;
+    const r = e.getBoundingClientRect();
+    const disp = getComputedStyle(e).display;
+    if (disp === "none" || r.height === 0) return `${id}: hidden`;
+    return `${id}: ${Math.round(r.top)}→${Math.round(r.bottom)} (h${Math.round(r.height)})`;
+  };
+  _dbgEl.textContent =
+    `visualViewport.h: ${vv ? Math.round(vv.height) : "n/a"}\n` +
+    `documentElement.clientHeight: ${layoutH}\n` +
+    `body: ${Math.round(body.top)}→${Math.round(body.bottom)} (h${Math.round(body.height)})\n` +
+    `--app-h: ${appH}\n` +
+    `${band("topbar")}\n` +
+    `${band("scroll-indicator")}\n` +
+    `${band("content")}\n` +
+    `${band("bottom-controls")}\n` +
+    `${band("tabbar")}\n` +
+    `--tab-h: ${tabH} | safe-top: ${safeT} | safe-bot: ${safeB}\n` +
+    `OVERFLOW below fold: ${overflow}\n` +
+    `wide: ${isWide()}`;
+}
+function toggleDebugOverlay() {
+  if (_dbgEl) {
+    _dbgEl.remove();
+    _dbgEl = null;
+    if (_dbgTick) { clearInterval(_dbgTick); _dbgTick = null; }
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener("resize", updateDebugOverlay);
+      window.visualViewport.removeEventListener("scroll", updateDebugOverlay);
+    }
+    window.removeEventListener("resize", updateDebugOverlay);
+    return false;
+  }
+  _dbgEl = document.createElement("pre");
+
+  _dbgEl.style.cssText =
+    "position:fixed;top:0;left:0;z-index:99999;margin:0;padding:6px 8px;" +
+    "font:11px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;" +
+    "background:rgba(0,0,0,.82);color:#0f0;pointer-events:none;" +
+    "border-bottom-right-radius:8px;max-width:80vw;";
+  document.body.appendChild(_dbgEl);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", updateDebugOverlay);
+    window.visualViewport.addEventListener("scroll", updateDebugOverlay);
+  }
+  window.addEventListener("resize", updateDebugOverlay);
+
+  _dbgTick = setInterval(updateDebugOverlay, 250);
+  updateDebugOverlay();
+  return true;
+}
+
+let _wasWide = isWide();
+let _resizeTimer = null;
+window.addEventListener("resize", () => {
+  const nowWide = isWide();
+  if (nowWide !== _wasWide) {
+    _wasWide = nowWide;
+    applyMeWidth();                
+    render();                      
+  } else {
+
+    fitBottomControls();
+    if (state.activeTab === "me" && currentTopView() === "list") {
+      fitTitle($("#page-title"), "My Schedule", "Me");
+    }
+    fitTitle($(".me-pane-title"), "My Schedule", "Me");
+    updateScrollIndicator();
+  }
+
+}, { passive: true });
+
+applyMeWidth();
+applyFontScale();   
+initMeResize();
+initMePaneScroll();
+render();
+
+const TIME_BOUNDARIES_MS = (() => {
+  const set = new Set();
+  for (const x of [...DATA.sessions, ...DATA.talks]) {
+    for (const v of [x.start_ts, x.end_ts]) {
+      if (!v) continue;
+      const t = new Date(v).getTime();
+      if (!isNaN(t)) set.add(t);
+    }
+  }
+  return [...set].sort((a, b) => a - b);
+})();
+
+const MAX_TIMEOUT_MS = 12 * 60 * 60 * 1000;   
+
+let _tickTimer = null;
+
+function refreshTimeState() {
+
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" ||
+             ae.isContentEditable)) return;
+
+  const tab = state.activeTab;
+  const stack = state.tabStacks[tab];
+  const top = stack[stack.length - 1];
+  if (top && top.view === "list") render();
+}
+
+function scheduleNextTick() {
+  clearTimeout(_tickTimer);
+  _tickTimer = null;
+
+  const now = Date.now();
+  const next = TIME_BOUNDARIES_MS.find(t => t > now);
+  if (next == null) return;   
+
+  const delay = Math.min(next - now, MAX_TIMEOUT_MS);
+  _tickTimer = setTimeout(() => {
+
+    if (Date.now() >= next) refreshTimeState();
+    scheduleNextTick();        
+  }, delay);
+}
+
+function rearmOnWake() {
+  if (document.visibilityState === "hidden") return;
+  refreshTimeState();
+  scheduleNextTick();
+}
+document.addEventListener("visibilitychange", rearmOnWake);
+window.addEventListener("pageshow", rearmOnWake);
+window.addEventListener("focus", rearmOnWake);
+
+scheduleNextTick();
+</script>
+
+</body>
+</html>
