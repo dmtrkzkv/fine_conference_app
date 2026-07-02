@@ -109,6 +109,26 @@ SCRIPT_DIR      = Path(__file__).resolve().parent
 INPUT_DATA_JSON = SCRIPT_DIR / "conference_data.json"
 OUTPUT_HTML     = SCRIPT_DIR / "conference_app.html"
 
+# App favicon: a serif "F" in white on a solid rounded tile. The F is a TRACED
+# outline PATH (a hand-traced serif glyph), not a <text> element, because a
+# favicon can't network-load a webfont, so text would silently fall back to
+# whatever serif the viewer's machine has; a baked path renders identically
+# everywhere with zero font dependency. The coordinates are already scaled (cap
+# height 36px) and optically centered in the 64-box (the average of the ink
+# centroid and bbox center sits at 32,32 — a top-heavy F needs that bias or it
+# reads high). Shipped inline as an SVG data URI (see main()) so every build
+# stays a single self-contained file; static across all conferences.
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    '<rect width="64" height="64" rx="14" fill="#BF5700"/>'
+    '<path fill="#fff" d="M19.30 51.10L19.31 49.25L23.74 48.58L23.74 17.55'
+    'L19.31 16.99L19.53 15.10L47.01 15.10L47.36 24.25L45.67 24.24L42.71 17.55'
+    'L29.28 17.55L29.28 31.54L36.35 31.54L38.37 26.08L40.39 26.08'
+    'C39.70 29.50 39.87 37.03 40.39 39.72L38.53 39.72L36.36 34.28L29.28 34.28'
+    'L29.28 48.58L35.38 49.25L35.35 51.10Z"/>'
+    '</svg>'
+)
+
 # Sessions-list empty-session styling (build-time toggle). The Sessions list can
 # mark talk-less (event/break) sessions in one of two ways:
 #   False -> current look: expandable sessions get a disclosure CHEVRON and
@@ -756,7 +776,7 @@ def presider_short_aff_list(presider_field: str, affs: str) -> list[str]:
     marker like '(a)' that reduces to a single character — are dropped to ''
     so they don't render as bogus '· a' entries. Returns [] when there are no
     names."""
-    names = [n.strip() for n in re.split(r";| and ", presider_field or "")
+    names = [n.strip() for n in re.split(r";|&| and ", presider_field or "")
              if n.strip()]
     if not names:
         return []
@@ -1228,7 +1248,7 @@ def normalize_names_in_data(data: dict) -> None:
         return out
 
     def fix_multi(s):
-        """Co-presider strings split on '; ' or ' and '; normalize each
+        """Co-presider strings split on ';', '&', or ' and '; normalize each
         piece independently so 'JANE DOE and john smith' becomes
         'Jane Doe and John Smith' without losing the separator. Falls back
         to whole-string normalization when no separator is present."""
@@ -2297,7 +2317,7 @@ def enrich_affiliations(data: dict) -> dict:
         presider_field = s.get("presider", "")
         if not presider_field:
             continue
-        names = [n.strip() for n in re.split(r";| and ", presider_field)
+        names = [n.strip() for n in re.split(r";|&| and ", presider_field)
                  if n.strip()]
         if not names:
             continue
@@ -2375,6 +2395,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>__CONFERENCE_NAME__</title>
+<link rel="icon" type="image/svg+xml" href="__FAVICON_HREF__">
 <style>
 :root {
   --fs: 1;            /* text-size multiplier; every font-size is calc(px * var(--fs)) */
@@ -5429,7 +5450,7 @@ function presiderByline(item, ctx, abbrev) {
     return "&nbsp;";
   }
 
-  const names = presiderRaw.split(/;| and /i)
+  const names = presiderRaw.split(/;|&| and /i)
     .map(n => n.trim()).filter(Boolean);
 
   const nameHTML = (nm, aff) => {
@@ -6256,7 +6277,7 @@ function appendSessionMetaLines(s, container) {
     const meta = el("div", { class: "dh-meta presider-meta" });
     meta.appendChild(el("strong", {}, "Presider:"));
     meta.appendChild(document.createTextNode(" "));
-    const names = s.presider.split(/;| and /i)
+    const names = s.presider.split(/;|&| and /i)
       .map(p => p.trim()).filter(Boolean);
     // Per-presider short affiliations, aligned to names (NOT de-duped).
     const affList = Array.isArray(s.presider_affs_short)
@@ -6755,8 +6776,8 @@ function recordPersonNames(rec) {
       push(rec.speaker); push(rec.first_author); push(rec.last_author);
     }
   } else {
-    // session: presider field may list multiple, separated by ; or " and "
-    (rec.presider || "").split(/;| and /i)
+    // session: presider field may list multiple, separated by ;, &, or " and "
+    (rec.presider || "").split(/;|&| and /i)
       .map(p => p.trim()).filter(Boolean).forEach(push);
   }
   return names;
@@ -8308,6 +8329,37 @@ function paperUrlFor(id) {
   return url;
 }
 
+/* A raw PDF blob opens with a generic browser icon and a blob:-URL "title".
+   This wraps it in a tiny HTML page that embeds the PDF and links the SAME
+   favicon the app uses (read straight off our own <link rel="icon">), plus a
+   readable <title> (the paper's code + title) — so the paper's own browser TAB
+   carries the app icon and a real name. Returns a cached blob: URL, or null when
+   there's no paper. Used only on the desktop (fine-pointer) path; touch devices
+   open the raw PDF instead, since iOS Safari won't render an embedded PDF. */
+function paperViewerUrlFor(id) {
+  const pdfUrl = paperUrlFor(id);
+  if (!pdfUrl) return null;
+  if (!window.__paperViewerUrls) window.__paperViewerUrls = {};
+  if (window.__paperViewerUrls[id]) return window.__paperViewerUrls[id];
+  const t = talkMap[id];
+  const code = (t && (t.code || t.id)) || "Paper";
+  const name = (t && displayTitle(t)) || "";
+  const titleText = name ? `${code} · ${name}` : code;
+  const iconLink = document.querySelector('link[rel="icon"]');
+  const iconTag = iconLink
+    ? `<link rel="icon" type="image/svg+xml" href="${esc(iconLink.getAttribute("href") || "")}">`
+    : "";
+  const doc = '<!doctype html><html><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + `<title>${esc(titleText)}</title>${iconTag}`
+    + "<style>html,body{margin:0;height:100%}"
+    + "embed{width:100%;height:100vh;border:0}</style></head>"
+    + `<body><embed type="application/pdf" src="${esc(pdfUrl)}"></body></html>`;
+  const url = URL.createObjectURL(new Blob([doc], { type: "text/html" }));
+  window.__paperViewerUrls[id] = url;
+  return url;
+}
+
 function renderTopbarExtras(tab, top) {
   const slot = $("#topbar-extra");
   slot.innerHTML = "";
@@ -8317,21 +8369,23 @@ function renderTopbarExtras(tab, top) {
   // doc-icon anchor next to Back. Skipped silently when no paper exists
   // for this talk, or in the lightweight build (no window.PAPERS).
   //
-  // Desktop (fine pointer): a plain <a href> opens the PDF in the SAME
+  // Desktop (fine pointer): a plain <a href> opens the paper in the SAME
   // tab, and the browser's native middle-click / ctrl/cmd-click open it
-  // in a NEW tab — all for free, no JS.
+  // in a NEW tab — all for free, no JS. Here the href is a small HTML wrapper
+  // (paperViewerUrlFor) so the paper's tab carries the app favicon + title.
   //
-  // Touch devices (coarse pointer, no hover): open in a NEW tab instead
-  // (target="_blank"). Same-tab navigation to the blob: URL would leave
-  // the SPA; on mobile the app page is usually too large to bfcache, so
-  // returning from the PDF RELOADS it. A back gesture that lands by
-  // reloading the document never fires popstate, so our back-button trap
-  // can't run and the next back can step off the app entirely. Opening
-  // the paper in its own tab keeps the app's tab and history untouched —
-  // closing/​backing out of the PDF tab returns to the app intact.
+  // Touch devices (coarse pointer, no hover): open the RAW pdf in a NEW tab
+  // (target="_blank"). We skip the wrapper because iOS Safari won't render an
+  // embedded PDF. Same-tab navigation to the blob: URL would also leave the
+  // SPA; on mobile the app page is usually too large to bfcache, so returning
+  // from the PDF RELOADS it. A back gesture that lands by reloading the document
+  // never fires popstate, so our back-button trap can't run and the next back
+  // can step off the app entirely. Its own tab keeps the app's history intact.
   if (top.view && top.view.startsWith("talk:")) {
     const id = top.view.slice(5);
-    const url = paperUrlFor(id);
+    const touch = typeof window !== "undefined" && window.matchMedia
+      && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const url = touch ? paperUrlFor(id) : paperViewerUrlFor(id);
     if (url) {
       const aProps = {
         class: "icon-btn",
@@ -8340,8 +8394,6 @@ function renderTopbarExtras(tab, top) {
         "aria-label": "Open paper",
         html: docIconSvg(),
       };
-      const touch = typeof window !== "undefined" && window.matchMedia
-        && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
       if (touch) { aProps.target = "_blank"; aProps.rel = "noopener"; }
       slot.appendChild(el("a", aProps));
     }
@@ -11985,6 +12037,9 @@ def main() -> None:
                                  .replace("<", "&lt;")
                                  .replace(">", "&gt;"))
     html = html.replace("__CONFERENCE_NAME__", safe_name)
+    favicon_href = ("data:image/svg+xml;base64,"
+                    + base64.b64encode(FAVICON_SVG.encode("utf-8")).decode("ascii"))
+    html = html.replace("__FAVICON_HREF__", favicon_href)
     OUTPUT_HTML.write_text(html, encoding="utf-8")
     size_kb = OUTPUT_HTML.stat().st_size / 1024
     print(f"[write] {OUTPUT_HTML} ({size_kb:,.1f} KB)")

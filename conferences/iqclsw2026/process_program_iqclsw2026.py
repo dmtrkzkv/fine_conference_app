@@ -302,8 +302,13 @@ _ABS_LINE_TOL = 2.5          # word-Δ within which two words share a line
 
 _ABS_LABEL_RE = re.compile(
     r"^\s*(Short\s*Abstract|Abstract)\s*[:\-–]?\s*(.*)$", re.IGNORECASE)
+# Mid-line label: the separator is REQUIRED here (unlike the line-start form
+# above). Without it, the ordinary English word "abstract" inside body prose
+# ("... discussed in this abstract. Since ...") matches and hijacks the
+# abstract start deep into the paper body. A genuine inline label is always
+# "Abstract: ..." / "Short Abstract – ...".
 _ABS_LABEL_INLINE_RE = re.compile(
-    r"\b(Short\s*Abstract|Abstract)\s*[:\-–]?\s*(.+)$", re.IGNORECASE)
+    r"\b(Short\s*Abstract|Abstract)\s*[:\-–]\s*(.+)$", re.IGNORECASE)
 _ABS_PLACEHOLDER_RE = re.compile(
     r"^Brief\s+summary\s*\(.*characters?\s+maximum\)\.?\s*$",
     re.IGNORECASE)
@@ -677,6 +682,16 @@ def _parse_book_page(lines, get_more_pages) -> tuple[str, str] | None:
             if tail and not _ABS_PLACEHOLDER_RE.match(tail):
                 inline_tail = tail
             abs_start_idx = k + 1
+            break
+        # An Abstract label only ever sits in the HEADER region (right after
+        # the authors/affiliation/contact block). Once a section heading
+        # ("1. Introduction", "Results", ...) appears, the labeled-abstract
+        # region is over — stop scanning so a stray "abstract" in body prose
+        # can't hijack the start; the no-label fallback below then picks the
+        # first prose line. Checked AFTER the line-start label match, since a
+        # bare "Abstract" header line is itself a section keyword.
+        if (_ABS_NUMBERED_SECTION_RE.match(text)
+                or (_ABS_SECTION_KW_RE.match(text) and len(text) <= 80)):
             break
         m2 = _ABS_LABEL_INLINE_RE.search(text)
         if m2 and m2.start() > 5:
