@@ -1,0 +1,370 @@
+(1) State Key Laboratory of Optical Communication Technologies and Networks, China Information and Communication Technology Group Corporation	State Key Laboratory of Optical Communication Technologies and Networks
+1Finity Americas Inc.	1Finity Americas
+1Finity Americas, Inc	1Finity Americas
+1Finity Inc.	1Finity
+ADAPT Centre, School of Computer Science and Statistics, Trinity College Dublin	Trinity College Dublin
+AIST	AIST Japan
+AIST, Japan	AIST Japan
+AIT Austrian Institute of Technology	AIT
+Adelaide University	Adelaide
+Adtran GmbH	Adtran
+Adtran Networks SE	Adtran Networks SE
+Adtran, Germany	Adtran
+Adva Network Security GmbH	Adva Network Security
+Aerospace Information Research Institute, Chinese Academy of Sciences	CAS AIR Beijing
+Airbus Space and Defense GmbH	Airbus Space and Defense
+Alcatel Submarine Network	Alcatel Submarine Network
+Alcatel Submarine Networks	Alcatel Submarine Networks
+Alibaba Cloud, Alibaba Group	Alibaba Cloud
+Aloe Semiconductor Inc.	Aloe Semiconductor
+Arista Networks	Arista Networks
+Aristotle University of Thessaloniki	Aristotle
+Arq Quantum Technologies	Arq Quantum Technologies
+Aston Institute of Photonic Technologies, Aston University	Aston
+Aston University	Aston
+BT	BT
+BT Group, UK	BT Group
+BUPT	BUPT
+Beijing Philinks Technology Co., Ltd.	Beijing Philinks Technology
+Beijing University Of Posts and Telecommunications	BUPT
+Beijing University of Posts and Telecommunications	BUPT
+Berxel Photonics Co. Ltd.	Berxel Photonics
+Berxel Photonics, USA	Berxel Photonics
+C2N, CNRS	CNRS
+CEA Leti	CEA Leti
+CEA-LETI	CEA-Leti
+CEMDATIC - Universidad Politécnica de Madrid	Politecnica de Madrid
+CEO at IMEC	imec
+CTTC	CTTC
+CableLabs	Cablelabs
+California Institute of Technology	Caltech
+Carlos III University of Madrid	Carlos III
+Centre Tecnològic de Telecomunicacions de Catalunya (CTTC)	CTTC
+Centre de Nanociences et de Nanotechnologies, CNRS, Université Paris-Saclay	Paris-Saclay
+Centre for Quantum Technologies, National University of Singapore	NUS
+Chalmers University Of Technology	Chalmers
+Chalmers University of Technology	Chalmers
+China Information Communication Technologies Group Corporation	China Information Communication Technologies Group
+China Mobile Research Insititute	China Mobile Research Institute
+China Mobile Research Institute	China Mobile Research Institute
+China Telecom Research Institute, State Key Laboratory of Optical Fiber and Cable Manufacture Technology	China Telecom Research Institute
+China Unicom	China Unicom
+China Unicom Research Institute	China Unicom Research Institute
+Chongqing University	CQU
+Chongqing University Of Posts And Telecommunications	CQU
+Ciena Corp	Ciena
+Co-Founder and CTO at PsiQuantum	PsiQuantum
+Coherent	Coherent
+Coherent Corp. Zürich	Coherent
+Columbia University	Columbia
+Consejo Superior de Investigadores Científicas	Consejo Superior de Investigadores Científicas
+Corning Inc	Corning
+Corning Incorporated	Corning
+Corning,UK	Corning
+DTU Electro, Technical University of Denmark	DTU
+Delft University of Technology	TU Delft
+Denmark's Technical University - Electro	Denmark's Technical
+Department of Electrical Computer Engineering, The University of British Columbia	British Columbia
+Department of Informatics and Computer Engineering, University of West Attica	West Attica
+Department of Information Engineering, University of Padova	Padua
+Department of Physics, Lund University	Lund
+Deutsche Telekom AG	Deutsche Telekom
+Dipartimento di Elettronica e Telecomunicazioni, Politecnico di Torino	PoliTo
+Dipartimento di Fisica e Astronomia, Università degli Studi di Firenze	Florence
+Director of Advanced Optoelectronics Laboratory at Huawei	Huawei
+Dublin City University	Dublin City
+Duke University	Duke
+EPFL	EPFL
+EPFL Ecole Poytechnique Fédérale de Lausanne	EPFL
+ETH Zurich Institute of Electromagnetic Fields (IEF)	ETH Zürich
+ETRI	ETRI
+Eindhoven University of Technology	TU Eindhoven
+Eindhoven University of Technology, the Netherlands	TU Eindhoven
+Electronics and Telecommunications Research Institute	ETRI
+Electronics and Telecommunications Research Institute (ETRI)	ETRI
+EpiPhotonics Corp	EpiPhotonics
+FRDC	FRDC
+FiberCop S.p.A.	FiberCop
+Fraunhofer - HHI	Fraunhofer
+Fraunhofer HHI	Fraunhofer HHI
+Fraunhofer Heinrich Hertz Institute	Fraunhofer
+Fraunhofer Heinrich-Hertz-Institute	Fraunhofer
+Fraunhofer Heinrich-Hertz-Institute, HHI	Fraunhofer
+Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI), Einsteinufer 37	Fraunhofer
+Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut, HHI	Fraunhofer
+Fraunhofer-Institute for Telecommunication, Heinrich-Hertz-Institut, HHI	Fraunhofer
+Fudan Universitry	Fudan
+Fudan University	Fudan
+Fujikura	Fujikura
+Fujitsu Research & Development Center Co. Ltd.	Fujitsu Research & Development Center
+Fujitsu Research & Development Center Co., Ltd.	Fujitsu Research & Development Center
+Furukawa Electric Co., Ltd.	Furukawa Electric
+Futurewei	Futurewei
+Futurewei Technologies, Inc.	Futurewei Technologies
+Futurewei, U.S. Subsidiary of Huawei	Huawei
+Ghent University	Ghent
+Ghent University - imec	imec
+Graduate School of Engineering Science, The University of Osaka	Osaka
+Graduate School of Information Science and Technology, Hokkaido University	Hokkaido
+Graduate School of Science and Engineering, Hosei University	Hosei
+Guangdong University of Technology	Guangdong Tech
+HUAWEI	Huawei
+Harbin Institute of Technology (Shenzhen)	HIT
+Harbin Institute of Technology, Shenzhen	HIT
+Hitachi Ltd.	Hitachi
+Hong Kong University of Science and Technology (Guangzhou)	HKUST
+Huawei	Huawei
+Huawei Heisenberg Research Center	Huawei
+Huawei Technologies Canada	Huawei
+Huawei Technologies Canada Co., Ltd.	Huawei
+Huawei Technologies Canada Company Ltd	Huawei
+Huawei Technologies Company Ltd. Canada	Huawei
+Huawei Technologies Duesseldorf GmbH	Huawei
+Huawei Technologies Duesseldorf GmbH, Munich Research Center	Huawei
+Huawei Technologies Düsseldorf GmbH	Huawei
+Huawei Technologies France	Huawei
+Huawei Technologies France - Paris Research Center - Optical Communication Technology Lab	Huawei
+Huawei Technologies France, Optical Communication Technology Lab.	Huawei
+Huawei Technologies, Canada	Huawei
+Huawei technologies France	Huawei
+Huazhong University of Science and Technology	Huazhong
+Huazhong University of Science and Technology (HUST)	Huazhong
+Huazhong university of science and technology	Huazhong
+IDLab, Ghent University - imec	imec
+IMEC	imec
+IMEC The Netherlands	imec
+IMT Atlantique	IMT Atlantique
+INRS Canada	INRS
+Innolume GmbH	Innolume
+Institut National de la Recherche Scientifique, Centre Énergie Matériaux Télécommunication (INRS-EMT)	INRS
+Institute of Communications Engineering, National Tsing Hua University	NTHU
+Institute of Science Tokyo	Tokyo Tech
+Institute of electrical and optical communications	Institute of electrical and optical communications
+Instituto de Telecomunicações	Instituto de Telecomunicações
+Instituto de Telecomunicações, Department of Electrical and Computer Engineering, University of Coimbra	Instituto de Telecomunicações
+Instituto de Óptica Daza de Valdés (CSIC)	CSIC
+Ipronics	iPRONICS
+Istituto Nazionale di Ricerca Metrologica (INRiM)	INRiM
+KDDI Research	KDDI
+KDDI Research Inc.	KDDI
+KDDI Research, Inc.	KDDI
+KEEQuant GmbH	KEEQuant
+KTH Royal Institute of Technology	KTH
+Kagawa University	Kagawa
+Karlsruhe Institute of Technology	KIT
+Karlsruhe Institute of Technology (KIT)	KIT
+Keio University	Keio
+Key Laboratory of Optical Fibre Sensing and Communications, University of Electronic Science and Technology of China	UESTC
+Kiel University	Kiel
+Kiel University (CAU)	Kiel
+Linfiber Technology (China)	Linfiber Technology
+Lumentum	Lumentum
+META	META
+McGill University	McGill
+McMaster University	McMaster
+Meta	Meta
+Microsoft	Microsoft
+Microsoft Azure Fiber	Microsoft
+Mitsubishi Electric	Mitsubishi Electric
+Mitsubishi Electric Corporation	Mitsubishi Electric
+NEC Corp.	NEC
+NEC Corporation	NEC
+NEC Laboratories America	NEC
+NICT	NICT
+NOKIA BELL LABS	Nokia Bell Labs
+NOKIA Bell Labs	Nokia Bell Labs
+NTT	NTT
+NTT Corporation	NTT
+NTT Inc.	NTT
+NTT Network Innovation Laboratories	NTT
+NTT, Inc.	NTT
+NTT, Inc. Access Network Service Systems Labpratories	NTT
+NTT, inc.	NTT
+NVIDIA	Nvidia
+NVIDIA Corporation	Nvidia
+Nagoya University	Nagoya
+Nanjing University	Nanjing
+Nanophotonics Technology Center, Technical University of Valencia	TU Valencia
+Nanoscience Laboratory, Department of Physics, University of Trento	Trento
+National Institute of Advanced Industrial Science and Technology	AIST Japan
+National Institute of Advanced Industrial Science and Technology (AIST)	AIST Japan
+National Institute of Information and Communications Technology	NICT
+National Institute of Information and Communications Technology (NICT)	NICT
+National Institute of Standards and Technology	NIST
+National Institute of Telecommunications	National Institute of Telecommunications
+National Kapodistrian University of Athens	Athens
+National Key Laboratory of Microwave Imaging Aerospace Information Research Institute Chinese Academy of Sciences Beijing 100190, China	CAS AIR Beijing
+National Research Council Canada	NRC Canada
+National Sun Yat-sen University	Sun Yat-sen
+National University of Singapore (NUS)	NUS
+National and Kapodistrian University of Athens	Athens
+National and Kapodistrian University of Athens, Greece	Athens
+Network Innovation Laboratories, NTT, Inc.	NTT
+Network innovation Laboratories, NTT inc.	NTT
+Nobleo Technology	Nobleo Technology
+Nokia	Nokia
+Nokia Bell Labs	Nokia Bell Labs
+Nokia Bell Labs / III-V Lab	Nokia Bell Labs
+Nokia Bell Labs France	Nokia Bell Labs
+Nokia Bell-Labs	Nokia
+Nokia, Bell Labs	Bell Labs
+Northumbria University	Northumbria
+Northwestern Polytechnical University	NWPU
+Nvidia	Nvidia
+Nvidia Corp.	Nvidia
+OneTouch Technology	OneTouch Technology
+Optoelectronics Research Centre (ORC), University of Southampton	Southampton
+Optoelectronics Research Centre, University of Southampton	Southampton
+Orange	Orange
+Orange Research	Orange Research
+Orange SA	Orange SA
+POET Technologies	POET Technologies
+Peking University	Peking
+Pengcheng Laboratory	PCL Shenzhen
+Pengcheng Laboratory, Tsinghua University	Tsinghua
+Photonics Communications Research Laboratory	Photonics Communications Research Laboratory
+Pilot Photonics, Ireland	Pilot Photonics
+Polaris Electro-Optics	Polaris Electro-Optics
+Politecnico Di Milano	PoliMi
+Politecnico Di Torino	PoliTo
+Politecnico di Milano	PoliMi
+Politecnico di Torino	PoliTo
+Posts and Telecommunications Institute of Technology	Posts and Telecommunications Institute of Technology
+Queen's University	Queen’s
+Riga Technical University	Riga Technical
+SAMOVAR, Télécom SudParis - Institut Polytechnique de Paris	IP Paris
+SAMSUNG ELECTRONICS	Samsung
+SCINTIL Photonics	SCINTIL Photonics
+SMART Photonics B.V.	SMART Photonics
+STMicroelectronics	STMicro
+School of Information Engineering, Guangdong Provincial Key Laboratory of Information Photonics Technology, and Key Laboratory of Photonic Technology for Integrated Sensing and Communica-tion, Ministry of Education of China, Guangdong University of Technology, Guangzhou, 510006, China	Guangdong Tech
+School of Optical and Electronic Information, Huazhong University of Science and Technology	Huazhong
+Scuola Superiore Sant'Anna	Scuola Superiore Sant'Anna
+Shanghai Institute of Microsystem and Information Technology	SIMIT
+Shanghai Jiao Tong University	SJTU
+Shanghai Optoelectronics Science and Technology Innovation Center	Shanghai Optoelectronics Science and Technology Innovation Center
+Shinko Electric Industries Co., Ltd.	Shinko Electric Industries
+SiFotonics Technologies Co., Ltd	SiFotonics Technologies
+Sikt, Norwegian Agency for Shared Services in Education and Research	Sikt
+Sorbonne Université	Sorbonne
+South China University of Technology	SCUT
+Southeast University	Southeast
+Southeast University (China)	Southeast
+State Key Lab of Information Photonics and Optical Communications, Beijing University of Posts and Telecommunications (BUPT), Beijing, China	BUPT
+State Key Laboratory of Information Photonics and Optical Communications, Beijing University of Posts and Telecommunications	BUPT
+State Key Laboratory of Information Photonics and Optical Communications, School of Information and Communication Engineering, Beijing University of Posts and Telecommunications	BUPT
+State Key Laboratory of Optical Communication Technologies and Networks, China Information Communication Technologies Group Corporation	State Key Laboratory of Optical Communication Technologies and Networks
+State Key Laboratory of Optical Fiber and Cable Manufacture Technology, China Telecom Research Institute	China Telecom Research Institute
+State Key Laboratory of Photonics and Communications, Shanghai Jiao Tong University	SJTU
+State Key Laboratory of optical communication technology and network, China Information Communication Technologies Group Corporation	State Key Laboratory of optical communication technology and network
+Sumitomo Electric Device Innovations, Inc.	Sumitomo Electric Industries
+Sumitomo Electric Industries, Ltd.	Sumitomo Electric Industries
+Sun Yat-sen University	Sun Yat-sen
+THz-Photonics, TU-Braunschweig	THz-Photonics
+TNO/PITC	TNO/PITC
+TRINITY COLLEGE DUBLIN	Trinity College Dublin
+TU Dresden	TU Dresden
+Tamagawa University	Tamagawa
+Tampere University	Tampere
+Tampnet AS	Tampnet AS
+Technical University of Berlin and Silicon Austria Labs GmbH	TU Berlin
+Technical University of Catalonia (UPC)	UPC
+Technical University of Denmark	DTU
+Technical University of Denmark (DTU)	DTU
+Technical University of Munich	TU Munich
+Technische Universiteit Eindhoven	TU Eindhoven
+Technische Universität Berlin	TU Berlin
+Technische Universität Braunschweig	TU Braunschweig
+Telefónica CDO	Telefónica CDO
+Temasek Laboratories, Nanyang Technological University	NTU Singapore
+Tencent	Tencent
+The Australian National University	ANU
+The Chinese University of Hong Kong	CUHK
+The Hong Kong Polytechnic University	PolyU HK
+The University of Osaka	Osaka
+The University of Sydney	Sydney
+The University of Tokyo	Tokyo
+Tohoku University	Tohoku
+Tokyo Denki University	Tokyo Denki
+Trinity College Dublin	Trinity College Dublin
+Tsinghua Shenzhen International Graduate School, Tsinghua University	Tsinghua
+Tsinghua University	Tsinghua
+Tyndall National Institute	Tyndall
+Télécom Paris	Télécom Paris
+UBC	UBC
+UCL (University College London)	UCL
+UNIVERSIDAD CARLOS III DE MADRID	CARLOS III DE MADRID
+UNIVERSITY OF TWENTE/ ALUVIA Photonics	Twente
+UPC (Spain)	UPC
+Ugent - Imec	imec
+Ugent - imec	imec
+Universidad Carlos III de Madrid	Carlos III de Madrid
+Universidad Politécnica de Madrid	Politecnica de Madrid
+Universidad Tecnica Federico Santa Maria	Tecnica Federico Santa Maria
+Universidad de Alcalá	Alcalá
+Universidad de Málaga	Málaga
+Universidad de Sevilla	Sevilla
+Universidad de Zaragoza	Zaragoza
+Universidad de la República	la República
+Universitat Politecnica de Valencia	Politecnica de Valencia
+Universitat Politècnica de Catalunya - BarcelonaTech	UPC
+Universitat Politècnica de Catalunya, Barcelona Tech - UPC	UPC
+Universitat Politècnica de València	Politecnica de Valencia
+Universite Laval	Laval
+University Carlos III of Madrid	Carlos III of Madrid
+University College London	UCL
+University College London (UCL)	UCL
+University College London, United Kingdom	UCL
+University of Alcala	Alcalá
+University of Bristol	Bristol
+University of British Columbia	British Columbia
+University of Cagliari	Cagliari
+University of Cambridge	Cambridge
+University of Chinese Academy of Sciences	UCAS
+University of Edinburgh, Quantum Software Lab	Edinburgh
+University of Electronic Science and Technology of China	UESTC
+University of Hong Kong	HKU
+University of L'Aquila	L'Aquila
+University of Malaga	Málaga
+University of Melbourne	Melbourne
+University of Málaga	Málaga
+University of Oxford	Oxford
+University of Padova	Padua
+University of Science and Technology of China	USTC
+University of Southampton	Southampton
+University of Southern California	USC
+University of Toronto	Toronto
+University of Warsaw	Warsaw
+University of West Attica	West Attica
+University of West Attica, Department of Informatics and Computer Engineering	West Attica
+University of Yamanashi	Yamanashi
+University of Zilina	Zilina
+University of the Bundeswehr Munich	Bundeswehr Munich
+Università degli Studi dell'Aquila, Department of Physical and Chemical Sciences	degli Studi dell'Aquila
+Università degli Studi dell’Aquila, Italy	degli Studi dell’Aquila
+Università di Parma	Parma
+Universität der Bundeswehr München	Bundeswehr München
+Université Laval	Laval
+Vice President of Systems Architecture at Ciena	Ciena
+Wavephotonics LTD	Wavephotonics
+Westlake University	Westlake
+Wuhan National Laboratory for Optoelectronics and School of Optical and Electronic Information	Wuhan National Laboratory for Optoelectronics and School of Optical and Electronic Information
+Xi'an Institute of Optics and Precision Mechanics, CAS	CAS XIOPM
+YOFC	YOFC
+Yangtze Optical Fiber and Cable Joint Stock Limited Company	Yangtze Optical Fiber and Cable Joint Stock
+Yokohama National University	Yokohama National
+Yonsei University	Yonsei
+ZHEJIANG UNIVERSITY	Zhejiang
+ZTE Corporation	ZTE
+ZTE corporation	ZTE
+Zhangjiang Laboratory	Zhangjiang Laboratory
+Zhejiang University	Zhejiang
+Zhengzhou University	Zhengzhou
+iTEAM Research Institute, Universitat Politècnica de València	Politecnica de Valencia
+imec	imec
+imec-UGent	imec
+na	na
+nstitute of Photonics and Quantum Electronics (IPQ), Karlsruhe Institute of Technology (KIT)	KIT
+the School of Optical and Electronic Information, Huazhong University of Science and Technology	Huazhong
+the university of british columbia	british columbia
+zhejiang university	Zhejiang
