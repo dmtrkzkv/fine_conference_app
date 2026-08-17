@@ -234,6 +234,69 @@ def _fix_name(name: str) -> str:
     return name
 
 
+# Common words a "name" candidate must not contain — these mark a program
+# fixture (a panel, a round table, a moderator note) rather than a person.
+_NAME_STOPWORDS = {
+    "by", "all", "the", "and", "with", "of", "led", "moderated", "speakers",
+    "speaker", "first", "second", "next", "four", "session", "panel", "focus",
+    "audience", "round", "table", "introduction", "discussion", "tba", "title",
+    "opening", "welcome", "chair", "panelists", "reversed", "remarks",
+}
+
+
+def _looks_like_name(text: str) -> bool:
+    """True when a short string plausibly reads as one person's name."""
+    tokens = re.findall(r"[^\W\d_][\w.'’-]*", text, re.UNICODE)
+    if not 1 <= len(tokens) <= 4:
+        return False
+    return not any(t.lower() in _NAME_STOPWORDS for t in tokens)
+
+
+def _fix_person_name(raw: str) -> str:
+    """Normalize a panelist name: flip a `Last, First` form and title-case a
+    wholly-lower-case name (the builder also recases, but be robust)."""
+    raw = _norm_space(raw).strip(" .,")
+    if "," in raw:
+        parts = [p.strip() for p in raw.split(",") if p.strip()]
+        if (len(parts) == 2 and len(parts[0].split()) <= 3
+                and len(parts[1].split()) <= 3):
+            raw = f"{parts[1]} {parts[0]}"
+    if raw and raw == raw.lower():
+        raw = " ".join(w[:1].upper() + w[1:] for w in raw.split())
+    return _fix_name(raw)
+
+
+def _parse_panelist_row(presentation: str):
+    """Split a workshop / market-focus panelist row into (title, name, aff).
+
+    These rows leave the structured name field empty and pack the panelist into
+    the presentation text as `<title>. <Name> (<affiliation>)`, `<Name>
+    (<affiliation>)`, or a bare title (a round table, an opening). The title and
+    the name are separated by a sentence break, and the affiliation trails in
+    parentheses. Anything that does not fit that shape — a panel note whose
+    parenthetical is not an affiliation, a title with no panelist — comes back
+    as a title with no name, i.e. is left exactly as it was.
+    """
+    text = _norm_space(_strip_markup(presentation))
+    if not text:
+        return "", "", ""
+    match = re.search(r"\(([^()]+)\)\s*[.,]?\s*$", text)
+    if not match:
+        return _clean_text(text), "", ""
+    affiliation = _clean_text(match.group(1))
+    head = _norm_space(text[: match.start()]).strip(" .,")
+    # Peel the trailing name off the end; the name carries no sentence break,
+    # so the boundary lands on the last period/question/exclamation.
+    split = re.match(r"^(?:(?P<title>.*[.?!])\s*)?(?P<name>[^.?!]+)$", head)
+    title = _clean_text(split.group("title") or "") if split else ""
+    candidate = _norm_space(split.group("name")) if split else head
+    if _looks_like_name(candidate):
+        return title, _fix_person_name(candidate), affiliation
+    # The parenthetical was not a panelist's affiliation (e.g. "(All speakers)"):
+    # leave the row as a plain title.
+    return _clean_text(text), "", ""
+
+
 def _parse_people_block(raw: str) -> list:
     """Split a `Last, First / Last, First` author list into display names.
 
@@ -553,9 +616,14 @@ def _clean_abstract(raw: str) -> str:
 # Build
 # ---------------------------------------------------------------------------
 
-def _session_color(talk_colors: list, has_people: bool) -> str:
+def _session_color(talk_colors: list, title: str = "") -> str:
     """Derive a session's type from the talks it holds."""
     if not talk_colors:
+        # Postdeadline sessions are technical paper slots whose talks are only
+        # announced at the conference, so they start empty; color them
+        # Technical rather than letting the empty-container default read Event.
+        if re.search(r"\bpost.?deadline\b", title, re.IGNORECASE):
+            return TECHNICAL
         return EVENT
     unique = set(talk_colors)
     if unique == {POSTER}:
@@ -660,7 +728,7 @@ def build_conference_data() -> dict:
             "id": session_key,
             "code": code,
             "title": title,
-            "color": _session_color(talk_colors, bool(rows)),
+            "color": _session_color(talk_colors, title),
             "talk_ids": talk_ids,
         }
         if start_ts:
@@ -710,6 +778,21 @@ def _build_talk(row, index, speaker, speaker_aff, session_key, day,
     title = _clean_text(_strip_markup(row.get("presentation", "")))
     if not title:
         return None
+
+    # Workshop and market-focus panels leave the structured name field empty and
+    # pack the panelist into the presentation text ("<title>. <Name> (<aff>)").
+    # Recover the three parts so the talk gets a proper speaker and affiliation
+    # instead of a title with the name and company baked in.
+    if not speaker:
+        panel_title, panel_speaker, panel_aff = _parse_panelist_row(
+            row.get("presentation", ""))
+        if panel_speaker:
+            speaker = panel_speaker
+            title = panel_title or panel_speaker
+            if panel_aff and not speaker_aff:
+                speaker_aff = panel_aff
+        elif panel_title:
+            title = panel_title
 
     # A row carrying only a status word annotates its neighbour; it is not a
     # talk of its own.
