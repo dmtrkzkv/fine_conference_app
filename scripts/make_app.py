@@ -170,6 +170,14 @@ BUILDER = ROOT / "build_conference_app.py"
 # stored, named file into ROOT under DATA_JSON_NAME so the builder finds it.
 DATA_JSON_NAME = "conference_data.json"
 BUILT_HTML_NAME = "conference_app.html"
+# Environment variable the shared builder watches for "embed per-talk
+# papers as base64 blobs". When set, the builder reads each talk's
+# `paper` field, resolves it under the conference's data/ dir, and bakes
+# the bytes into the HTML. We use the var name (not a CLI flag) so the
+# builder's argv stays unchanged and existing imports keep working.
+PAPERS_MODE_ENV = "FCA_PAPERS_MODE"
+PAPERS_DATA_DIR_ENV = "FCA_PAPERS_DATA_DIR"
+PAPERS_HTML_SUFFIX = "_papers"
 # Historically build_affiliation_map.py dropped this map file next to itself in
 # ROOT and we moved it into the conference's data/ directory. The builder is now
 # pure (it returns the map in memory and writes nothing), so it is no longer
@@ -479,6 +487,36 @@ def _write_stored_hash(data_dir: Path, digest: str) -> None:
 # -----------------------------------------------------------------------------
 # Running a child script (downloader / processor) with live-streamed output.
 # -----------------------------------------------------------------------------
+def _papers_present(conference_json: Path, data_dir: Path) -> bool:
+    """Return True iff at least one talk in `conference_json` carries a
+    `paper` reference whose source file resolves (relative to `data_dir`)
+    to a file on disk.
+
+    A `paper` is an object {"file": "<name>", "pages": [first, last]};
+    `file` is the source PDF the builder slices the page range out of.
+    A missing JSON, a JSON without talks, no `paper` fields at all, or
+    every referenced file being absent → False. The dual build is
+    triggered only when there's at least one real source to embed, so a
+    conference that doesn't ship a book of papers gets the same
+    single-output build as before this feature."""
+    import json
+
+    if not conference_json.is_file():
+        return False
+    try:
+        data = json.loads(conference_json.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    for t in data.get("talks") or []:
+        ref = t.get("paper")
+        if not isinstance(ref, dict):
+            continue
+        name = ref.get("file")
+        if name and (data_dir / name).is_file():
+            return True
+    return False
+
+
 def _run_script(path: Path, cwd: Path) -> None:
     """Run a .py file as a fresh child Python process from `cwd`, streaming its
     output here live. Used for the downloader and the processor so their verbose
@@ -504,7 +542,13 @@ def _run_script(path: Path, cwd: Path) -> None:
 
 
 def _import_module(path: Path, mod_name: str):
-    """Import a .py file as a uniquely-named module (used for the builder)."""
+    """Import a .py file as a uniquely-named module (used for the builder).
+
+    Each call gets a fresh module, so calling twice — once for the normal
+    build and once for the papers-embedded build with a different env var
+    set — re-executes the builder top-to-bottom both times. The builder
+    reads its inputs at import time, so a fresh import is the simplest
+    way to get a clean second build without restructuring the builder."""
     parent = str(path.parent)
     if parent not in sys.path:
         sys.path.insert(0, parent)
@@ -515,6 +559,33 @@ def _import_module(path: Path, mod_name: str):
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
     return mod
+
+
+def _run_builder(mod_name: str, env_overrides: dict | None = None) -> None:
+    """Run the shared builder once. Imports it fresh under `mod_name` so
+    a repeat call with different env vars re-executes the builder
+    top-to-bottom and re-reads the staged JSON. The builder's main()
+    writes BUILT_HTML_NAME alongside itself in ROOT."""
+    saved_argv = sys.argv
+    saved_env: dict[str, str | None] = {}
+    if env_overrides:
+        for k, v in env_overrides.items():
+            saved_env[k] = os.environ.get(k)
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    sys.argv = [str(BUILDER)]
+    try:
+        bld = _import_module(BUILDER, mod_name)
+        bld.main()
+    finally:
+        sys.argv = saved_argv
+        for k, prev in saved_env.items():
+            if prev is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = prev
 
 
 # -----------------------------------------------------------------------------
@@ -696,27 +767,48 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
         shutil.move(str(root_json), str(backup_json))
     shutil.copy2(str(conference_json), str(root_json))
 
+    # The papers-embedded variant: <slug>_app_papers.html — `_papers`
+    # appended before the extension. Built in addition to the normal
+    # output when at least one talk has a `paper` field that resolves to
+    # a file on disk.
+    papers_stem = final_html_name[:-len(".html")] + PAPERS_HTML_SUFFIX
+    final_html_papers = subdir / (papers_stem + ".html")
+    do_papers_build = _papers_present(conference_json, data_dir)
+    n_steps = 6 if do_papers_build else 5
+
     try:
         # The builder reads conference_data.json at IMPORT time, so the JSON
         # must already be staged in root before we import it — which it is now.
-        saved_argv = sys.argv
-        sys.argv = [str(BUILDER)]
-        try:
-            bld = _import_module(BUILDER, "make_builder")
-            bld.main()
-        finally:
-            sys.argv = saved_argv
+        _run_builder("make_builder")
         if not root_html.exists():
             _die(f"builder finished but {root_html} was not produced.")
 
         # --------------------------------- 5. move results into subdirectory
-        print(f"[make] === Step 5/5: moving result to "
+        print(f"[make] === Step 5/{n_steps}: moving result to "
               f"{final_html.name} in {subdir.name}/ ===", flush=True)
         if final_html.exists():
             final_html.unlink()
         shutil.move(str(root_html), str(final_html))
         # (The builder keeps the affiliation map in memory and writes no
         # affiliation_map.txt, so there is nothing else to move here.)
+
+        # ----------------------------- 6. papers-embedded build (optional)
+        if do_papers_build:
+            print(f"[make] === Step 6/{n_steps}: per-talk papers detected — "
+                  f"building {final_html_papers.name} with embedded blobs "
+                  "===", flush=True)
+            _run_builder(
+                "make_builder_papers",
+                env_overrides={
+                    PAPERS_MODE_ENV: "1",
+                    PAPERS_DATA_DIR_ENV: str(data_dir),
+                })
+            if not root_html.exists():
+                _die(f"papers builder finished but {root_html} "
+                     "was not produced.")
+            if final_html_papers.exists():
+                final_html_papers.unlink()
+            shutil.move(str(root_html), str(final_html_papers))
     finally:
         # Always clean up the staged JSON copy and restore any backup.
         if root_json.exists():
@@ -725,6 +817,10 @@ def _build_one(subdir_name: str, force_download: bool, force_process: bool) -> "
             shutil.move(str(backup_json), str(root_json))
 
     print(f"[make] DONE -> {final_html}", flush=True)
+    if do_papers_build:
+        size_mb = final_html_papers.stat().st_size / (1024 * 1024)
+        print(f"[make] DONE -> {final_html_papers} ({size_mb:.1f} MB)",
+              flush=True)
 
 
 def main() -> "None":

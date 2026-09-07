@@ -85,6 +85,7 @@ Run directly:  python process_program_iqclsw2026.py
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -98,7 +99,34 @@ OVERVIEW_HTML_IN = DATA_DIR / "program_overview.html"   # session names (optiona
 # Back-compat: if a pre-extracted .txt is present (older pipeline), use it.
 TEXT_IN = DATA_DIR / "detailed_program.txt"
 OVERVIEW_IN = DATA_DIR / "program_overview.txt"
+# OPTIONAL, manually-supplied: the organizers' book of abstracts. When
+# present, the processor pulls per-talk short abstracts out of it and joins
+# them by title; when absent, talks are emitted without abstracts.
+ABSTRACT_BOOK_IN = DATA_DIR / "iqclsw2026-book-of-abstracts.pdf"
 JSON_OUT = SCRIPT_DIR / "conference_data.json"
+
+# Poster day + board order from the PRINTED program. The book of abstracts lists
+# every poster in one alphabetical catalog and records neither which evening a
+# poster is shown nor its board number — that is only on the printed sheet handed
+# out on site, and no online/digital source carries it. We therefore pin the
+# order here, but store only a HASH of each title (not the title text), so no
+# program content lives in this source — see AGENTS.md ("Hashed ordering for
+# one-offs"). Each inner list is one evening session in printed BOARD order; the
+# sessions are in chronological order (earliest evening first). A hash is
+# _poster_title_hash(title). When the parsed catalog doesn't match this table
+# one-to-one, the processor falls back to splitting the list in half.
+POSTER_BOARD_ORDER = [
+    # Poster Session I — Tuesday 30 June 2026
+    ["a2118ff964", "e2f871a695", "438a71ae79", "8b7ef8f97f", "d2f27abb3c", "7c019424b7",
+     "80c21191bf", "02a2caabc6", "190fee77b1", "c7868ba2c0", "8881c802c6", "51f041aebf",
+     "c00a485e41", "5d4ea4a13c", "9a5a09b9cf", "b327d293c7", "f136e7286b", "272b68e2d8",
+     "e766fab62d", "0f6c7d5d59", "58ff5f9edd", "795eeb6cbe", "23e8478ad5", "0d534322d0"],
+    # Poster Session II — Thursday 2 July 2026
+    ["3a97b6c6ac", "350959498e", "c1f3e26be6", "25bd4b977f", "01c1a0f7c4", "ccb85b35b3",
+     "022730f33b", "1e53ff180b", "2df555b7c5", "641a5110af", "347a27011e", "f9867065bc",
+     "f5669905c3", "56bfe0b662", "0e2807c43d", "cbd9381605", "3aa890143f", "6f85223f1b",
+     "4f6680fffc", "6c7c2b6ce7", "fcf115ecf8", "3f7e718036", "38ae527a08", "4335ae9427"],
+]
 
 PROGRAM_MARKER = "DETAILED PROGRAM"
 POSTER_MARKER = "LIST OF POSTERS"
@@ -248,14 +276,1316 @@ def _load_overview_text() -> str:
 
 
 # -----------------------------------------------------------------------------
+# Book-of-abstracts parser (OPTIONAL input)
+#
+# The organizers circulate a PDF "book of abstracts" that's not published on
+# the website. When the file is present in data/ (it has to be supplied
+# manually — see data_requirements), we extract per-talk SHORT ABSTRACTS from
+# it and attach them by title to the matching talks. When the file is absent,
+# every talk's abstract stays "" and the rest of the pipeline runs unchanged.
+#
+# Strategy: walk pages, identify first-page-of-a-talk by font size (title
+# runs are visibly larger than body), confirm the page carries a real
+# header block (an email / "Contact Email" / numbered affiliation line —
+# front-matter pages don't), then look for an explicit "Abstract" or
+# "Short Abstract" label. Take the labelled content up to the next section
+# header. We intentionally require an explicit label rather than trying to
+# slice off the "first paragraph before Introduction" — the latter produces
+# dirty output for pages with no clean structural cue.
+# -----------------------------------------------------------------------------
+_ABS_TITLE_FONT_MIN = 13.0   # title-font cutoff in pt
+_ABS_BODY_FONT_MIN  = 9.0    # below this is usually a superscript / footnote
+_ABS_REF_FONT_MIN   = 7.5    # reference text never falls below this; smaller
+                             # lines in the reference region are figure axis
+                             # labels / sub-panel junk on a spill page
+_ABS_LINE_TOL = 2.5          # word-Δ within which two words share a line
+
+_ABS_LABEL_RE = re.compile(
+    r"^\s*(Short\s*Abstract|Abstract)\s*[:\-–]?\s*(.*)$", re.IGNORECASE)
+# Mid-line label: the separator is REQUIRED here (unlike the line-start form
+# above). Without it, the ordinary English word "abstract" inside body prose
+# ("... discussed in this abstract. Since ...") matches and hijacks the
+# abstract start deep into the paper body. A genuine inline label is always
+# "Abstract: ..." / "Short Abstract – ...".
+_ABS_LABEL_INLINE_RE = re.compile(
+    r"\b(Short\s*Abstract|Abstract)\s*[:\-–]\s*(.+)$", re.IGNORECASE)
+_ABS_PLACEHOLDER_RE = re.compile(
+    r"^Brief\s+summary\s*\(.*characters?\s+maximum\)\.?\s*$",
+    re.IGNORECASE)
+_ABS_SECTION_KEYWORDS = (
+    # "Abstract" as a section terminator catches the case where the page
+    # has BOTH a "Short Abstract" up top AND a separate longer "Abstract"
+    # section below: we want only the Short Abstract, so we stop the
+    # collector when the second "Abstract" header appears. (The initial
+    # label match already consumed the original "Short Abstract" /
+    # "Abstract:" line — the collector starts AFTER it.)
+    "Abstract",
+    "Introduction", "Results", "Methods", "Method", "Discussion",
+    "Conclusion", "Conclusions", "Summary", "Theory", "Background",
+    "Context", "Experiment", "Experiments", "Measurements", "Setup",
+    "Approach", "Motivation", "Overview",
+)
+_ABS_SECTION_KW_RE = re.compile(
+    r"^\s*\d{0,2}\.?\s*(" + "|".join(_ABS_SECTION_KEYWORDS) + r")\b",
+    re.IGNORECASE)
+# Same keywords but used as an INLINE marker like "Introduction: <body…>" —
+# the body starts on the same line as the header word, no length cap.
+_ABS_SECTION_INLINE_RE = re.compile(
+    r"^\s*\d{0,2}\.?\s*(" + "|".join(_ABS_SECTION_KEYWORDS) + r")\s*[:\-–]",
+    re.IGNORECASE)
+# Generic numbered section header — "1. <Title>" / "2.III-V growth on …".
+# We require: 1-2 digit number, period, optional space, then a Capital
+# starting a short title line that does NOT end with a sentence period
+# in the middle. Catches author-defined sections that aren't in the
+# keyword list above.
+_ABS_NUMBERED_SECTION_RE = re.compile(
+    r"^\s*\d{1,2}\.\s*[A-Z][A-Za-z0-9\-–—’ '().,&/]{0,90}$"
+)
+# Talk-body STOP markers: References / Acknowledg(e)ments / Bibliography.
+# When we hit one of these we end the abstract — they always come at the
+# very end of a paper-style writeup and what follows is bibliography
+# entries, not useful prose.
+_ABS_STOP_RE = re.compile(
+    r"^\s*(?:\d{0,2}\.?\s*)?(References?|Acknowledg(?:e?ments?)?|"
+    r"Bibliograph(?:y|ie|ies)|Funding|Author\s+contributions?|"
+    r"Competing\s+interests?|Data\s+availability)\b",
+    re.IGNORECASE)
+# Figure/table caption start: "Figure 1.", "Fig. 1:", "Fig 1A)", "Table 2-".
+# Used both to drop caption paragraphs from the abstract body and to stop
+# reference collection when a caption (or the figure block) follows the
+# reference list on a spill page.
+_ABS_CAPTION_RE = re.compile(
+    r"^(?:Figure|Fig\.?|Table|Tab\.?)\s*\d+[A-Za-z]?\s*[:.\-–—)]",
+    re.IGNORECASE)
+# Inline "1.Introduction" / "2.Results" pattern pdfplumber sometimes merges
+# with the previous sentence. Used to TRIM the final string. We require a
+# 1–2 digit section number (so "2025." is never matched) AND a known
+# section keyword.
+_ABS_INLINE_SECTION_RE = re.compile(
+    r"(?:^|(?<=[.!?]))\s*\d{1,2}\.\s*(" + "|".join(_ABS_SECTION_KEYWORDS)
+    + r")\b",
+    re.IGNORECASE)
+# Strong "this is a talk page" signal: an email, "Contact Email", or a
+# numbered affiliation line that begins with a digit followed by a clearly
+# institution-like word.
+_ABS_SIG_RE = re.compile(
+    r"(\bContact\s*Email\b|@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"
+    r"|^\s*\d+\s*[A-Za-z\xc0-\xff][a-zA-Z\xc0-\xff\s,.\-]+(University|"
+    r"Institute|Laboratoire|Laboratory|CNRS|Dipartimento|Politecnico|"
+    r"Department|Centre|Center|National|Research|Academy|TU\s|ETH\s|CEA|"
+    r"CNR|GmbH))",
+    re.IGNORECASE)
+
+
+def _abs_page_lines(page) -> list[tuple[float, list[dict], float, float]]:
+    """Cluster a PDF page's words into top-down lines. Returns
+    [(max_font_size, words, top, x0), …] where x0 is the leftmost word
+    position on the line.
+
+    Uses x_tolerance=2.0 (default is 3.0) so consecutive characters
+    separated by a 2.49 pt positional gap — what some LaTeX templates
+    in this book use as a space — are recognized as a word boundary.
+    With the default, those gaps fall under the threshold and pdfplumber
+    glues words together, giving runs like "extendednonlinearliquid…"."""
+    words = page.extract_words(extra_attrs=["size"], x_tolerance=2.0) or []
+    for w in words:
+        w["top"] = float(w["top"])
+        w["x0"] = float(w["x0"])
+        w["x1"] = float(w["x1"])
+        w["size"] = float(w.get("size", 0) or 0)
+    words.sort(key=lambda w: (w["top"], w["x0"]))
+    lines: list[list[dict]] = []
+    for w in words:
+        if lines and abs(w["top"] - lines[-1][0]["top"]) <= _ABS_LINE_TOL:
+            lines[-1].append(w)
+        else:
+            lines.append([w])
+    out: list[tuple[float, list[dict], float, float]] = []
+    for ln in lines:
+        ln.sort(key=lambda w: w["x0"])
+        out.append((max(w["size"] for w in ln), ln,
+                    min(w["top"] for w in ln),
+                    min(w["x0"] for w in ln)))
+    return out
+
+
+# Adobe Symbol-font glyph codes land in the Unicode Private Use Area
+# (U+F020–U+F0FF) when a PDF embeds the Symbol font without a ToUnicode
+# CMap. PDF readers map these to Greek letters and math symbols via the
+# font itself, so the document looks correct on screen, but pdfplumber
+# returns the raw PUA codepoints — which have no glyph in browser fonts
+# and render as a missing-glyph box. The table below translates the
+# common Symbol-font slots into their proper Unicode equivalents (e.g.
+# U+F06D — Symbol's "m" — to μ U+03BC).
+_SYMBOL_PUA_TO_UNICODE = {
+    # Greek lowercase
+    0xF061: "α", 0xF062: "β", 0xF063: "χ", 0xF064: "δ", 0xF065: "ε",
+    0xF066: "φ", 0xF067: "γ", 0xF068: "η", 0xF069: "ι", 0xF06A: "ϕ",
+    0xF06B: "κ", 0xF06C: "λ", 0xF06D: "μ", 0xF06E: "ν", 0xF06F: "ο",
+    0xF070: "π", 0xF071: "θ", 0xF072: "ρ", 0xF073: "σ", 0xF074: "τ",
+    0xF075: "υ", 0xF076: "ϖ", 0xF077: "ω", 0xF078: "ξ", 0xF079: "ψ",
+    0xF07A: "ζ",
+    # Greek uppercase
+    0xF041: "Α", 0xF042: "Β", 0xF043: "Χ", 0xF044: "Δ", 0xF045: "Ε",
+    0xF046: "Φ", 0xF047: "Γ", 0xF048: "Η", 0xF049: "Ι", 0xF04B: "Κ",
+    0xF04C: "Λ", 0xF04D: "Μ", 0xF04E: "Ν", 0xF04F: "Ο", 0xF050: "Π",
+    0xF051: "Θ", 0xF052: "Ρ", 0xF053: "Σ", 0xF054: "Τ", 0xF055: "Υ",
+    0xF057: "Ω", 0xF058: "Ξ", 0xF059: "Ψ", 0xF05A: "Ζ",
+    # Math and punctuation
+    0xF0A3: "≤", 0xF0A5: "∞", 0xF0B0: "°", 0xF0B1: "±", 0xF0B2: "″",
+    0xF0B3: "≥", 0xF0B4: "×", 0xF0B5: "∝", 0xF0B6: "∂", 0xF0B7: "·",
+    0xF0B8: "÷", 0xF0B9: "≠", 0xF0BA: "≡", 0xF0BB: "≈", 0xF0BC: "…",
+    0xF0D7: "·", 0xF0D6: "√", 0xF0D5: "∏", 0xF0E5: "∑", 0xF0F2: "∫",
+    0xF0AE: "→", 0xF0AC: "←", 0xF0AD: "↑", 0xF0AF: "↓",
+    0xF0DE: "⇒", 0xF0DC: "⇐", 0xF0DD: "⇑", 0xF0DF: "⇓", 0xF0DB: "⇔",
+    0xF0CE: "∈", 0xF0CF: "∉", 0xF0C7: "∩", 0xF0C8: "∪",
+    0xF020: " ",
+}
+
+
+def _symbol_pua_to_unicode(text: str) -> str:
+    if not text:
+        return text
+    # Fast-path most lines (no PUA codepoints at all).
+    if not any(0xF020 <= ord(c) <= 0xF0FF for c in text):
+        return text
+    return text.translate(_SYMBOL_PUA_TO_UNICODE)
+
+
+def _abs_line_text(words: list[dict]) -> str:
+    raw = re.sub(r"\s+", " ",
+                 " ".join(w["text"] for w in words)).strip()
+    return _symbol_pua_to_unicode(raw)
+
+
+_ABS_INSTITUTION_WORDS_RE = re.compile(
+    r"\b(University|Institute|Institut|Laboratoire|Laboratory|CNRS|"
+    r"Dipartimento|Politecnico|Department|Centre|Center|Facult|National|"
+    r"Research|Academy|Academia|Max\s+Planck|TU\s|ETH\s|CEA|CNR|GmbH|"
+    r"S\.\s*A\.?|Inc\.?|Ltd\.?)",
+    re.IGNORECASE)
+
+
+def _abs_is_header_line(text: str) -> bool:
+    """True for an author / affiliation / contact-email line — i.e. anything
+    in the block between the title and the abstract. Used in the no-label
+    fallback to skip the header without dropping abstract content."""
+    if not text:
+        return True
+    if re.search(r"\bContact\s*Email\b|ContactEmail|@[A-Za-z0-9.\-]+"
+                 r"\.[A-Za-z]{2,}", text, re.IGNORECASE):
+        return True
+    if text[:1] in "*†‡§¶":
+        return True
+    if re.match(r"^\s*\d", text):
+        return True
+    # Section labels squished into one word (e.g. "ShortAbstract" with no
+    # space) — these are LABELS, not body, so treat as header.
+    if re.match(r"^\s*(Short\s*Abstract|Abstract)\s*$", text, re.IGNORECASE):
+        return True
+    if _ABS_INSTITUTION_WORDS_RE.search(text):
+        return True
+    if len(text) <= 50:
+        return True
+    toks = text.split()
+    if 1 <= len(toks) <= 6 and len(text) < 80:
+        is_name = lambda t: bool(
+            re.match(r"^[A-ZÀ-Ý][A-Za-zÀ-ÿ'’.\-]*$", t)
+            or re.match(r"^\d+[*†‡§]?$", t)
+            or t in ("and", "&"))
+        if all(is_name(t) for t in toks):
+            return True
+    upper_tokens = sum(1 for t in toks
+                       if t[:1].isupper() and len(t) > 1)
+    if text.count(",") >= 2 and upper_tokens >= 3 and len(text) < 250:
+        return True
+    # Squished author roster (LaTeX template strips inter-word spaces):
+    # the line has many CamelCase tokens (lower→upper boundary inside a
+    # word, e.g. "JayaprasathElumalai") AND commas, but no spaces around
+    # the commas so the upper_tokens count above misses it. Detect by
+    # counting embedded camelCase boundaries.
+    camel = len(re.findall(r"[a-z][A-Z]", text))
+    if camel >= 3 and text.count(",") >= 2 and len(text) < 400:
+        return True
+    return False
+
+
+_CITE_RE = re.compile(r"\[\s*(\d{1,3}(?:\s*[,\-–—]\s*\d{1,3})*)\s*\]")
+
+
+def _cited_ref_numbers(text: str) -> set[int]:
+    """Return the set of reference numbers cited anywhere in `text`.
+    Handles [1], [1,2], [1, 2], [1-3], [1–3], [1, 3-5] — and expands
+    ranges to every covered integer."""
+    out: set[int] = set()
+    for m in _CITE_RE.finditer(text):
+        body = m.group(1)
+        # Split on commas; each piece is either a single number or a
+        # range "lo-hi" with optional hyphen / en-dash / em-dash.
+        for piece in body.split(","):
+            piece = piece.strip()
+            rm = re.match(r"^(\d+)\s*[\-–—]\s*(\d+)$", piece)
+            if rm:
+                lo, hi = int(rm.group(1)), int(rm.group(2))
+                if 0 < lo <= hi and hi - lo < 50:   # sanity cap
+                    out.update(range(lo, hi + 1))
+            elif piece.isdigit():
+                n = int(piece)
+                if 0 < n < 1000:
+                    out.add(n)
+    return out
+
+
+def _parse_reference_entries(ref_lines: list[str]) -> dict[int, str]:
+    """Parse a flat list of reference lines into {N: entry_text}. Each
+    entry starts with `[N]` (sometimes `N.`) and may span multiple
+    wrapped lines. Continuation lines are joined onto the current
+    entry with a single space."""
+    entries: dict[int, str] = {}
+    cur_num: int | None = None
+    cur_parts: list[str] = []
+    start_re = re.compile(r"^\s*\[\s*(\d+)\s*\]\s*(.*)$")
+    alt_start_re = re.compile(r"^\s*(\d{1,3})\.\s+(.+)$")
+
+    def _flush():
+        nonlocal cur_num, cur_parts
+        if cur_num is not None and cur_parts:
+            txt = re.sub(r"\s+", " ", " ".join(cur_parts)).strip()
+            if txt:
+                entries[cur_num] = txt
+        cur_num = None
+        cur_parts = []
+
+    for ln in ref_lines:
+        m = start_re.match(ln)
+        if not m:
+            m = alt_start_re.match(ln)
+        if m:
+            _flush()
+            cur_num = int(m.group(1))
+            cur_parts = [m.group(2)]
+        elif cur_num is not None:
+            cur_parts.append(ln.strip())
+    _flush()
+    return entries
+
+
+def _book_paper_start_title(lines) -> tuple[str, int] | None:
+    """If `lines` is the start of a paper page in the book, return
+    (title, first_post_title_line_index). Otherwise None.
+
+    Detection: the page must lead with one or more consecutive title-font
+    lines, and within the next ~12 lines carry a "talk page signature" —
+    a Contact Email marker, an email address, a numbered affiliation, or
+    a line that contains an institution keyword. Front-matter pages
+    (Welcome, Committees, Scientific Program, …) lead with the same
+    large font but lack the signature."""
+    if not lines:
+        return None
+    first_size = lines[0][0]
+    if first_size < _ABS_TITLE_FONT_MIN:
+        return None
+    title_parts: list[str] = []
+    i = 0
+    while i < len(lines) and lines[i][0] >= _ABS_TITLE_FONT_MIN:
+        title_parts.append(_abs_line_text(lines[i][1]))
+        i += 1
+    title = re.sub(r"\s+", " ", " ".join(title_parts)).strip()
+    if len(title) < 8:
+        return None
+    sig_seen = False
+    for k in range(i, min(i + 12, len(lines))):
+        size, words = lines[k][0], lines[k][1]
+        if size >= _ABS_TITLE_FONT_MIN:
+            break
+        text = _abs_line_text(words)
+        if (re.search(r"\bContact\s*Email\b|ContactEmail|@[A-Za-z0-9.\-]+"
+                      r"\.[A-Za-z]{2,}", text, re.IGNORECASE)
+                or re.match(r"^\s*\d+\s*[A-Za-zÀ-Ý]", text)
+                or _ABS_INSTITUTION_WORDS_RE.search(text)):
+            sig_seen = True
+            break
+    if not sig_seen:
+        return None
+    return title, i
+
+
+def _book_page_is_poster(lines) -> bool:
+    """Return True when a paper-start page is actually a POSTER laid out
+    as a 2-D collage of panels rather than a single-column abstract. Such
+    pages have no readable linear "abstract"; the extracted text is just
+    scattered slide fragments, so we emit the talk with an empty abstract
+    (the poster PDF itself is still attached and viewable).
+
+    Two independent tells, each well clear of any normal abstract page:
+      - rotated / overflow text blocks, which pdfplumber reports at a
+        NEGATIVE x0 (a single-column page never has any); or
+      - a very wide horizontal spread of text combined with many tiny
+        fragment lines (panels and captions strewn across the width)."""
+    body = [(s, x0) for (s, _w, _t, x0) in lines
+            if 5 <= s < _ABS_TITLE_FONT_MIN]
+    if len(body) < 8:
+        return False
+    xs = [x0 for _s, x0 in body]
+    n_neg = sum(1 for x in xs if x < 0)
+    span = max(xs) - min(xs)
+    n_tiny = sum(1 for s, _x in body if s < 7.5)
+    if n_neg >= 2:
+        return True
+    if span > 500 and n_tiny >= 10:
+        return True
+    return False
+
+
+def _parse_book_page(lines, get_more_pages) -> tuple[str, str] | None:
+    """Return (title, abstract) iff this PDF page begins a talk.
+
+    Strategy:
+      1. Confirm the page IS a paper start (via _book_paper_start_title)
+         and take the title.
+      2. Look for an explicit "Short Abstract" / "Abstract" label and start
+         collecting from after it. If no label is found, fall back to
+         "first prose line after the header block" — this captures the
+         pages whose authors didn't include a labelled short abstract but
+         whose talk body is still useful as an abstract surrogate.
+      3. Consume body lines (page-by-page via `get_more_pages`, which
+         yields the next page's lines) until we hit either a References /
+         Acknowledgments / Bibliography section, the next talk's title-
+         font run, or the abstract hits the size cap.
+
+    `get_more_pages` is a generator that yields the next page's `lines`
+    each time it is called. We use it to spill the abstract across pages
+    so the collector matches the user's "err on the side of including
+    too much" preference."""
+    hit = _book_paper_start_title(lines)
+    if hit is None:
+        return None
+    title, i = hit
+    # Poster pages carry no linear abstract — emit the title with an
+    # empty abstract (the poster PDF is still attached for viewing).
+    if _book_page_is_poster(lines):
+        return title, ""
+    # Find abstract start: (a) explicit Abstract label, or (b) first prose
+    # line after the header block.
+    abs_start_idx = None
+    inline_tail = ""
+    label_seen = False
+    for k in range(i, len(lines)):
+        size, words = lines[k][0], lines[k][1]
+        if size >= _ABS_TITLE_FONT_MIN:
+            return None
+        text = _abs_line_text(words)
+        m = _ABS_LABEL_RE.match(text)
+        if m:
+            label_seen = True
+            tail = m.group(2).strip(" .:–—-")
+            if tail and not _ABS_PLACEHOLDER_RE.match(tail):
+                inline_tail = tail
+            abs_start_idx = k + 1
+            break
+        # An Abstract label only ever sits in the HEADER region (right after
+        # the authors/affiliation/contact block). Once a section heading
+        # ("1. Introduction", "Results", ...) appears, the labeled-abstract
+        # region is over — stop scanning so a stray "abstract" in body prose
+        # can't hijack the start; the no-label fallback below then picks the
+        # first prose line. Checked AFTER the line-start label match, since a
+        # bare "Abstract" header line is itself a section keyword.
+        if (_ABS_NUMBERED_SECTION_RE.match(text)
+                or (_ABS_SECTION_KW_RE.match(text) and len(text) <= 80)):
+            break
+        m2 = _ABS_LABEL_INLINE_RE.search(text)
+        if m2 and m2.start() > 5:
+            label_seen = True
+            tail = m2.group(2).strip(" .:–—-")
+            if tail and not _ABS_PLACEHOLDER_RE.match(tail):
+                inline_tail = tail
+            abs_start_idx = k + 1
+            break
+    if abs_start_idx is None:
+        # Fallback: scan past the header block and start at the first
+        # prose-shaped line.
+        for k in range(i, len(lines)):
+            size, words = lines[k][0], lines[k][1]
+            if size >= _ABS_TITLE_FONT_MIN:
+                return None
+            if size < _ABS_BODY_FONT_MIN:
+                continue
+            text = _abs_line_text(words)
+            if _ABS_PLACEHOLDER_RE.match(text):
+                continue
+            if _abs_is_header_line(text):
+                continue
+            abs_start_idx = k
+            break
+        if abs_start_idx is None:
+            return None
+
+    abs_chunks: list[str] = []
+    if inline_tail:
+        abs_chunks.append(inline_tail)
+    # In the no-label fallback, we want to skip any leftover header-shaped
+    # noise (single-token vendor names, contact lines pdfplumber didn't
+    # cluster cleanly with the author block) until we hit a real prose
+    # sentence. When an explicit Abstract / Short Abstract label was
+    # found, trust the label — everything after it is the abstract, even
+    # if the opening sentence happens to LOOK author-shaped (e.g. a
+    # sentence beginning with a person's name + ≥2 commas).
+    skip_header_until_body = not label_seen
+
+    # Layout-change detection state:
+    #   PARA_GAP_PT — vertical gap above which we mark a paragraph break.
+    #   INDENT_DELTA_PT — horizontal change in left-margin (x0) above
+    #     which we treat the line as a layout shift (e.g. the body
+    #     section starts at a different left margin than the indented
+    #     short abstract).
+    PARA_GAP_PT = 18.0
+    INDENT_DELTA_PT = 12.0
+    PARA_SEP = "\n\n"
+    prev_top: list[float] = [None]
+    base_x0: list[float] = [None]
+    pending_para_break: list[bool] = [False]
+    # Abstract collection runs until we hit a stop condition (section
+    # header, References, Acknowledgments, layout shift). Reference
+    # collection then takes over and runs until the next talk title.
+    # The collectors are independent so we can keep walking past
+    # section headers to find the References section that comes later.
+    abstract_done: list[bool] = [False]
+    refs_mode: list[bool] = [False]
+    refs_lines: list[str] = []
+    _REF_HDR_RE = re.compile(r"^\s*References?\s*:?\s*$", re.IGNORECASE)
+
+    def _consume(it) -> bool:
+        """Walk lines. Builds the abstract until a stop is reached, then
+        keeps walking to look for a References section (whose entries
+        are collected into refs_lines). Returns True only when we hit
+        the next talk's title-font run (end of this talk's pages)."""
+        nonlocal skip_header_until_body
+        for size, words, top, x0 in it:
+            if size >= _ABS_TITLE_FONT_MIN:
+                return True
+            text = _abs_line_text(words)
+            # References mode: collect lines into refs_lines. Stop the
+            # whole walk once a figure/table caption or an
+            # acknowledgment/funding section appears — on a spill page the
+            # reference list is often followed by the figure block and an
+            # Acknowledgment paragraph, and without this they'd be glued
+            # onto the last reference entry as continuation lines.
+            if refs_mode[0]:
+                if re.match(r"^\s*\d{1,3}\s*$", text):
+                    continue
+                if re.match(r"^\s*[ivxlcIVXLC]+\s*$", text):
+                    continue
+                if _ABS_CAPTION_RE.match(text) or _ABS_STOP_RE.match(text):
+                    return True
+                # Sub-body-size text in the reference region is the
+                # figure block (axis labels, sub-panel letters) that a
+                # spill page often places ABOVE the "Figure N" caption —
+                # references themselves are always body-sized, so a tiny
+                # line here means the reference list has ended.
+                if size < _ABS_REF_FONT_MIN:
+                    return True
+                refs_lines.append(text)
+                continue
+            # Found References header — switch modes, keep walking.
+            if _REF_HDR_RE.match(text):
+                refs_mode[0] = True
+                abstract_done[0] = True
+                continue
+            # Other stop markers (Acknowledgments / Bibliography / etc.)
+            # close the abstract but DON'T stop the walk — we still
+            # want to reach a possible References section after them.
+            if _ABS_STOP_RE.match(text):
+                abstract_done[0] = True
+                continue
+            if _ABS_PLACEHOLDER_RE.match(text):
+                continue
+            if size < _ABS_BODY_FONT_MIN:
+                continue
+            if _ABS_SECTION_INLINE_RE.match(text):
+                abstract_done[0] = True
+                continue
+            if (_ABS_SECTION_KW_RE.match(text)
+                    or _ABS_NUMBERED_SECTION_RE.match(text)):
+                if len(text) <= 80:
+                    abstract_done[0] = True
+                    continue
+            if re.match(r"^\s*[ivxlcIVXLC]+\s*$", text):
+                continue
+            if re.match(r"^\s*\d{1,3}\s*$", text):
+                continue
+            # Once the abstract is done, just keep walking until we
+            # find References (we never add more body content).
+            if abstract_done[0]:
+                continue
+            if skip_header_until_body:
+                if _abs_is_header_line(text):
+                    continue
+                skip_header_until_body = False
+                prev_top[0] = top
+                base_x0[0] = x0
+                abs_chunks.append(text)
+                continue
+            # Layout-shift detection: track the LEFTMOST line we have
+            # collected so far (the wrap margin), and stop adding to
+            # the abstract when a new line starts visibly to the LEFT
+            # of that. Catches the "Thouless Pumping"-style abstract
+            # that uses indentation (not an "Introduction" header) to
+            # separate the abstract from the body.
+            if base_x0[0] is None:
+                base_x0[0] = x0
+            else:
+                if x0 < base_x0[0] - INDENT_DELTA_PT:
+                    abstract_done[0] = True
+                    continue
+                if x0 < base_x0[0]:
+                    base_x0[0] = x0
+            # Paragraph break: a wider-than-usual vertical gap. Emit
+            # the separator in-line; the joiner below renders it as
+            # the literal `\n\n` paragraph delimiter.
+            if prev_top[0] is not None and abs_chunks:
+                gap = top - prev_top[0]
+                if gap > PARA_GAP_PT:
+                    pending_para_break[0] = True
+            if pending_para_break[0]:
+                abs_chunks.append(PARA_SEP)
+                pending_para_break[0] = False
+            prev_top[0] = top
+            abs_chunks.append(text)
+        return False
+
+    stopped = _consume(lines[abs_start_idx:])
+    while not stopped:
+        next_lines = get_more_pages()
+        if next_lines is None:
+            break
+        prev_top[0] = None
+        stopped = _consume(next_lines)
+
+    if not abs_chunks:
+        return None
+    # Joiner: PARA_SEP entries become literal "\n\n"; everything else is
+    # joined with a single space. Collapse runs of spaces within each
+    # paragraph (NOT across them) so the paragraph breaks survive.
+    paragraphs: list[list[str]] = [[]]
+    for chunk in abs_chunks:
+        if chunk == PARA_SEP:
+            if paragraphs[-1]:
+                paragraphs.append([])
+        else:
+            paragraphs[-1].append(chunk)
+    para_strs = [re.sub(r"\s+", " ", " ".join(p)).strip()
+                 for p in paragraphs if p]
+    # Drop figure-caption paragraphs. Captions land in the PDF text
+    # between body paragraphs and have no reading value once the figure
+    # itself isn't carried over. Matches Figure 1:, Fig. 1:, Fig 1.,
+    # Figure 1A:, etc.
+    para_strs = [p for p in para_strs if p and not _ABS_CAPTION_RE.match(p)]
+    abstract = "\n\n".join(para_strs)
+    # Find which references the abstract actually cites, then look up
+    # those entries in the References section and append them. Citations
+    # come in many shapes: [1], [1,2], [1, 2], [1-3], [1–3], [1, 3-5].
+    cited = _cited_ref_numbers(abstract)
+    if cited and refs_lines:
+        ref_map = _parse_reference_entries(refs_lines)
+        wanted = [n for n in sorted(cited) if n in ref_map]
+        if wanted:
+            ref_block = "\n".join(f"[{n}] {ref_map[n]}" for n in wanted)
+            abstract = abstract + "\n\n" + ref_block
+    # Strip leading punctuation noise (a stray ":"/"."/"-" pdfplumber
+    # sometimes leaves attached to the first word) and outer whitespace,
+    # but PRESERVE the trailing sentence-final period.
+    abstract = abstract.lstrip(" .:-–—\t").rstrip()
+    # Trim at any inline section header pdfplumber merged with the previous
+    # sentence (e.g. "...lasers. 1.Introduction The mid-infrared region…").
+    m_trim = _ABS_INLINE_SECTION_RE.search(abstract)
+    if m_trim and m_trim.start() > 80:
+        abstract = abstract[:m_trim.start()].rstrip(" ,-")
+    # Repair line-break hyphenations: "ma- turity" → "maturity". Conservative:
+    # only fire when the right-hand side is a real lowercase word fragment,
+    # NOT a connector word (which would indicate a legitimate compound like
+    # "mid- and far-infrared" or "second- and third-order").
+    _CONNECTORS = {"and", "or", "the", "for", "to", "by", "in", "on", "of",
+                   "from", "with", "at", "as", "but", "nor", "yet", "so",
+                   "than", "into", "onto"}
+    def _heal_hyphen(m):
+        right = m.group(2)
+        if right.lower() in _CONNECTORS:
+            return m.group(0)
+        return m.group(1) + right
+    abstract = re.sub(r"(\w{2,})-\s+([a-z]\w+)", _heal_hyphen, abstract)
+    # Try to unmangle the runs-together text some LaTeX templates produce.
+    abstract = re.sub(
+        r"(\S{20,})",
+        lambda m: re.sub(r"(?<=[a-z])(?=[A-Z])", " ", m.group(1)),
+        abstract)
+    # Generous cap (only fires for genuinely runaway extractions; most real
+    # abstracts land well under this). The user prefers "too much" over
+    # "too little", so this is set high enough that every legitimate
+    # writeup in the book fits with room to spare.
+    if len(abstract) > 9000:
+        abstract = abstract[:9000].rsplit(" ", 1)[0] + " …"
+    if len(abstract) < 40:
+        return None
+    return title, abstract
+
+
+def _norm_title_for_match(title: str) -> str:
+    """Normalize a title for matching across sources. Strips accents,
+    lowercases, collapses non-word characters to a single space, AND removes
+    spaces around digits (so "4 kHz" and "4kHz" hash the same)."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", title.strip().lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = re.sub(r"\s+(?=\d)|(?<=\d)\s+", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _alt_title_fingerprint(title: str) -> str:
+    """Aggressive secondary fingerprint that drops ALL whitespace and ALL
+    digits — used as a fallback when titles disagree only on how chemistry
+    subscripts (e.g. "Pb(1-x)SnxSe" vs "Pb Sn Se" with the subscript on a
+    separate line) flowed through PDF text extraction."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", title.strip().lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"[^a-z]", "", s)
+
+
+def _title_prefix_key(title: str, n: int = 100) -> str:
+    """First N characters of the normalized title — a tertiary fingerprint
+    for titles that diverge in their tail (chemistry subscripts at the end,
+    minor wording differences in the last few words). Real talks rarely
+    share a 100-char prefix unless they're the same talk."""
+    return _norm_title_for_match(title)[:n]
+
+
+def _load_abstracts() -> dict[str, str]:
+    """Read the optional book-of-abstracts PDF and return
+    {normalized_title: short_abstract}. Returns {} (with a one-line note)
+    when the file is absent or unreadable."""
+    if not ABSTRACT_BOOK_IN.exists():
+        print(f"[process] no book of abstracts at {ABSTRACT_BOOK_IN.name}; "
+              "talks will emit without abstracts (this file is optional).",
+              flush=True)
+        return {}
+    try:
+        import pdfplumber
+    except ImportError:
+        print(f"[process] pdfplumber not installed — skipping the book of "
+              "abstracts.", flush=True)
+        return {}
+    out: dict[str, str] = {}
+    try:
+        with pdfplumber.open(ABSTRACT_BOOK_IN) as pdf:
+            page_lines = [_abs_page_lines(p) for p in pdf.pages]
+    except Exception as e:                                # noqa: BLE001
+        print(f"[process] could not read {ABSTRACT_BOOK_IN.name} ({e}); "
+              "talks will emit without abstracts.", flush=True)
+        return {}
+    for pno, lines in enumerate(page_lines):
+        # Build a generator the parser drives to spill onto following
+        # pages. We stop after a few pages of spill — that's far more
+        # than any real abstract needs but stops a misparse from
+        # consuming the whole rest of the book.
+        spill_idx = pno + 1
+        spill_budget = 6  # conservative cap on spill pages per abstract
+
+        def _next_page(
+                _state={"i": spill_idx, "left": spill_budget}):
+            if _state["left"] <= 0 or _state["i"] >= len(page_lines):
+                return None
+            nxt = page_lines[_state["i"]]
+            _state["i"] += 1
+            _state["left"] -= 1
+            return nxt
+
+        res = _parse_book_page(lines, _next_page)
+        if not res:
+            continue
+        title, abstract = res
+        # Index under three keys: the normal normalized form, the
+        # aggressive letters-only fingerprint, and the first-100-chars
+        # prefix. The lookup tries each in turn.
+        out.setdefault(_norm_title_for_match(title), abstract)
+        out.setdefault(_alt_title_fingerprint(title), abstract)
+        prefix = _title_prefix_key(title)
+        if len(prefix) >= 60:
+            out.setdefault(prefix, abstract)
+    n_unique = sum(1 for _ in {id(v) for v in out.values()})
+    print(f"[process] book of abstracts : {n_unique} short abstract(s) "
+          "extracted.", flush=True)
+    return out
+
+
+def _attach_paper_pages(talks: list[dict]) -> None:
+    """Tag each matched talk with the source PDF + its page range, as
+        talk["paper"] = {"file": "<book filename>", "pages": [first, last]}
+    where the page numbers are 1-based and inclusive (relative to the
+    file, which lives in data/). The builder does the actual slicing and
+    embedding; the processor only records WHERE each paper is. Mutates
+    `talks` in place. No-op when the book file is missing or unreadable.
+
+    For this conference the abstract book and the "book of papers" are
+    the same file — short abstracts and full long-form contributions live
+    in the same pages — so we treat each talk's page range within the
+    book as that talk's paper. Paper-start pages are detected with the
+    same heuristic the abstract parser uses (title-font run + talk-page
+    signature); each paper spans [its-start, next-start - 1], and the
+    last paper runs to end of book."""
+    if not ABSTRACT_BOOK_IN.exists():
+        return
+    try:
+        import pdfplumber
+    except ImportError as e:
+        print(f"[process] book of papers   : skipping page detection "
+              f"({e}).", flush=True)
+        return
+    try:
+        with pdfplumber.open(ABSTRACT_BOOK_IN) as pdf:
+            page_count = len(pdf.pages)
+            page_lines = [_abs_page_lines(p) for p in pdf.pages]
+    except Exception as e:                                # noqa: BLE001
+        print(f"[process] book of papers   : could not read "
+              f"{ABSTRACT_BOOK_IN.name} ({e}).", flush=True)
+        return
+
+    # Pre-pass over every page: each one that passes the paper-start
+    # signature is a paper boundary. Collect (page_index, title).
+    boundaries: list[tuple[int, str]] = []
+    for pno, lines in enumerate(page_lines):
+        hit = _book_paper_start_title(lines)
+        if hit is None:
+            continue
+        boundaries.append((pno, hit[0]))
+    if not boundaries:
+        print("[process] book of papers   : no paper-start pages detected; "
+              "no papers attached.", flush=True)
+        return
+
+    # Derive page ranges and index them by the same three title keys the
+    # abstract lookup uses, so the talk-side match below is identical.
+    title_to_range: dict[str, tuple[int, int]] = {}
+    for idx, (pno, title) in enumerate(boundaries):
+        end = (boundaries[idx + 1][0] - 1
+               if idx + 1 < len(boundaries) else page_count - 1)
+        for key in (_norm_title_for_match(title),
+                    _alt_title_fingerprint(title),
+                    _title_prefix_key(title)):
+            if key and key not in title_to_range:
+                title_to_range[key] = (pno, end)
+
+    n_tagged = 0
+    for talk in talks:
+        title = (talk.get("title") or "").strip()
+        if not title:
+            continue
+        rng = (title_to_range.get(_norm_title_for_match(title))
+               or title_to_range.get(_alt_title_fingerprint(title))
+               or title_to_range.get(_title_prefix_key(title)))
+        if rng is None:
+            continue
+        start, end = rng                       # 0-based, inclusive
+        talk["paper"] = {
+            "file": ABSTRACT_BOOK_IN.name,
+            "pages": [start + 1, end + 1],     # 1-based, inclusive
+        }
+        n_tagged += 1
+    print(f"[process] book of papers   : tagged {n_tagged} talk(s) with "
+          f"source pages in {ABSTRACT_BOOK_IN.name}.", flush=True)
+
+
+# -----------------------------------------------------------------------------
+# Book-of-abstracts program-overview parser (OPTIONAL)
+#
+# The same PDF that supplies the per-talk abstracts also opens with a
+# Scientific Program grid (a few pages laying out every day's sessions with
+# their NAMES and CHAIRS). When the book is supplied, we parse that grid
+# and use it as the AUTHORITATIVE session structure — it carries finer-
+# grained session boundaries than the website (each "Summer School I" /
+# "Workshop I" is its own session, not merged into a per-half-day "School N"
+# block) and the chair names the website omits entirely.
+#
+# Schema returned by _parse_book_program:
+#   [{"date": "YYYY-MM-DD", "wd": "monday",
+#     "items": [
+#         {"kind": "session", "name": "Summer School I",
+#          "chair": "Edmund Linfield",
+#          "talks": [(start, end, title, speaker, aff_line), …]},
+#         {"kind": "event",   "name": "Lunch & Free Time",
+#          "start": "12:30", "end": "15:00"},
+#         {"kind": "posters", "name": "POSTER SESSION",
+#          "start": "18:30", "end": "20:00"},
+#         {"kind": "break",   "name": "Coffee Break",  # only when outside
+#          "start": "10:30", "end": "10:45"},          # any session
+#      ]}]
+# Coffee breaks INSIDE a session are folded into that session's `talks` list
+# with the speaker/aff_line slot left empty and a sentinel value in place
+# (see "break" in the last position) — the restructurer below picks them up
+# and keeps them visible as in-session breaks.
+# -----------------------------------------------------------------------------
+_BP_DAY_RE = re.compile(
+    r"^(?P<wd>MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)"
+    r"\s+(?P<d>\d+)(?:st|nd|rd|th)?\s+(?P<m>\w+)\b", re.IGNORECASE)
+_BP_SESSION_HDR_RE = re.compile(
+    r"^(?P<name>(?:Summer\s+School|Workshop|School|Symposium|Tutorial)"
+    r"\s+[IVX]+(?:\s+[A-Za-z]+)?)"
+    r"\s*[-–]\s*Chair\s*:\s*(?P<chair>.+?)\s*$", re.IGNORECASE)
+_BP_TIME_RE = re.compile(
+    r"^(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})\s+(.+)$")
+_BP_BREAK_RE = re.compile(r"^Coffee\s*Break\b", re.IGNORECASE)
+_BP_LUNCH_RE = re.compile(r"^Lunch\b", re.IGNORECASE)
+_BP_DINNER_RE = re.compile(r"^Dinner\b", re.IGNORECASE)
+_BP_RECEPT_RE = re.compile(r"^(Welcome\s+Reception|Reception)\b",
+                           re.IGNORECASE)
+_BP_POSTERS_RE = re.compile(r"^POSTER\s+SESSION\b", re.IGNORECASE)
+_BP_POSTER_PRIZE_RE = re.compile(r"^Poster\s+Prize\b", re.IGNORECASE)
+_BP_EXCURSION_RE = re.compile(r"^(Excursion|City\s+Tour)\b", re.IGNORECASE)
+_BP_GALA_RE = re.compile(r"^Gala\b", re.IGNORECASE)
+_BP_FREE_RE = re.compile(r"^Free\s+Time\b", re.IGNORECASE)
+_BP_OPENING_RE = re.compile(r"^OPENING\b", re.IGNORECASE)
+_BP_CLOSING_RE = re.compile(r"^CLOSING\b", re.IGNORECASE)
+
+
+def _bp_find_pages(pdf):
+    """Return (first_idx, last_idx) of the program-overview pages — those
+    whose text contains the SCIENTIFIC PROGRAM heading and any chair-tagged
+    session header. Returns (None, None) when the book is some other shape."""
+    first = None
+    for i, page in enumerate(pdf.pages[:30]):
+        text = page.extract_text() or ""
+        if "SCIENTIFIC PROGRAM" in text:
+            first = i
+            break
+    if first is None:
+        return None, None
+    last = first
+    for i in range(first + 1, min(first + 10, len(pdf.pages))):
+        text = pdf.pages[i].extract_text() or ""
+        if _BP_DAY_RE.search(text) or "Chair:" in text:
+            last = i
+        else:
+            break
+    return first, last
+
+
+def _bp_collect_lines(pdf, first_idx, last_idx) -> list[str]:
+    """Extract the program-overview text as a flat, footer-stripped line
+    list spanning every overview page."""
+    raw: list[str] = []
+    for i in range(first_idx, last_idx + 1):
+        text = pdf.pages[i].extract_text() or ""
+        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        # Drop trailing bare page-number / roman-numeral footers.
+        while lines and re.match(r"^[ivxlcdmIVXLCDM]+\s*$|^\d{1,3}\s*$",
+                                  lines[-1]):
+            lines.pop()
+        raw.extend(lines)
+    return raw
+
+
+def _parse_book_program(pdf_path, year: int = YEAR) -> list[dict]:
+    """Parse the book's Scientific Program grid into per-day structured
+    items. Returns [] when the book is missing or the grid can't be found."""
+    if not Path(pdf_path).exists():
+        return []
+    try:
+        import pdfplumber
+    except ImportError:
+        return []
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            first, last = _bp_find_pages(pdf)
+            if first is None:
+                return []
+            lines = _bp_collect_lines(pdf, first, last)
+    except Exception:                                     # noqa: BLE001
+        return []
+
+    days: list[dict] = []
+    cur_day: dict | None = None
+    cur_session: dict | None = None
+
+    def _flush_session():
+        nonlocal cur_session
+        if cur_session is not None and cur_day is not None:
+            cur_day["items"].append(cur_session)
+        cur_session = None
+
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        m = _BP_DAY_RE.match(ln)
+        if m:
+            _flush_session()
+            wd = m.group("wd").lower()
+            dnum = int(m.group("d"))
+            mnum = MONTHS.get(m.group("m").lower())
+            iso = f"{year:04d}-{mnum:02d}-{dnum:02d}" if mnum else ""
+            cur_day = {"date": iso, "wd": wd, "items": []}
+            days.append(cur_day)
+            i += 1
+            continue
+        if cur_day is None:
+            i += 1
+            continue
+        m = _BP_SESSION_HDR_RE.match(ln)
+        if m:
+            _flush_session()
+            cur_session = {"kind": "session", "name": m.group("name").strip(),
+                           "chair": m.group("chair").strip(),
+                           "talks": []}
+            i += 1
+            continue
+        m = _BP_TIME_RE.match(ln)
+        if m:
+            sh, sm, eh, em, rest = m.groups()
+            start = f"{int(sh):02d}:{int(sm):02d}"
+            end = f"{int(eh):02d}:{int(em):02d}"
+            rest = rest.strip()
+            # Classify by `rest` (most-specific first).
+            if _BP_BREAK_RE.match(rest):
+                # Coffee break → keep inside current session if any.
+                if cur_session is not None:
+                    cur_session["talks"].append(
+                        (start, end, "Coffee Break", "", "break"))
+                else:
+                    cur_day["items"].append({"kind": "break",
+                                             "name": "Coffee Break",
+                                             "start": start, "end": end})
+                i += 1
+                continue
+            event_kinds = (_BP_LUNCH_RE, _BP_DINNER_RE, _BP_RECEPT_RE,
+                           _BP_EXCURSION_RE, _BP_GALA_RE, _BP_FREE_RE)
+            if any(pat.match(rest) for pat in event_kinds) \
+                    or "Welcome Reception" in rest \
+                    or "Lunch & Free Time" in rest:
+                _flush_session()
+                cur_day["items"].append({"kind": "event", "name": rest,
+                                         "start": start, "end": end})
+                i += 1
+                continue
+            if _BP_POSTERS_RE.match(rest):
+                _flush_session()
+                # Some posters lines have a "& \"South\" break" continuation
+                # on the next visible line — fold it into the same item.
+                name = rest
+                if i + 1 < len(lines) and lines[i + 1].startswith("&"):
+                    name = name + " " + lines[i + 1]
+                    i += 1
+                cur_day["items"].append({"kind": "posters", "name": name,
+                                         "start": start, "end": end})
+                i += 1
+                continue
+            if _BP_POSTER_PRIZE_RE.match(rest):
+                _flush_session()
+                cur_day["items"].append({"kind": "event",
+                                         "name": "Poster Prize",
+                                         "start": start, "end": end})
+                i += 1
+                continue
+            if _BP_OPENING_RE.match(rest):
+                _flush_session()
+                # "OPENING Session - Angela Vasanelli & Joshua Freeman"
+                # → title "Opening Session", presider on the chair slot,
+                # NO talks (it's an empty Event session).
+                _, _, organizers = rest.partition(" - ")
+                cur_day["items"].append({
+                    "kind": "event", "name": "Opening Session",
+                    "chair": organizers.strip(),
+                    "start": start, "end": end,
+                })
+                i += 1
+                continue
+            if _BP_CLOSING_RE.match(rest):
+                _flush_session()
+                cur_day["items"].append({
+                    "kind": "event", "name": "Closing Remarks",
+                    "chair": "",
+                    "start": start, "end": end,
+                })
+                i += 1
+                continue
+            # Otherwise a talk row. The title can wrap onto the next line(s);
+            # the line AFTER the title is "Speaker - Affiliation (Country)".
+            title = rest
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if (_BP_TIME_RE.match(nxt) or _BP_DAY_RE.match(nxt)
+                        or _BP_SESSION_HDR_RE.match(nxt)):
+                    break
+                if (" - " in nxt and "Chair:" not in nxt
+                        and not nxt.startswith("(")):
+                    break  # this is the speaker-affiliation line
+                title = title + " " + nxt
+                j += 1
+            speaker_line = lines[j] if j < len(lines) else ""
+            speaker, aff = "", ""
+            if speaker_line and " - " in speaker_line:
+                speaker, aff = speaker_line.split(" - ", 1)
+                speaker, aff = speaker.strip(), aff.strip()
+                i = j + 1
+            else:
+                i = j  # don't consume the next line if it didn't match
+            if cur_session is None:
+                # Orphan talk — synthesize an unnamed session container.
+                cur_session = {"kind": "session", "name": "", "chair": "",
+                               "talks": []}
+            cur_session["talks"].append(
+                (start, end, title.strip(), speaker, aff))
+            continue
+        i += 1
+    _flush_session()
+    return days
+
+
+def _restructure_sessions_from_book(
+    book_days: list[dict], old_sessions: list[dict], talks: list[dict],
+) -> tuple[list[dict], list[dict]]:
+    """Replace the website-derived session list with one built from the book
+    program. Existing talks are PRESERVED (their author/affiliation/abstract
+    data is the richest source); each talk's session_id and start/end_ts
+    are reassigned to the book session it falls under, matched by title.
+
+    Returns (new_sessions, talks) — talks is the same list (mutated) so
+    callers can keep their existing reference."""
+    # Build talk lookup keyed by normalized title. We DON'T collapse on
+    # (date, title) — multiple Coffee Break talks share that key, and a
+    # dict would only keep the last one; instead the lookup returns the
+    # full candidate list and the matcher picks by date + start-time
+    # proximity below.
+    talks_by_title: dict[str, list[dict]] = {}
+    for t in talks:
+        nt = _norm_title_for_match(t["title"])
+        talks_by_title.setdefault(nt, []).append(t)
+    used_talk_ids: set[str] = set()
+    matched_count = 0
+    unmatched: list[tuple[str, str]] = []
+
+    def _match_talk(date: str, title: str,
+                    start_hint: str = "") -> dict | None:
+        """Find the talk matching this book entry. `start_hint` is "HH:MM"
+        from the book schedule; when several candidates share the same
+        title + date (multiple Coffee Breaks on the same day), pick the
+        one whose start_ts is closest in time."""
+        nonlocal matched_count
+        nt = _norm_title_for_match(title)
+        cands: list[dict] = []
+        if nt in talks_by_title:
+            cands = list(talks_by_title[nt])
+        else:
+            alt = _alt_title_fingerprint(title)
+            pref = _title_prefix_key(title)
+            for cand in talks:
+                cand_alt = _alt_title_fingerprint(cand["title"])
+                cand_pref = _title_prefix_key(cand["title"])
+                if alt == cand_alt or (len(pref) >= 60 and pref == cand_pref):
+                    cands = [cand]
+                    break
+        if not cands:
+            return None
+        # Same-date candidates first; break ties by start-time proximity.
+        def _hint_minutes(ts: str) -> int:
+            try:
+                return int(start_hint[:2]) * 60 + int(start_hint[3:5])
+            except (ValueError, IndexError):
+                return -1
+        def _ts_minutes(ts: str) -> int:
+            try:
+                return int(ts[11:13]) * 60 + int(ts[14:16])
+            except (ValueError, IndexError):
+                return -1
+        hint_min = _hint_minutes(start_hint) if start_hint else -1
+        same_date = [c for c in cands
+                     if c.get("start_ts", "")[:10] == date
+                     and c["id"] not in used_talk_ids]
+        if same_date:
+            if hint_min >= 0:
+                same_date.sort(
+                    key=lambda c: abs(_ts_minutes(c.get("start_ts", ""))
+                                      - hint_min))
+            chosen = same_date[0]
+            used_talk_ids.add(chosen["id"])
+            matched_count += 1
+            return chosen
+        # Fall back to any unused candidate.
+        for c in cands:
+            if c["id"] not in used_talk_ids:
+                used_talk_ids.add(c["id"])
+                matched_count += 1
+                return c
+        return cands[0]
+
+    import datetime as _dt
+    sessions: list[dict] = []
+    sess_seq = 0
+    weekday_name = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    def _next_id() -> str:
+        nonlocal sess_seq
+        sess_seq += 1
+        return f"S{sess_seq:03d}"
+
+    for day in book_days:
+        date_iso = day["date"]
+        try:
+            date_obj = _dt.date.fromisoformat(date_iso)
+            date_label = date_obj.strftime(f"%d-%b-{YEAR}")
+        except (ValueError, TypeError):
+            date_label = ""
+        for item in day["items"]:
+            kind = item["kind"]
+            if kind == "session":
+                tids: list[str] = []
+                # Map each book talk to an existing talk record; update its
+                # session_id and ts.
+                for (start, end, title, speaker, aff) in item["talks"]:
+                    sess_start_iso = f"{date_iso}T{start}:00"
+                    sess_end_iso = f"{date_iso}T{end}:00"
+                    is_break = (aff == "break")
+                    talk = _match_talk(date_iso, title, start_hint=start)
+                    if talk is None:
+                        unmatched.append((date_iso + " " + start, title))
+                        continue
+                    talk["start_ts"] = sess_start_iso
+                    talk["end_ts"] = sess_end_iso
+                    tids.append(talk["id"])
+                if not tids:
+                    continue
+                # Session start/end = first/last talk's ts.
+                first_talk = next(t for t in talks if t["id"] == tids[0])
+                last_talk = next(t for t in talks if t["id"] == tids[-1])
+                sess_id = _next_id()
+                for tid in tids:
+                    talk = next(t for t in talks if t["id"] == tid)
+                    talk["session_id"] = sess_id
+                # The session COLOR is a SESSION-type token picked by PHASE,
+                # NOT the dominant talk color: talk-type tokens (indigo
+                # "Invited", sky "Contributed") must not leak up to the session
+                # level — those aren't session types. A School session is
+                # Tutorial (fuchsia); a Workshop session is Technical (blue),
+                # matching _flush_tech() and the SESSION_TYPES registry. The
+                # talks inside keep their own Invited/Contributed coloring.
+                is_school = "School" in item["name"]
+                color = "fuchsia" if is_school else "blue"
+                sessions.append({
+                    "id": sess_id,
+                    "title": item["name"],
+                    "type": "School" if is_school else "Workshop",
+                    "topic": "",
+                    "date": date_label,
+                    "location": "",
+                    "presider": item["chair"],
+                    "presider_aff": "",
+                    "details": "",
+                    "start_ts": first_talk["start_ts"],
+                    "end_ts": last_talk["end_ts"],
+                    "color": color,
+                    "talk_ids": tids,
+                })
+            elif kind == "event":
+                # Standalone Event-type session — always EMPTY (no talks).
+                # Lunch / Dinner / Reception / Opening / Closing / Poster
+                # Prize / etc. are time slots without technical content.
+                sess_id = _next_id()
+                start_iso = f"{date_iso}T{item['start']}:00"
+                end_iso = f"{date_iso}T{item['end']}:00"
+                sessions.append({
+                    "id": sess_id,
+                    "title": item["name"],
+                    "type": "General",
+                    "topic": "",
+                    "date": date_label,
+                    "location": "",
+                    # Some events carry a chair-like attribution (the
+                    # Opening Session's organizers).
+                    "presider": item.get("chair", ""),
+                    "presider_aff": "",
+                    "details": "",
+                    "start_ts": start_iso,
+                    "end_ts": end_iso,
+                    "color": "rose",
+                    "talk_ids": [],
+                })
+            elif kind == "break":
+                # A coffee break that wasn't inside any session (rare in the
+                # IQCLSW grid) — emit as a standalone Event with the time.
+                sess_id = _next_id()
+                start_iso = f"{date_iso}T{item['start']}:00"
+                end_iso = f"{date_iso}T{item['end']}:00"
+                sessions.append({
+                    "id": sess_id,
+                    "title": item["name"],
+                    "type": "General",
+                    "topic": "",
+                    "date": date_label,
+                    "location": "",
+                    "presider": "",
+                    "presider_aff": "",
+                    "details": "",
+                    "start_ts": start_iso,
+                    "end_ts": end_iso,
+                    "color": "rose",
+                    "talk_ids": [],
+                })
+            elif kind == "posters":
+                # The original poster sessions (POSTERS1 / POSTERS2) already
+                # carry the catalog of P0xx talks. We update their times to
+                # match the book and keep them in the new session list.
+                poster_sess = None
+                for s in old_sessions:
+                    if s.get("type") == "Posters":
+                        ts = s.get("start_ts", "")
+                        if ts.startswith(date_iso):
+                            poster_sess = s
+                            break
+                if poster_sess is not None:
+                    start_iso = f"{date_iso}T{item['start']}:00"
+                    end_iso = f"{date_iso}T{item['end']}:00"
+                    poster_sess["start_ts"] = start_iso
+                    poster_sess["end_ts"] = end_iso
+                    poster_sess["date"] = date_label
+                    # Sync poster talks' ts to the new session window too.
+                    for tid in poster_sess.get("talk_ids", []):
+                        for t in talks:
+                            if t["id"] == tid:
+                                t["start_ts"] = start_iso
+                                t["end_ts"] = end_iso
+                                break
+                    sessions.append(poster_sess)
+
+    if unmatched:
+        print(f"[process] book program     : {len(unmatched)} talk(s) "
+              "could not be matched to a website talk:", flush=True)
+        for ts, ti in unmatched[:10]:
+            print(f"          - {ts}  {ti[:60]}", flush=True)
+    # Drop website talks that no book session claimed. These are typically
+    # the program's "Opening remarks" / "Closing remarks" entries, which
+    # the book treats as empty Event sessions with no talk inside, and any
+    # other content the website surfaced that the book program excludes.
+    kept_talks = [t for t in talks if t["id"] in used_talk_ids
+                  or t.get("session_id", "").startswith("POSTERS")]
+    n_dropped = len(talks) - len(kept_talks)
+    if n_dropped:
+        print(f"[process] book program     : dropped {n_dropped} website "
+              "talk(s) the book program doesn't surface as talks.",
+              flush=True)
+    return sessions, kept_talks
+
+
+# -----------------------------------------------------------------------------
 # Type / color registries (baked into the JSON; the app reads these directly).
 # `id` is the color token the app filters and groups on, AND the token each
 # session/talk's `color` field must use. The conference's color caption is a
 # three-way split — invited-for-school / invited-for-workshop / contributed &
-# posters — which we model as the talk types below. Sessions are colored by
-# their dominant talk type, so the session registry mirrors the same tokens
-# (the app's Sessions tab then groups/filters by talk character, which is the
-# only meaningful axis on a single-track program).
+# posters — which we model as the TALK types below. SESSIONS use their own
+# coarser taxonomy (Technical / Tutorial / Poster / Event), colored by program
+# PHASE — never by their talks' type. Talk-type tokens (indigo "Invited", sky
+# "Contributed") deliberately do NOT appear in SESSION_TYPES, so a session can
+# never be labelled "Invited"; the per-talk Invited/Contributed split still
+# shows on the talks themselves.
 # -----------------------------------------------------------------------------
 # Standard session/talk type taxonomy. The shared types; a conference only
 # surfaces the ones its program actually uses (the app hides count-0 types).
@@ -769,6 +2099,16 @@ def _segment(text: str) -> tuple[list[dict], list[list[str]]]:
     return timed, posters
 
 
+def _poster_title_hash(title: str) -> str:
+    """Stable 10-hex-char hash of a poster title, folded first to lowercase
+    letters/digits only (so punctuation, spacing, accents and subscripts don't
+    perturb it). Used to pin the printed-program board order in POSTER_BOARD_ORDER
+    without storing any title text. Must stay in sync with how that table was
+    generated; if the abstract titles change, regenerate the table."""
+    key = re.sub(r"[^a-z0-9]+", "", (title or "").lower())
+    return hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+
+
 def _block_to_talk(block_lines: list[str]) -> dict | None:
     """Turn a block's content lines into a parsed talk dict, or None if the
     block is a non-academic agenda item (lunch, break, poster session, …).
@@ -1004,6 +2344,11 @@ def build_conference_data() -> dict:
     else:
         print("[process] no overview page; using generic session titles.",
               flush=True)
+
+    # Optional: short abstracts harvested from the manually-supplied book of
+    # abstracts. Empty dict when the PDF is absent — talks then emit with
+    # abstract: "" just like before this feature was added.
+    abstracts = _load_abstracts()
 
     sessions: list[dict] = []
     talks: list[dict] = []
@@ -1256,7 +2601,11 @@ def build_conference_data() -> dict:
                 "author_aliases": parsed["author_aliases"],
                 "institutions": parsed["institutions"],
                 "institutions_may_dedup": False,
-                "abstract": "",
+                "abstract": (
+                    abstracts.get(_norm_title_for_match(parsed["title"]))
+                    or abstracts.get(_alt_title_fingerprint(parsed["title"]))
+                    or abstracts.get(_title_prefix_key(parsed["title"]))
+                    or ""),
                 "status": "Sessioned",
                 "withdrawn": False,
                 "first_author": parsed["first_author"],
@@ -1308,32 +2657,68 @@ def build_conference_data() -> dict:
             if parsed and parsed["title"]:
                 parsed_posters.append((idx, parsed))
 
-        # Partition into one group per slot. With two slots we split in half
-        # (first half -> slot 1, remainder -> slot 2); generalizes to N slots.
+        # Partition the catalog into one group per evening slot, in slot
+        # (chronological) order. POSTER_BOARD_ORDER pins the printed program's
+        # day + board order by title hash — authoritative because no online
+        # source records it. We pair each pinned session with a slot by position
+        # (both chronological: first pinned session -> earliest slot) and bucket
+        # each poster by its title hash. If the pinned table doesn't cover the
+        # parsed catalog one-to-one, fall back to splitting the alphabetical list
+        # in half so the build still succeeds.
         n_slots = len(slots)
-        per = -(-len(parsed_posters) // n_slots)   # ceil division
-        groups = [parsed_posters[i:i + per]
-                  for i in range(0, len(parsed_posters), per)] or [[]]
-        # Guard: never produce more groups than slots (rounding safety).
-        while len(groups) > n_slots:
-            groups[-2].extend(groups[-1])
-            groups.pop()
+        groups = None
+        pinned_total = sum(len(b) for b in POSTER_BOARD_ORDER)
+        if len(POSTER_BOARD_ORDER) == n_slots and pinned_total == len(parsed_posters):
+            pos_by_hash = {h: (si, pos)
+                           for si, board in enumerate(POSTER_BOARD_ORDER)
+                           for pos, h in enumerate(board)}
+            buckets: list[list] = [[] for _ in slots]   # (pos, idx, parsed)
+            ok = True
+            seen: set[str] = set()
+            for idx, parsed in parsed_posters:
+                h = _poster_title_hash(parsed["title"])
+                loc = pos_by_hash.get(h)
+                if loc is None or h in seen:
+                    ok = False
+                    break
+                seen.add(h)
+                si, pos = loc
+                buckets[si].append((pos, idx, parsed))
+            if ok and len(seen) == len(parsed_posters):
+                groups = [[(idx, parsed) for _pos, idx, parsed in sorted(b)]
+                          for b in buckets]
+            else:
+                print("[process] poster hash table did not match the poster "
+                      "catalog one-to-one; falling back to the half-split.",
+                      flush=True)
+        if groups is None:
+            per = -(-len(parsed_posters) // n_slots)   # ceil division
+            groups = [parsed_posters[i:i + per]
+                      for i in range(0, len(parsed_posters), per)] or [[]]
+            # Guard: never produce more groups than slots (rounding safety).
+            while len(groups) > n_slots:
+                groups[-2].extend(groups[-1])
+                groups.pop()
 
+        board_no = 0   # 1-based board number, running across sessions in order
         for gi, group in enumerate(groups):
             if not group:
                 continue
             base_start, base_end = slots[gi] if gi < n_slots else slots[-1]
             sess_id = f"POSTERS{gi + 1}"
             tids: list[str] = []
-            for idx, parsed in group:
-                tid = f"P{idx:03d}"
+            for _idx, parsed in group:
+                board_no += 1
+                # The id encodes board order so it sorts correctly within its
+                # session (the builder orders same-time talks by id).
+                tid = f"P{board_no:03d}"
                 tids.append(tid)
                 _record_affs(parsed["institutions"])
                 talks.append({
                     "id": tid,
                     "session_id": sess_id,
                     "title": parsed["title"],
-                    "number": f"P{idx}",
+                    "number": f"P{board_no}",
                     "start_ts": base_start,
                     "end_ts": base_end,
                     "presenter": parsed["presenter"],
@@ -1343,7 +2728,12 @@ def build_conference_data() -> dict:
                     "author_aliases": parsed["author_aliases"],
                     "institutions": parsed["institutions"],
                     "institutions_may_dedup": False,
-                    "abstract": "",
+                    "abstract": (
+                        abstracts.get(_norm_title_for_match(parsed["title"]))
+                        or abstracts.get(
+                            _alt_title_fingerprint(parsed["title"]))
+                        or abstracts.get(_title_prefix_key(parsed["title"]))
+                        or ""),
                     "status": "Sessioned",
                     "withdrawn": False,
                     "first_author": parsed["first_author"],
@@ -1373,6 +2763,19 @@ def build_conference_data() -> dict:
                 "talk_ids": tids,
             })
 
+    # If the book of abstracts is available, REPLACE the website-derived
+    # session structure with the book's Scientific Program grid. The book
+    # carries finer session boundaries (each "Summer School I" / "Workshop I"
+    # as its own session, not merged into a per-half-day block) and the
+    # chair names the website doesn't publish.
+    book_days = _parse_book_program(ABSTRACT_BOOK_IN)
+    if book_days:
+        sessions, talks = _restructure_sessions_from_book(
+            book_days, sessions, talks)
+        print(f"[process] book program     : restructured into "
+              f"{len(sessions)} sessions from the abstract book.",
+              flush=True)
+
     # Pool every affiliation source into one flat, de-duplicated, sorted list for
     # the builder's affiliation map (this program has no presiders). Full-address
     # lines are kept whole; the institution strings may be ';'-joined lists, so
@@ -1383,6 +2786,17 @@ def build_conference_data() -> dict:
             _p = _piece.strip()
             if _p:
                 affiliation_pool.add(_p)
+
+    # Conference-code split: this conference assigns no human-facing codes of its
+    # own. The poster `number` ("P1", "P2", …) is fabricated HERE, not a real
+    # program code, so we deliberately do NOT promote it to `code`; like every
+    # other talk, posters get `code = ""` and the builder synthesizes a display
+    # code ("<sessioncode>.<n>") in _resolve_display_codes_and_ids. Sessions are
+    # likewise left empty for the builder to synthesize.
+    for _s in sessions:
+        _s["code"] = ""
+    for _t in talks:
+        _t["code"] = ""
 
     data = {
         "conference_name": CONFERENCE_NAME,
@@ -1433,6 +2847,11 @@ def main() -> None:
         _s.pop("type", None)
         _s.pop("topic", None)
         _s.pop("tags", None)
+    # Tag each matched talk with its source PDF + page range
+    # (`paper: {file, pages}`); the builder slices and embeds it. No-op
+    # when the book is missing, pdfplumber isn't installed, or no
+    # paper-start pages are detected — talks then emit without `paper`.
+    _attach_paper_pages(data["talks"])
     JSON_OUT.write_text(
         json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     n_t = len(data["talks"])

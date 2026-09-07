@@ -53,6 +53,7 @@ get a working app. The keys below are the contract.
 | `session_types` | Optional | Type registry and colors for the Sessions tab. Built-in defaults used if absent. |
 | `talk_types` | Optional | Type registry and colors for the Talks tab. Built-in defaults used if absent. |
 | `affiliation_sources` | Optional | One flat, de-duplicated list of raw affiliation strings the affiliation shortener learns from. |
+| `acronyms` | Optional | Map of `UPPERCASE -> canonical` acronym casings to preserve through the builder's ALL-CAPS title recasing. Use for acronym-only titles (e.g. single-word session/thrust names) that never appear mixed-case for the builder to learn. Entries override the learned/curated casings. |
 
 ## Timestamps
 
@@ -81,7 +82,8 @@ A session is the structurally larger unit (it owns talks). Fields:
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `id` | **Yes** | Unique string. Talks reference it via `session_id`; sessions list their children via `talk_ids`. |
+| `id` | **Yes** | Unique **internal key** — talks reference it via `session_id`; sessions list their children via `talk_ids`. Treated as opaque: the builder reassigns clean surrogate ids (`S001`…) at build time, so this need only be unique, not human-facing. Do **not** put the conference code here — use `code`. |
+| `code` | Optional | The **human-facing conference code** shown to users (e.g. `"AM1C"`). Set it when the program assigns one; set it to `""` when it doesn't and you want the builder to **synthesize** a friendly code from the title (acronym, e.g. `"Quantum Information"` → `"QUIN"`). If the field is **absent** entirely, the builder falls back to displaying `id` and never synthesizes. |
 | `title` | **Yes** | Display title. A single trailing period is stripped automatically (an ellipsis `...` is kept). |
 | `color` | **Yes** | Type/color token (see above). Drives accent and Types-panel filtering. |
 | `tags` | Optional | Ordered list of labelled facts about the session — `{ "key", "value" }` pairs (see **Tags** below). Rendered in the detail header (as `Key: Value · …`) and searchable. |
@@ -153,12 +155,13 @@ app distinguishes a talk from a session). Fields:
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `id` | **Yes** | Unique string. |
+| `id` | **Yes** | Unique **internal key** (opaque; the builder reassigns surrogate ids `T001`… at build time). Put the conference paper code in `code`, not here. |
+| `code` | Optional | The **human-facing paper code** shown to users (e.g. `"AM1C.3"`, `"13292-1"`). Set it when the program assigns one; `""` to have the builder synthesize `"<session code>.<position>"`; **absent** to fall back to displaying `id`. |
 | `session_id` | **Yes** | The parent session's `id`. Its presence marks this item as a talk. |
 | `title` | **Yes** | Display title; trailing period stripped (ellipsis kept). |
 | `color` | **Yes** | Type/color token. |
 | `start_ts` / `end_ts` | Recommended | ISO times (same role as sessions; `end_ts` also drives "past"). |
-| `number` | Optional | Talk/paper number. |
+| `number` | Optional | Talk/paper number. Build-time-only hint (the app no longer reads it; `code` carries the displayed code). |
 | `location` | Optional | Room, if different from the session (full form). |
 | `short_location` | Optional | Compact room for the bubble chip (see `short_location` under sessions). Usually omitted on talks so they inherit the session's. |
 | `speaker` | Recommended | Presenting author's name; bolded in bylines and the author list. |
@@ -170,6 +173,7 @@ app distinguishes a talk from a session). Fields:
 | `institutions` | Recommended | Numbered institution list (see below). |
 | `institutions_may_dedup` | Optional | `true` lets the builder collapse duplicate institutions by short name and renumber. Only set this when authors carry no `insts` references to protect. |
 | `abstract` | Optional | Abstract text. Literal `<sup> <sub> <i> <b> <em> <strong>` tags are rendered; everything else is escaped. |
+| `paper` | Optional | The talk's full paper, given as a reference into a source PDF: `{ "file": "book.pdf", "pages": [first, last] }`. `file` is **relative to the conference's `data/` directory**; `pages` is a 1-based, inclusive page range. The builder slices those pages out at build time. See [Full paper attachments](#full-paper-attachments). |
 | `status` | Optional | Shown as "Status: ..." unless it is `"sessioned"`. |
 | `withdrawn` | Optional | `true` hides the talk by default (revealed by "Show concluded"). |
 
@@ -343,6 +347,50 @@ so each entry is a single affiliation string.
 The list is optional; supply whatever raw forms you have. Without it (or without
 `build_affiliation_map.py`), the builder still works using a keyword heuristic
 to shorten affiliations.
+
+---
+
+## Full paper attachments
+
+A talk's `paper` field references its full paper as a page range inside a source
+PDF:
+
+```json
+"paper": { "file": "iqclsw2026-book-of-abstracts.pdf", "pages": [9, 11] }
+```
+
+- `file` — the source PDF, *relative to the conference's `data/` directory*
+  (here, `conferences/<slug>/data/iqclsw2026-book-of-abstracts.pdf`). Usually
+  one big book of papers shared by every talk; abstracts long enough to serve
+  as papers count too — the app treats them interchangeably.
+- `pages` — `[first, last]`, 1-based and **inclusive**. A single-page paper is
+  `[n, n]`.
+
+The processor's job is only to find each talk's page range in the source book
+and record it (the layout differs per conference, the same way per-talk abstract
+extraction does). It does **not** cut the PDF. The shared builder does the
+slicing: it opens each distinct source PDF once, extracts each talk's page
+range, and embeds the result.
+
+When **any** talk's `paper.file` resolves to a file that exists on disk, the
+build emits a second HTML output alongside the normal one:
+
+- `<slug>_app.html` — the usual lightweight app (no embedded papers).
+- `<slug>_app_papers.html` — the same app with every talk's sliced paper
+  embedded as a base64 PDF blob. Each talk-detail page that has a paper shows a
+  small document-icon button next to **Back** in the top bar; tapping it opens
+  the paper (in a new tab on touch devices, same tab on desktop).
+
+The `_papers` variant is sized for the embedded papers — tens of megabytes is
+normal, hundreds for a large conference. Distribute the lightweight one to
+people who only need the program; distribute the `_papers` one to people who
+want the offline papers too.
+
+The builder needs `pypdf` to slice the pages; if it isn't installed, the build
+installs it automatically the first time a `_papers` build runs.
+
+If no talk has a usable `paper`, only the lightweight HTML is produced and the
+build behaves exactly as it did before this field existed.
 
 ---
 

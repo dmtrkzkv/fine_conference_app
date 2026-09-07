@@ -1304,6 +1304,16 @@ def build_conference_data() -> dict:
     sessions = [s for s in sessions
                 if s["talk_ids"] or s["start_ts"] or s["format"] == "Event"]
 
+    # Conference-code split: this conference assigns no human-facing session
+    # codes, so leave each session `code` empty — the builder synthesizes a
+    # friendly display code (_resolve_display_codes_and_ids). Talks carry any
+    # real per-talk code through from `number` (empty -> builder synthesizes
+    # "<sessioncode>.<n>").
+    for _s in sessions:
+        _s["code"] = ""
+    for _t in talks:
+        _t["code"] = (_t.get("number") or "").strip()
+
     data = {
         "conference_name": CONFERENCE_NAME,
         "sessions": sorted(sessions, key=lambda s: (s["start_ts"] or "")),

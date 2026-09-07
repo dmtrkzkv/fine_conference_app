@@ -1421,88 +1421,30 @@ def build_conference_data(conference_name: str,
     n_synth_sessions = 0
     n_synth_talks = 0
 
-    synth_session_codes: dict[tuple[str, str, str], str] = {}
-    _used_synth_codes: set[str] = set()
-    plenary_counter = [0]
-    other_counter = [0]
+    # Sessions whose program row carries no abbreviation still need a unique,
+    # stable KEY so their talks can reference them. We mint a throwaway internal
+    # id here (deduped by the session's title+date+start, so the multiple rows of
+    # one session collapse to one key) and flag the session as having no real
+    # code via `synthesized_session`. The human-facing DISPLAY code for these is
+    # synthesized later by the builder (_resolve_display_codes_and_ids), which is
+    # where the acronym/PLEN/EVENT heuristic now lives — it is no longer this
+    # processor's job to invent a presentable code.
+    _temp_session_keys: dict[tuple[str, str, str], str] = {}
+    _temp_session_seq = [0]
 
-    # Target length for synthesized codes = median length (including digits)
-    # of the real session abbreviations, so a synthesized code blends in with
-    # codes like "AM1C" rather than being conspicuously shorter or longer.
-    _real_code_lens = sorted(
-        len(a) for r in official_rows
-        if (a := (r.get("Session or Event Abbreviation") or "").strip()))
-    if _real_code_lens:
-        _m = len(_real_code_lens)
-        _synth_target_len = (_real_code_lens[_m // 2] if _m % 2
-                             else (_real_code_lens[_m // 2 - 1]
-                                   + _real_code_lens[_m // 2]) // 2)
-    else:
-        _synth_target_len = 4   # no real codes to measure; sane default
-
-    # Skip filler words when building an acronym so "The Future of Optics"
-    # gives FO, not TFOO. Single-character words are dropped automatically.
-    _SLUG_STOPWORDS = {"the", "of", "and", "a", "an", "in", "on", "for",
-                       "to", "with", "at"}
-
-    def _slugify_for_code(title: str) -> str:
-        words = [w for w in re.findall(r"[A-Za-z0-9]+", title or "")
-                 if len(w) > 1 and w.lower() not in _SLUG_STOPWORDS]
-        if not words:
-            return ""
-        # Build up to _synth_target_len characters by taking letters from the
-        # title in round-robin passes: first every word's 1st letter (a plain
-        # acronym, e.g. "Quantum Information" -> "QI"), then 2nd letters, etc.
-        # This pads short acronyms with more title letters ("QI" -> "QUIN")
-        # instead of leaving them too short, while long titles still cap at
-        # the target. Stops as soon as a pass adds nothing (all words spent).
-        out: list[str] = []
-        pos = 0
-        while len(out) < _synth_target_len:
-            added = False
-            for w in words:
-                if pos < len(w):
-                    out.append(w[pos].upper())
-                    added = True
-                    if len(out) >= _synth_target_len:
-                        break
-            if not added:
-                break
-            pos += 1
-        return "".join(out)
-
-    def _synth_code(row: dict) -> str:
+    def _temp_session_id(row: dict) -> str:
         key = ((row.get("Session or Event Title") or "").strip(),
                (row.get("Session or Event Date") or "").strip(),
                (row.get("Session or Event Start Time") or "").strip())
-        if key in synth_session_codes:
-            return synth_session_codes[key]
-        stype = (row.get("Session or Event Type") or "").strip().lower()
-        if "plenary" in stype:
-            plenary_counter[0] += 1
-            code = f"PLEN{plenary_counter[0]}"
-        else:
-            slug = _slugify_for_code(row.get("Session or Event Title", ""))
-            if slug:
-                # Short acronyms collide easily; ensure the final code is
-                # unique among synthesized codes by suffixing a counter.
-                code = slug
-                if code in _used_synth_codes:
-                    n = 2
-                    while f"{slug}{n}" in _used_synth_codes:
-                        n += 1
-                    code = f"{slug}{n}"
-            else:
-                other_counter[0] += 1
-                code = f"EVENT{other_counter[0]}"
-        _used_synth_codes.add(code)
-        synth_session_codes[key] = code
-        return code
+        if key not in _temp_session_keys:
+            _temp_session_seq[0] += 1
+            _temp_session_keys[key] = f"_SYN{_temp_session_seq[0]}"
+        return _temp_session_keys[key]
 
     for r in official_rows:
         sa = (r.get("Session or Event Abbreviation") or "").strip()
         if not sa:
-            sa = _synth_code(r)
+            sa = _temp_session_id(r)
             synthesized_session = True
         else:
             synthesized_session = False
@@ -1523,6 +1465,10 @@ def build_conference_data(conference_name: str,
             stype = (r.get("Session or Event Type") or "").strip()
             sessions[sa] = {
                 "id":              sa,
+                # Internal key; `code` carries the human-facing conference code
+                # (empty when synthesized upstream, so the builder re-synthesizes
+                # a display code — see _resolve_display_codes_and_ids).
+                "code":            "" if synthesized_session else sa,
                 "title":           (r.get("Session or Event Title") or "").strip(),
                 "type":            stype,
                 # Sub-conference (e.g. "FS 2: Quantum Information ..."):
@@ -1547,6 +1493,9 @@ def build_conference_data(conference_name: str,
                 n_synth_sessions += 1
 
         fid = (r.get("Abstract Final ID") or "").strip()
+        # The REAL conference talk code (empty when the program assigns none, in
+        # which case the builder synthesizes a "<sessioncode>.<n>" display code).
+        real_fid = fid
         placeholder_title = (r.get("Abstract or Placeholder Title") or "").strip()
         if not fid:
             if not placeholder_title:
@@ -1685,6 +1634,7 @@ def build_conference_data(conference_name: str,
 
         talks.append({
             "id":            fid,
+            "code":          real_fid,
             "session_id":    sa,
             "title":         (r.get("Abstract or Placeholder Title") or "").strip(),
             "number":        fid,

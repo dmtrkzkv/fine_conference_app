@@ -14,3 +14,6 @@ __pycache__/
 # Exceptions
 !conferences/test2026/test2026_app.html
 !scripts/tests/fixtures/*.affiliation_sources.json
+
+halovs2026
+halovs2026.*

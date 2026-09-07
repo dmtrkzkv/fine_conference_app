@@ -1,0 +1,157 @@
+# data_requirements_ecoc2026.txt
+#
+# Manifest of the input files this conference's scripts need in data/.
+# Read by make_app.py to decide whether the downloader must run, and to print
+# manual-download instructions if anything is missing.
+#
+# Format (line-oriented; see make_app.py::_parse_requirements):
+#   manual_steps_written: <date>           # top-level metadata (optional)
+#   [file: <glob pattern>]                 # one block per required input
+#     required:    yes | no                # default yes
+#     produced_by: <script that creates it>
+#     description: <what it is>            # may wrap onto indented lines
+#     manual:      <how to fetch by hand>  # may wrap onto indented lines
+#   #  Lines starting with '#' are comments; blank lines end a wrapped value.
+#
+# All of the JSON inputs below come from one read-only endpoint that the public
+# programme page itself calls from the browser:
+#
+#   https://ecoc2026.org/site/api/programme/json_call.asp?dataType=<kind>&a=ecoc2026
+#
+# It needs no login and no browser automation, so the downloader is a plain
+# HTTP client. If you are collecting the files by hand, you can paste each URL
+# below straight into a browser tab and save the response.
+
+generated_for: ecoc2026
+manual_steps_written: 2026-07-22
+
+[file: programme_sessions.json]
+  required:    yes
+  produced_by: fetch_program_ecoc2026.py
+  description: The session skeleton, and the SOURCE OF RECORD for the program's
+    shape: one record per session carrying its day, clock times, room, track,
+    session title and the session id every other file is keyed by. The
+    processor cannot build anything without it.
+  manual:      Save the response of
+    https://ecoc2026.org/site/api/programme/json_call.asp?dataType=categories_days&trackid=0&catId=0&a=ecoc2026&roomid=0
+    into data/ as exactly programme_sessions.json .
+
+[file: session_speakers.json]
+  required:    yes
+  produced_by: fetch_program_ecoc2026.py
+  description: Every person attached to every session — chairs, organizers and
+    speakers — each with a role, a presentation title, a paper code, a start
+    time and (for talks) an abstract id. This is what turns the session
+    skeleton into a talk-level program, and it supplies the per-speaker
+    affiliations. A JSON object keyed by session id, each value the list of
+    rows the endpoint returns for that session.
+  manual:      For EACH session id appearing in programme_sessions.json, save
+    the response of
+    https://ecoc2026.org/site/api/programme/json_call.asp?dataType=speakers_detail&sessionid=<ID>&curPage=1&a=ecoc2026
+    and collect them into one JSON object of the form {"<ID>": [ ...rows... ]}
+    in data/session_speakers.json . A session whose rows report a maxPage above
+    1 must be re-requested with curPage=2, 3, … and the rows concatenated.
+    There are on the order of 160 sessions, so use the downloader if you can.
+
+[file: abstracts.json]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Per-abstract summary text plus the full, ordered author list in
+    "Last, First" form — the only source for talk abstracts and for any author
+    who is not the presenting speaker. A JSON object keyed by abstract id.
+    OPTIONAL: without it, talks still carry titles, speakers, times and codes,
+    but lose their abstracts and their co-authors.
+  manual:      For EACH abstractid referenced in session_speakers.json, save
+    the response of
+    https://ecoc2026.org/site/api/programme/json_call.asp?dataType=abstract_text&abstractid=<ID>&a=ecoc2026
+    and collect them into one JSON object {"<ID>": {...record...}} in
+    data/abstracts.json .
+
+[file: programme_page.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: The programme page's HTML shell. Its tables are empty (the page
+    fills them in from the endpoint above), so the processor reads only the
+    document <title>, which is where the conference's display name comes from.
+    OPTIONAL: without it the processor falls back to a name derived from the
+    directory slug.
+  manual:      Open https://ecoc2026.org/site/programme/?a=ecoc2026 and save the
+    page source into data/ as exactly programme_page.html .
+
+[file: programme_categories.json]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: The track registry — the numbered sub-committee list, giving each
+    track id its full name. Used to normalise the track label shown on a
+    session. OPTIONAL: the session records already embed their track name, so
+    without this file nothing is lost but a consistency cross-check.
+  manual:      Save the response of
+    https://ecoc2026.org/site/api/programme/json_call.asp?dataType=categories&trackid=0&catId=0&a=ecoc2026&roomid=0
+    into data/ as exactly programme_categories.json .
+
+# The seven pages below are enrichment. The JSON endpoint has no field for a
+# session description and leaves many speakers' affiliations blank, so these
+# pages are the only source for that prose. Every one of them is optional and
+# the processor skips silently over any that is absent; the manual step is the
+# same in each case — open the URL and save the page source under the exact
+# filename given.
+
+[file: page_workshops.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Workshop listing — per workshop, an abstract paragraph and the
+    organizers with their affiliations. The endpoint returns workshops with an
+    empty description, so this page is the only source for their prose and for
+    organizer affiliations.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/workshops and save
+    the page source into data/ as exactly page_workshops.html .
+
+[file: page_plenary_speakers.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Plenary speaker profiles — affiliation, talk title, abstract and
+    biography. Plenary talks carry no abstract id in the endpoint's data, so
+    this page is the only source for their abstracts.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/plenary-speakers and
+    save the page source into data/ as exactly page_plenary_speakers.html .
+
+[file: page_tutorial_speakers.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Tutorial speaker profiles — affiliation, talk title and
+    biography. Used to fill affiliations the endpoint leaves blank.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/tutorial-speakers
+    and save the page source into data/ as exactly page_tutorial_speakers.html .
+
+[file: page_invited_speakers.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Invited speaker listing — name, affiliation and talk title,
+    grouped by track. Used to fill affiliations the endpoint leaves blank.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/invited-speakers and
+    save the page source into data/ as exactly page_invited_speakers.html .
+
+[file: page_special_events.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Special-event write-ups — a descriptive paragraph, venue and
+    organizer list per event. Supplies descriptions for sessions the endpoint
+    returns as a bare title and time.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/special-events and
+    save the page source into data/ as exactly page_special_events.html .
+
+[file: page_special_symposia.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Special-symposium write-ups — scope paragraph and organizers per
+    symposium. Same role as the special-events page.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/specialsymposia and
+    save the page source into data/ as exactly page_special_symposia.html .
+
+[file: page_demo_zone.html]
+  required:    no
+  produced_by: fetch_program_ecoc2026.py
+  description: Demonstration-zone overview — describes the demo sessions, which
+    the endpoint lists without any description.
+  manual:      Open https://ecoc2026.org/ecoc2026/programme/ecoc-demo-zone and
+    save the page source into data/ as exactly page_demo_zone.html .

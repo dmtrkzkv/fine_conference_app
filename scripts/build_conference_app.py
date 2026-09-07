@@ -96,7 +96,9 @@ from __future__ import annotations
 import base64
 import html
 import json
+import os
 import re
+import subprocess
 import sys
 import unicodedata
 import zlib
@@ -106,6 +108,26 @@ from pathlib import Path
 SCRIPT_DIR      = Path(__file__).resolve().parent
 INPUT_DATA_JSON = SCRIPT_DIR / "conference_data.json"
 OUTPUT_HTML     = SCRIPT_DIR / "conference_app.html"
+
+# App favicon: a serif "F" in white on a solid rounded tile. The F is a TRACED
+# outline PATH (a hand-traced serif glyph), not a <text> element, because a
+# favicon can't network-load a webfont, so text would silently fall back to
+# whatever serif the viewer's machine has; a baked path renders identically
+# everywhere with zero font dependency. The coordinates are already scaled (cap
+# height 36px) and optically centered in the 64-box (the average of the ink
+# centroid and bbox center sits at 32,32 — a top-heavy F needs that bias or it
+# reads high). Shipped inline as an SVG data URI (see main()) so every build
+# stays a single self-contained file; static across all conferences.
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    '<rect width="64" height="64" rx="14" fill="#BF5700"/>'
+    '<path fill="#fff" d="M19.30 51.10L19.31 49.25L23.74 48.58L23.74 17.55'
+    'L19.31 16.99L19.53 15.10L47.01 15.10L47.36 24.25L45.67 24.24L42.71 17.55'
+    'L29.28 17.55L29.28 31.54L36.35 31.54L38.37 26.08L40.39 26.08'
+    'C39.70 29.50 39.87 37.03 40.39 39.72L38.53 39.72L36.36 34.28L29.28 34.28'
+    'L29.28 48.58L35.38 49.25L35.35 51.10Z"/>'
+    '</svg>'
+)
 
 # Sessions-list empty-session styling (build-time toggle). The Sessions list can
 # mark talk-less (event/break) sessions in one of two ways:
@@ -190,6 +212,26 @@ MINIFY = True
 # debugging. See __decodeData / the vendored block in the template.
 # -----------------------------------------------------------------------------
 COMPRESS_DATA = True
+
+
+# -----------------------------------------------------------------------------
+# Per-talk paper embedding (the "_papers" variant).
+#
+# When the FCA_PAPERS_MODE env var is set, the builder reads each talk's
+# `paper` field, resolves it under FCA_PAPERS_DATA_DIR (the conference's
+# data/ directory), base64-encodes the file bytes, and bakes them into the
+# HTML as `window.PAPERS = {"<talk_id>": {"mime": "…", "b64": "…"}, …}`.
+# The app's talk-detail view then renders a document-icon button in the top
+# bar that builds a Blob from the bytes and opens it in a new tab.
+#
+# Both env vars are set by make_app.py for the second of its two builds when
+# the conference ships any per-talk papers; the normal build leaves them
+# unset and PAPERS_MODE stays off (the standard single-output build).
+# -----------------------------------------------------------------------------
+PAPERS_MODE = bool(os.environ.get("FCA_PAPERS_MODE"))
+PAPERS_DATA_DIR = (
+    Path(os.environ["FCA_PAPERS_DATA_DIR"])
+    if os.environ.get("FCA_PAPERS_DATA_DIR") else None)
 
 
 # -----------------------------------------------------------------------------
@@ -734,7 +776,7 @@ def presider_short_aff_list(presider_field: str, affs: str) -> list[str]:
     marker like '(a)' that reduces to a single character — are dropped to ''
     so they don't render as bogus '· a' entries. Returns [] when there are no
     names."""
-    names = [n.strip() for n in re.split(r";| and ", presider_field or "")
+    names = [n.strip() for n in re.split(r";|&| and ", presider_field or "")
              if n.strip()]
     if not names:
         return []
@@ -1206,7 +1248,7 @@ def normalize_names_in_data(data: dict) -> None:
         return out
 
     def fix_multi(s):
-        """Co-presider strings split on '; ' or ' and '; normalize each
+        """Co-presider strings split on ';', '&', or ' and '; normalize each
         piece independently so 'JANE DOE and john smith' becomes
         'Jane Doe and John Smith' without losing the separator. Falls back
         to whole-string normalization when no separator is present."""
@@ -1973,7 +2015,14 @@ def normalize_presentation(data: dict) -> None:
         for inst in t.get("institutions") or []:
             if inst.get("name"):
                 corpus.append(inst["name"])
-    acr = {**learn_acronyms(corpus), **CURATED_ACRONYMS}
+    # A conference may also supply its own acronyms to preserve, keyed
+    # UPPERCASE -> canonical, via an optional top-level "acronyms" map in the
+    # data. This covers acronym-only titles (e.g. single-word session/thrust
+    # names) that never appear mixed-case in the corpus for learn_acronyms to
+    # pick up. Data-supplied entries take precedence over learned/curated ones.
+    data_acr = {str(k).upper(): str(v)
+                for k, v in (data.get("acronyms") or {}).items()}
+    acr = {**learn_acronyms(corpus), **CURATED_ACRONYMS, **data_acr}
     n_recased = 0
     for it in items:
         ti = it.get("title")
@@ -2268,7 +2317,7 @@ def enrich_affiliations(data: dict) -> dict:
         presider_field = s.get("presider", "")
         if not presider_field:
             continue
-        names = [n.strip() for n in re.split(r";| and ", presider_field)
+        names = [n.strip() for n in re.split(r";|&| and ", presider_field)
                  if n.strip()]
         if not names:
             continue
@@ -2346,6 +2395,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>__CONFERENCE_NAME__</title>
+<link rel="icon" type="image/svg+xml" href="__FAVICON_HREF__">
 <style>
 :root {
   --fs: 1;            /* text-size multiplier; every font-size is calc(px * var(--fs)) */
@@ -3538,6 +3588,51 @@ body[data-active-view="session-detail"] .detail-head {
    the box starts at four lines. */
 .notes-textarea--tall { min-height: 104px; }
 
+/* ── Session delay control (bottom of a Session detail view) ──────────
+   A quiet single row: a muted label, a small minutes input, and a unit.
+   Deliberately understated — it's a power-user nudge for when a session is
+   running behind, not a primary action, so it reads like fine print. */
+.session-delay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  /* Indent to line up with the talk TEXT above: the bubbles carry a
+     calc(17px * var(--sp)) margin in a session-detail view, plus a ~17px inner
+     text inset — so ~34px lands the label under the talk titles. */
+  margin-left: calc(34px * var(--sp));
+  font-size: calc(12px * var(--fs));
+  color: var(--muted);
+}
+.session-delay-label { white-space: nowrap; }
+.session-delay-input {
+  width: 3em;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: calc(13px * var(--fs));
+  text-align: right;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s ease, background .15s ease;
+}
+.session-delay-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+/* Hide the native number-spinner arrows — the value is typed (or set via the
+   step keys), so the up/down stepper buttons are just visual clutter. */
+.session-delay-input::-webkit-outer-spin-button,
+.session-delay-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.session-delay-input { -moz-appearance: textfield; appearance: textfield; }
+.session-delay-unit { white-space: nowrap; }
+
 /* ── Sticky scroll indicator (current date + time) ─────────────────── */
 #scroll-indicator {
   /* A flex child between the top bar and #content: when shown it takes its own
@@ -4274,6 +4369,15 @@ function defaultState() {
       me:       [{ view: "list", scrollY: 0 }],
     },
     searchQuery: "",
+    // Per-session running-delay, in minutes: { sessionId: <int minutes> }.
+    // Set from the input at the bottom of a Session detail view to account for
+    // a session running behind (or ahead). The delay shifts that session's
+    // start/end AND every one of its talks by the same amount — applied to the
+    // in-memory item timestamps by applySessionDelays(), so it flows through
+    // every view (lists, schedule, time headers, past/now grouping) uniformly.
+    // Persisted locally and carried in the sync payload so the shift travels
+    // between devices with the schedule.
+    sessionDelays: {},
     hiddenTypes: [],          // color tokens to hide globally
     typesPanelOpen: false,
     lastSyncAt: null,         // epoch ms of last successful Paste (import)
@@ -4384,6 +4488,9 @@ function loadState() {
     }
     // Validate the export-icon preference; anything unknown falls back to Copy.
     if (!["copy", "share"].includes(s.exportMethod)) s.exportMethod = "copy";
+    // Validate per-session delays: keep only finite, whole-minute, non-zero
+    // entries (a 0 means "no shift", so it's dropped to keep the map lean).
+    s.sessionDelays = sanitizeDelays(s.sessionDelays);
     return s;
   } catch (_) { return defaultState(); }
 }
@@ -4404,6 +4511,11 @@ let state = loadState();
 /* indexes */
 const sessionMap = Object.fromEntries(DATA.sessions.map(s => [s.id, s]));
 const talkMap    = Object.fromEntries(DATA.talks.map(t => [t.id, t]));
+
+// Fold any persisted per-session delays into the in-memory item timestamps so
+// every subsequent read (sorting, time headers, past/now grouping, displayed
+// ranges) sees the shifted times. Idempotent — recomputes from cached bases.
+applySessionDelays();
 
 // An item's location, falling back to its parent session's location when the
 // item is a talk whose own location is UNSPECIFIED. The two empty cases are
@@ -4637,6 +4749,53 @@ function nowMs() {
 }
 
 function tsToDate(ts) { return ts ? new Date(ts) : null; }
+
+/* Coerce a raw {id: minutes} delay map into a clean one: only entries whose
+   value is a finite whole number of minutes other than 0 survive (0 means "no
+   shift"). Tolerates string values (e.g. from an <input>) by rounding. Used by
+   both loadState and importState so the map never carries junk. */
+function sanitizeDelays(raw) {
+  const out = {};
+  if (raw && typeof raw === "object") {
+    for (const id in raw) {
+      const n = Math.round(Number(raw[id]));
+      if (isFinite(n) && n !== 0) out[id] = n;
+    }
+  }
+  return out;
+}
+
+/* Shift a local-ISO timestamp ("YYYY-MM-DDThh:mm:ss") by `minutes`, returning
+   the same local-ISO format so string ordering (cmpTs) and date slicing
+   (ts.slice(0,10)) keep working unchanged. A falsy ts, zero shift, or an
+   unparseable value is returned untouched. */
+function shiftTs(ts, minutes) {
+  if (!ts || !minutes) return ts;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  d.setMinutes(d.getMinutes() + minutes);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+       + `T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/* Re-apply state.sessionDelays to the in-memory item timestamps. Each item
+   keeps an immutable copy of its ORIGINAL start/end (cached on first run as
+   _baseStart/_baseEnd) so this is idempotent — it always recomputes from the
+   base, never compounds. A session is shifted by its own delay; a talk by its
+   parent session's delay. Call after loadState, after any import, and whenever
+   a delay is edited, then re-render so the new times surface everywhere. */
+function applySessionDelays() {
+  const delays = state.sessionDelays || {};
+  const shiftItem = (item, mins) => {
+    if (item._baseStart === undefined) item._baseStart = item.start_ts || null;
+    if (item._baseEnd === undefined)   item._baseEnd   = item.end_ts   || null;
+    item.start_ts = shiftTs(item._baseStart, mins);
+    item.end_ts   = shiftTs(item._baseEnd,   mins);
+  };
+  for (const s of DATA.sessions) shiftItem(s, delays[s.id] || 0);
+  for (const t of DATA.talks)    shiftItem(t, delays[t.session_id] || 0);
+}
 
 function isPast(item) {
   const d = tsToDate(item.end_ts);
@@ -5291,7 +5450,7 @@ function presiderByline(item, ctx, abbrev) {
     return "&nbsp;";
   }
 
-  const names = presiderRaw.split(/;| and /i)
+  const names = presiderRaw.split(/;|&| and /i)
     .map(n => n.trim()).filter(Boolean);
 
   const nameHTML = (nm, aff) => {
@@ -6118,7 +6277,7 @@ function appendSessionMetaLines(s, container) {
     const meta = el("div", { class: "dh-meta presider-meta" });
     meta.appendChild(el("strong", {}, "Presider:"));
     meta.appendChild(document.createTextNode(" "));
-    const names = s.presider.split(/;| and /i)
+    const names = s.presider.split(/;|&| and /i)
       .map(p => p.trim()).filter(Boolean);
     // Per-presider short affiliations, aligned to names (NOT de-duped).
     const affList = Array.isArray(s.presider_affs_short)
@@ -6252,6 +6411,61 @@ function renderSessionDetail(c, sid) {
   if (!talks.length && !hasDetails) {
     c.appendChild(el("p", { class: "empty" }, "No talks listed for this session."));
   }
+
+  // Bottom of the view: the quiet "shift this session" control.
+  appendSessionDelayControl(c, s);
+}
+
+/* The running-delay input at the very bottom of a Session detail. Entering a
+   number of minutes shifts this session AND all its talks by that amount (a
+   negative value moves them earlier), to cope with a session running behind.
+   Committed on change/Enter — not per keystroke — so applying the shift and
+   re-rendering doesn't fight the field for focus. The value persists (saveState)
+   and travels in the sync payload (see exportState/importState). */
+function appendSessionDelayControl(container, s) {
+  if (!state.sessionDelays) state.sessionDelays = {};
+  const current = state.sessionDelays[s.id];
+
+  const row = el("div", { class: "session-delay" });
+  const inputId = `session-delay-${s.id}`;
+  row.appendChild(el("label", {
+    class: "session-delay-label",
+    for: inputId,
+  }, "Shift this session by"));
+
+  const input = el("input", {
+    class: "session-delay-input",
+    id: inputId,
+    type: "number",
+    step: "5",
+    inputmode: "numeric",
+    placeholder: "0",
+    title: "Shift this session and all its talks by this many minutes",
+  });
+  if (current) input.value = String(current);
+
+  const commit = () => {
+    const n = Math.round(Number(input.value));
+    const next = (isFinite(n) && n !== 0) ? n : 0;
+    const prev = state.sessionDelays[s.id] || 0;
+    if (next === prev) return;            // nothing changed — leave the view be
+    if (next === 0) delete state.sessionDelays[s.id];
+    else state.sessionDelays[s.id] = next;
+    saveState();
+    applySessionDelays();
+    // Repaint so the head meta time, the talk bubbles, and any other view of
+    // these items pick up the shifted times; keep the scroll position so the
+    // user stays on the control they just used.
+    rerenderPreservingAnchor();
+  };
+  input.addEventListener("change", commit);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+  });
+
+  row.appendChild(input);
+  row.appendChild(el("span", { class: "session-delay-unit" }, "min"));
+  container.appendChild(row);
 }
 
 /* Sessions list inline expansion: the talk bubbles rendered directly
@@ -6562,8 +6776,8 @@ function recordPersonNames(rec) {
       push(rec.speaker); push(rec.first_author); push(rec.last_author);
     }
   } else {
-    // session: presider field may list multiple, separated by ; or " and "
-    (rec.presider || "").split(/;| and /i)
+    // session: presider field may list multiple, separated by ;, &, or " and "
+    (rec.presider || "").split(/;|&| and /i)
       .map(p => p.trim()).filter(Boolean).forEach(push);
   }
   return names;
@@ -7027,13 +7241,13 @@ function _textHitPredicates(q) {
   const talkHit = t =>
        inText(t.title) || inAuthors(t) || inArr(t.author_aliases)
     || inInsts(t)
-    || inText(t.id)
+    || inText(t.code)
     || inText(t.speaker) || inText(t.first_author) || inText(t.last_author)
     || inText(t.speaker_aff) || inText(t.last_aff)
     || inArr(t.inst_shorts)
     || inText(t.abstract);   // abstracts are always searched
   const sessHit = s =>
-       inText(s.title) || inText(s.id)
+       inText(s.title) || inText(s.code)
     || (Array.isArray(s.tags) && s.tags.some(t => t && (inText(t.value) || inText(t.key))))
     || inText(s.presider) || inText(s.presider_aff)
     || inText(s.presider_aff_short)
@@ -7179,8 +7393,9 @@ function renderMe(c) {
 
   // General conference notes — not tied to any session/talk. Stored under the
   // reserved CONFERENCE_NOTES_KEY in state.notes. The "Copy all" control in
-  // this section's header exports these PLUS every scheduled session/talk's
-  // notes (see doCopyNotes); the post-copy toast confirms the scope.
+  // this section's header exports these PLUS every talk the user has a note on
+  // — scheduled or not — and every scheduled session's talks (see
+  // doCopyNotes); the post-copy toast confirms the scope.
   appendNotesBox(c, CONFERENCE_NOTES_KEY, {
     title: "Notes",
     placeholder: "General conference notes…",
@@ -7254,11 +7469,12 @@ function renderMe(c) {
   c.appendChild(about);
 }
 
-/* Plain-text export of the user's notes. Walks every scheduled talk
-   (including talks inside scheduled sessions) in chronological order
-   and emits a single-line reference — "<number>, <title>, <authors>" —
-   followed by the user's notes underneath. The result is plain text
-   with no Markdown, so it pastes cleanly into anything.
+/* Plain-text export of the user's notes. Walks every talk the user has a
+   note on — PLUS every scheduled talk (including talks inside scheduled
+   sessions) — in chronological order and emits a single-line reference —
+   "<number>, <title>, <authors>" — followed by the user's notes underneath.
+   The result is plain text with no Markdown, so it pastes cleanly into
+   anything.
 
    Session-level notes are not part of this export — only talk notes
    are. */
@@ -7279,6 +7495,16 @@ function buildNotesText(stats) {
       const t = talkMap[tid];
       if (t && !talkSet.has(t.id)) talkSet.set(t.id, t);
     }
+  }
+  // Also include any talk the user has actually taken a note on, even if it
+  // isn't scheduled — "Copy all" means every talk note, not just the ones in
+  // the schedule. (Notes are keyed by talk OR the reserved general-notes key;
+  // talkMap lookups naturally skip the latter and any session-keyed leftovers.)
+  for (const id in notes) {
+    if (id === CONFERENCE_NOTES_KEY) continue;
+    if (!(notes[id] || "").trim()) continue;
+    const t = talkMap[id];
+    if (t && !talkSet.has(t.id)) talkSet.set(t.id, t);
   }
   const talks = [...talkSet.values()]
     .sort((a, b) => cmpTs(a.start_ts, b.start_ts));
@@ -7316,12 +7542,13 @@ function buildNotesText(stats) {
   return out.join("\n");
 }
 
-/* Build the one-line citation for a talk: "<id>, <title>, <authors>".
+/* Build the one-line citation for a talk: "<code>, <title>, <authors>".
+   Uses the human-facing `code` (real or synthesized) — not the opaque id.
    Authors are joined with semicolons; the speaker is marked with a
    trailing asterisk when known. Prefers the full names from the structured
    `authors` list; falls back to the loose `author_aliases` form. */
 function formatTalkReference(t) {
-  const parts = [t.id || "", displayTitle(t) || "(untitled)"];
+  const parts = [t.code || t.id || "", displayTitle(t) || "(untitled)"];
 
   let authorsStr = "";
   const names = (Array.isArray(t.authors) ? t.authors : [])
@@ -8061,11 +8288,116 @@ function chevronsSvg(dir) {
        + 'stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
 }
 
+/* Lined "document with corner fold" icon shown next to Back on talk-detail
+   pages in the _papers build when the talk has an embedded paper to open.
+   Same stroke conventions as chevronsSvg above so the corner reads as one
+   visual family. */
+function docIconSvg() {
+  return '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" '
+       + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+       + 'stroke-linejoin="round" aria-hidden="true">'
+       + '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
+       + '<polyline points="14 3 14 9 20 9"/>'
+       + '<line x1="8" y1="13" x2="16" y2="13"/>'
+       + '<line x1="8" y1="17" x2="14" y2="17"/></svg>';
+}
+
+/* Return a Blob URL for the talk's embedded paper, building it on first
+   use and caching it on window.__paperUrls so middle-click and same-tab
+   navigation share the same URL (the browser would otherwise re-render
+   the same PDF under two different URLs). The paper bytes live in an inert
+   <script type="text/fca-paper" id="fca-paper-<id>"> element at the end of the
+   body (so they don't block first paint and are never parsed as one giant JS
+   literal); we read and decode just this talk's element on demand. Returns null
+   in the lightweight build (no such element) or when this talk has no paper. */
+function paperUrlFor(id) {
+  if (typeof document === "undefined") return null;
+  const el = document.getElementById("fca-paper-" + id);
+  if (!el) return null;
+  if (!window.__paperUrls) window.__paperUrls = {};
+  if (window.__paperUrls[id]) return window.__paperUrls[id];
+  const b64 = (el.textContent || "").trim();
+  if (!b64) return null;
+  // atob -> binary string -> Uint8Array (the only byte-array shape Blob
+  // accepts in older mobile browsers without ArrayBuffer transfer).
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], { type: el.getAttribute("data-mime") || "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  window.__paperUrls[id] = url;
+  return url;
+}
+
+/* A raw PDF blob opens with a generic browser icon and a blob:-URL "title".
+   This wraps it in a tiny HTML page that embeds the PDF and links the SAME
+   favicon the app uses (read straight off our own <link rel="icon">), plus a
+   readable <title> (the paper's code + title) — so the paper's own browser TAB
+   carries the app icon and a real name. Returns a cached blob: URL, or null when
+   there's no paper. Used only on the desktop (fine-pointer) path; touch devices
+   open the raw PDF instead, since iOS Safari won't render an embedded PDF. */
+function paperViewerUrlFor(id) {
+  const pdfUrl = paperUrlFor(id);
+  if (!pdfUrl) return null;
+  if (!window.__paperViewerUrls) window.__paperViewerUrls = {};
+  if (window.__paperViewerUrls[id]) return window.__paperViewerUrls[id];
+  const t = talkMap[id];
+  const code = (t && (t.code || t.id)) || "Paper";
+  const name = (t && displayTitle(t)) || "";
+  const titleText = name ? `${code} · ${name}` : code;
+  const iconLink = document.querySelector('link[rel="icon"]');
+  const iconTag = iconLink
+    ? `<link rel="icon" type="image/svg+xml" href="${esc(iconLink.getAttribute("href") || "")}">`
+    : "";
+  const doc = '<!doctype html><html><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + `<title>${esc(titleText)}</title>${iconTag}`
+    + "<style>html,body{margin:0;height:100%}"
+    + "embed{width:100%;height:100vh;border:0}</style></head>"
+    + `<body><embed type="application/pdf" src="${esc(pdfUrl)}"></body></html>`;
+  const url = URL.createObjectURL(new Blob([doc], { type: "text/html" }));
+  window.__paperViewerUrls[id] = url;
+  return url;
+}
+
 function renderTopbarExtras(tab, top) {
   const slot = $("#topbar-extra");
   slot.innerHTML = "";
   const left = $("#topbar-left");
   if (left) left.innerHTML = "";
+  // Talk detail in the _papers build: surface the embedded paper via a
+  // doc-icon anchor next to Back. Skipped silently when no paper exists
+  // for this talk, or in the lightweight build (no window.PAPERS).
+  //
+  // Desktop (fine pointer): a plain <a href> opens the paper in the SAME
+  // tab, and the browser's native middle-click / ctrl/cmd-click open it
+  // in a NEW tab — all for free, no JS. Here the href is a small HTML wrapper
+  // (paperViewerUrlFor) so the paper's tab carries the app favicon + title.
+  //
+  // Touch devices (coarse pointer, no hover): open the RAW pdf in a NEW tab
+  // (target="_blank"). We skip the wrapper because iOS Safari won't render an
+  // embedded PDF. Same-tab navigation to the blob: URL would also leave the
+  // SPA; on mobile the app page is usually too large to bfcache, so returning
+  // from the PDF RELOADS it. A back gesture that lands by reloading the document
+  // never fires popstate, so our back-button trap can't run and the next back
+  // can step off the app entirely. Its own tab keeps the app's history intact.
+  if (top.view && top.view.startsWith("talk:")) {
+    const id = top.view.slice(5);
+    const touch = typeof window !== "undefined" && window.matchMedia
+      && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const url = touch ? paperUrlFor(id) : paperViewerUrlFor(id);
+    if (url) {
+      const aProps = {
+        class: "icon-btn",
+        href: url,
+        title: "Open paper",
+        "aria-label": "Open paper",
+        html: docIconSvg(),
+      };
+      if (touch) { aProps.target = "_blank"; aProps.rel = "noopener"; }
+      slot.appendChild(el("a", aProps));
+    }
+  }
   if (tab === "me" && top.view === "list") {
     // "Last sync" sits just left of the Export/Import controls, mirroring the
     // wide Me pane's header so the one-pane and two-pane Me views read the
@@ -8123,6 +8455,9 @@ function exportState() {
     hiddenTypes: state.hiddenTypes,
     selectedDates: state.selectedDates,
     notes: state.notes,
+    // Per-session running-delays (minutes). Old clients ignore this field;
+    // new clients merge it (see importState).
+    sessionDelays: state.sessionDelays,
     // Wide-screen Me-pane width preference (CSS px; null = default 1/3).
     meWidth: state.meWidth,
     // NOTE: navigation state (activeTab / tabStacks / searchQuery) is
@@ -8265,6 +8600,13 @@ function importState(code) {
     if (_sessionIds.has(key)) delete mergedNotes[key];
   }
 
+  // SESSION DELAYS: additive merge, incoming wins where both name the same
+  // session. Like notes, an import can ADD/UPDATE a shift from another device
+  // but never silently clears a local one the incoming code doesn't mention.
+  const mergedDelays = sanitizeDelays(state.sessionDelays);
+  const incomingDelays = sanitizeDelays(data.sessionDelays);
+  for (const id in incomingDelays) mergedDelays[id] = incomingDelays[id];
+
   // Navigation state (activeTab / tabStacks / searchQuery) is intentionally NOT
   // imported: the code no longer carries it, and we leave the receiver exactly
   // where it is. That's safe in both layouts — on narrow the Paste control only
@@ -8280,6 +8622,7 @@ function importState(code) {
     hiddenTypes:    Array.isArray(data.hiddenTypes) ? data.hiddenTypes : [],
     selectedDates:  selDates,
     notes:          mergedNotes,
+    sessionDelays:  mergedDelays,
     // Adopt the incoming pane width if it's a sane number; otherwise keep
     // whatever this device already had. applyMeWidth() (called below)
     // re-clamps it to the current viewport.
@@ -8290,6 +8633,9 @@ function importState(code) {
   });
   saveState();
   applyMeWidth();
+  // Re-fold the merged delays into the item timestamps before painting so the
+  // imported shifts take effect immediately across every view.
+  applySessionDelays();
   render();
   return { added, removed };
 }
@@ -9321,8 +9667,14 @@ function scheduleMeConnectorSettle(pane, prevScroll) {
 }
 
 function pageTitleFor(tab, top) {
-  if (top.view.startsWith("talk:"))    return talkMap[top.view.slice(5)]?.id || "Talk";
-  if (top.view.startsWith("session:")) return sessionMap[top.view.slice(8)]?.id || "Session";
+  if (top.view.startsWith("talk:")) {
+    const t = talkMap[top.view.slice(5)];
+    return (t && (t.code || t.id)) || "Talk";
+  }
+  if (top.view.startsWith("session:")) {
+    const s = sessionMap[top.view.slice(8)];
+    return (s && (s.code || s.id)) || "Session";
+  }
   if (top.view.startsWith("searchresults:")) {
     // "searchresults:<mode>:<query>"
     const rest = top.view.slice("searchresults:".length);
@@ -9624,11 +9976,18 @@ function canGoBack() {
 
 window.addEventListener("popstate", (e) => {
   const st = e.state;
-  if (st && st.fcaGuard) {
-    // Device/browser Back at the app ROOT landed on the guard sentinel (the app
-    // is still loaded — see seedBackHistory). If a "Leave" is in progress, let it
-    // continue off the app; otherwise re-pin the base (so we sit on a real entry)
-    // and ask for confirmation first.
+  // "Next stop is off the app" — either the guard sentinel we planted at
+  // startup (the normal case), OR an entry whose state doesn't look like
+  // one of ours at all (no fcaIdx and not fcaGuard). The second case is
+  // a safety net for browsers that drop our state under some conditions
+  // — observed on mobile Chrome when the tab navigates to a blob: URL
+  // (the PDF) and then back: depending on bfcache eligibility, the entry
+  // we land on may not carry the state seedBackHistory tried to stamp.
+  // Without this branch, the next back would step straight off the app
+  // (no confirmation). Treating it like the guard re-pins and prompts.
+  const isGuard = st && st.fcaGuard;
+  const isUnknown = !st || (typeof st.fcaIdx !== "number" && !st.fcaGuard);
+  if (isGuard || isUnknown) {
     if (_exiting) { _exiting = false; history.back(); return; }
     snapshotScroll();
     _navIdx = 0;
@@ -9636,8 +9995,8 @@ window.addEventListener("popstate", (e) => {
     showExitConfirm();
     return;
   }
-  _navIdx = (st && typeof st.fcaIdx === "number") ? st.fcaIdx : 0;
-  _applyNavSnapshot(st && st.fcaSnap);
+  _navIdx = st.fcaIdx;
+  _applyNavSnapshot(st.fcaSnap);
 });
 
 /* Confirmation shown when a device/browser Back would leave the app (we've landed
@@ -10113,13 +10472,41 @@ document.addEventListener("keydown", (e) => {
   else switchTab(tab);
 });
 
-/* Esc inside a text field (the Find box, a notes textarea, any input/
-   contenteditable) just drops focus out of it — without the native type=search
-   "clear" — instead of doing nothing. Runs in both layouts. */
+/* Esc behavior. Two jobs, in priority order:
+
+   1. In the SEARCH view, Esc returns you to wherever you were before you opened
+      Search (the previous tab/view) — in BOTH layouts, in a single press, even
+      straight from the focused Find box. "Before" is the prior browser-history
+      entry (_navIdx) or, if you've drilled into a Search sub-view, that stack
+      step. We stopImmediatePropagation so the wide-layout bubble-nav Esc handler
+      below doesn't ALSO fire a Back and double-step. Skipped when: focus is in a
+      NON-search field (e.g. a note inside a Search sub-view — Esc should just
+      drop focus there); an engaged keyboard selection or suggestion pill is up
+      (let the wide handler clear that first); a modal sheet owns the keys; or
+      there's simply nowhere to go back to (Search was the entry point).
+
+   2. Otherwise, Esc inside any text field (a notes textarea, etc.) just drops
+      focus out of it — without the native type=search "clear". Both layouts. */
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   const el = e.target;
-  if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
+  const inField = !!(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"
+                            || el.isContentEditable));
+  const inSearchInput = !!(el && el.id === "search-input");
+
+  if (state.activeTab === "search"
+      && (inSearchInput || !inField)
+      && !_selActive && _selPillIdx < 0
+      && !document.querySelector(".sheet-overlay")
+      && (_navIdx > 0 || canGoBack())) {
+    e.preventDefault();
+    e.stopImmediatePropagation();        // we own this Esc — no double-Back
+    if (inSearchInput) el.blur();         // drop focus before the view rebuilds
+    triggerBack(false);
+    return;
+  }
+
+  if (inField) {
     e.preventDefault();
     el.blur();
   }
@@ -11091,7 +11478,12 @@ window.addEventListener("focus", rearmOnWake);
 
 scheduleNextTick();
 </script>
-
+<!-- Embedded papers (the _papers build only): one inert element per paper,
+     placed AFTER the app script so the page renders before the (large) PDF
+     bytes are read. They are NOT executed (non-JS type) and never parsed as a
+     giant JS literal — paperUrlFor() reads a single element's base64 on demand.
+     Collapses to nothing in the normal build. -->
+__PAPERS_BLOBS__
 </body>
 </html>
 """
@@ -11221,6 +11613,335 @@ def minify_html(template: str) -> str:
     return template
 
 
+def _ensure_pypdf():
+    """Import and return the `pypdf` module, installing it on the fly if
+    it isn't already available. Paper embedding (the _papers build) slices
+    page ranges out of source PDFs, which needs pypdf; rather than make
+    that a hard prerequisite, we pip-install it the first time it's
+    needed. Returns None if the import still fails after attempting an
+    install (the caller then skips embedding rather than crashing)."""
+    try:
+        import pypdf
+        return pypdf
+    except ImportError:
+        pass
+    print("[papers] pypdf not installed — installing it now "
+          "(needed to slice paper page ranges) …")
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet", "pypdf"])
+    except Exception as e:                                # noqa: BLE001
+        print(f"[papers] could not install pypdf ({e}); "
+              "skipping paper embedding.")
+        return None
+    try:
+        import pypdf
+        return pypdf
+    except ImportError as e:
+        print(f"[papers] pypdf still unimportable after install ({e}); "
+              "skipping paper embedding.")
+        return None
+
+
+def _slice_pdf_pages(pypdf, reader, first_1based: int,
+                     last_1based: int) -> bytes:
+    """Return the bytes of a new PDF containing pages
+    [first_1based, last_1based] (inclusive, 1-based) of `reader`. Page
+    numbers are clamped to the document's real range."""
+    import io as _io
+
+    n = len(reader.pages)
+    first = max(1, int(first_1based))
+    last = min(n, int(last_1based))
+    writer = pypdf.PdfWriter()
+    for p in range(first - 1, last):            # to 0-based half-open
+        writer.add_page(reader.pages[p])
+    buf = _io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def _build_papers_blobs(data: dict) -> str:
+    """Return the HTML for the embedded papers — ONE inert element per paper —
+    by slicing each talk's recorded page range out of its source PDF. Used only
+    in the _papers build; returns an empty string when there is nothing to embed.
+
+    Each talk's `paper` is an object
+        {"file": "<name>", "pages": [first, last]}   # 1-based, inclusive
+    where `file` is relative to the conference's data/ directory. The builder
+    opens each distinct source PDF once (caching the reader), slices the page
+    range, and emits an element
+
+        <script type="text/fca-paper" id="fca-paper-<talk_id>"
+                data-mime="application/pdf">BASE64</script>
+
+    keyed by the talk's id. The `text/fca-paper` type is non-executable, so the
+    browser stores each element's base64 as inert text WITHOUT the JS engine
+    parsing it — that is what lets the page render before the (potentially huge)
+    paper bytes are read; paperUrlFor() decodes a single element on demand. These
+    elements are placed at the very end of <body> (after the app script). Talks
+    with no `paper`, an unreadable source, or a bad page range are skipped (the
+    doc-icon button is gated on per-talk presence in the JS, so a skip just means
+    no button)."""
+    if PAPERS_DATA_DIR is None:
+        print("[papers] PAPERS_MODE is set but FCA_PAPERS_DATA_DIR is not — "
+              "skipping paper embedding.")
+        return ""
+    if not PAPERS_DATA_DIR.is_dir():
+        print(f"[papers] data dir {PAPERS_DATA_DIR} does not exist — "
+              "skipping paper embedding.")
+        return ""
+    # Only pay the pypdf import/install cost if at least one talk actually
+    # carries a paper reference.
+    if not any(isinstance(t.get("paper"), dict) for t in data.get("talks") or []):
+        return ""
+    pypdf = _ensure_pypdf()
+    if pypdf is None:
+        return ""
+
+    # Cache one PdfReader per distinct source file (the whole book is read
+    # once, not once per talk).
+    readers: dict[str, object] = {}
+
+    def _reader_for(name: str):
+        if name in readers:
+            return readers[name]
+        src = PAPERS_DATA_DIR / name
+        if not src.is_file():
+            print(f"[papers]   source PDF not found: {src}")
+            readers[name] = None
+            return None
+        try:
+            readers[name] = pypdf.PdfReader(str(src))
+        except Exception as e:                            # noqa: BLE001
+            print(f"[papers]   could not open {src} ({e})")
+            readers[name] = None
+        return readers[name]
+
+    entries: dict[str, dict[str, str]] = {}
+    total_raw = 0
+    for t in data.get("talks") or []:
+        ref = t.get("paper")
+        tid = t.get("id")
+        if not isinstance(ref, dict) or not tid:
+            continue
+        name = ref.get("file")
+        pages = ref.get("pages")
+        if not name or not isinstance(pages, (list, tuple)) or len(pages) != 2:
+            print(f"[papers]   talk {tid}: malformed paper ref {ref!r}; "
+                  "skipping.")
+            continue
+        reader = _reader_for(name)
+        if reader is None:
+            continue
+        try:
+            raw = _slice_pdf_pages(pypdf, reader, pages[0], pages[1])
+        except Exception as e:                            # noqa: BLE001
+            print(f"[papers]   talk {tid}: could not slice "
+                  f"{name} pages {pages} ({e}); skipping.")
+            continue
+        entries[tid] = {
+            "mime": "application/pdf",
+            "b64": base64.b64encode(raw).decode("ascii"),
+        }
+        total_raw += len(raw)
+    if not entries:
+        print("[papers] no papers resolved — embedding nothing.")
+        return ""
+    # One inert element per paper. base64 is [A-Za-z0-9+/=] only, so it can never
+    # contain "</script>" — no escaping needed, and nothing here is executed.
+    parts = [
+        f'<script type="text/fca-paper" id="fca-paper-{tid}" '
+        f'data-mime="{e["mime"]}">{e["b64"]}</script>'
+        for tid, e in entries.items()
+    ]
+    html = "\n".join(parts)
+    print(f"[papers] embedded {len(entries):,} paper(s), "
+          f"{total_raw / (1024 * 1024):.1f} MB raw "
+          f"-> {len(html) / (1024 * 1024):.1f} MB of inert base64 elements.")
+    return html
+
+
+# =============================================================================
+# Display-code synthesis + surrogate-id assignment (build time)
+#
+# The app shows a human-facing "conference code" for each session/talk (e.g.
+# "AM1C", "AM1C.3") but uses an opaque internal `id` purely as a key. The
+# processor emits, per item:
+#   * id   — a unique key (its own surrogate; historically, sometimes the code)
+#   * code — the REAL conference-assigned code, or "" when the conference
+#            assigns none (so one is SYNTHESIZED here), or ABSENT entirely for
+#            conferences whose processor predates this split (legacy: fall back
+#            to displaying the id, and never synthesize).
+# This pass resolves each item's DISPLAY code into `code` (synthesizing where
+# asked), then reassigns clean surrogate ids (S001…/T001…) and rewrites the
+# talk_ids/session_id cross-references — so the persistence/lookup key is fully
+# decoupled from the (possibly synthesized, drift-prone) display code. The synth
+# heuristic is the one that used to live in the cleo processor; centralizing it
+# here means every conference shares one implementation.
+# =============================================================================
+_CODE_SLUG_STOPWORDS = {"the", "of", "and", "a", "an", "in", "on", "for",
+                        "to", "with", "at"}
+
+# A standalone Roman numeral (I, II, …, IV, IX, XII, …). Used to keep a trailing
+# session-number whole in the acronym: "Summer Session IV" -> "SSIV".
+_ROMAN_RE = re.compile(
+    r"(?=[MDCLXVI])M{0,3}(?:C[MD]|D?C{0,3})(?:X[CL]|L?X{0,3})(?:I[XV]|V?I{0,3})",
+    re.I)
+
+# Titles that are really a break, not a talk (the program sometimes lists these
+# as talks). Skipped when NUMBERING synthesized talk codes so they don't consume
+# a "<session>.<n>" slot. One optional qualifier + "break".
+_BREAK_RE = re.compile(
+    r"(?:coffee|tea|lunch|morning|afternoon|evening|networking|refreshment|refreshments)?"
+    r"\s*break", re.I)
+
+
+def _is_roman(word: str) -> bool:
+    return bool(word) and _ROMAN_RE.fullmatch(word) is not None
+
+
+def _is_break_title(title: str) -> bool:
+    return bool(_BREAK_RE.fullmatch((title or "").strip()))
+
+
+def _slugify_for_code(title: str) -> str:
+    """Acronym from a title: the first letter of each significant word (filler
+    words like "of"/"the" dropped). A trailing session NUMBER — a Roman numeral
+    ("Summer Session IV" -> "SSIV") or a short Arabic number ("Poster Session 2"
+    -> "PS2") — is kept WHOLE so sibling sessions stay distinct; long digit runs
+    (e.g. a year) are treated as ordinary words. A lone significant word
+    contributes its first few letters ("Microscopy" -> "MICR") so it isn't a
+    single initial — UNLESS a number follows, which already disambiguates
+    ("Workshop I" -> "WI", not "WORKI"). "" when there are no usable words
+    (caller falls back to EVENTn)."""
+    words = re.findall(r"[A-Za-z0-9]+", title or "")
+    if not words:
+        return ""
+    last = words[-1]
+    if _is_roman(last):
+        trailing = last.upper()
+    elif re.fullmatch(r"\d{1,2}", last):     # 1–99: a session number, not a year
+        trailing = last
+    else:
+        trailing = None
+    body = words[:-1] if trailing else words
+    sig = [w for w in body
+           if len(w) > 1 and w.lower() not in _CODE_SLUG_STOPWORDS]
+    if len(sig) >= 2:
+        acr = "".join(w[0].upper() for w in sig)
+    elif len(sig) == 1:
+        # Lone word: expand to its first letters so it isn't a single initial,
+        # but a trailing number already disambiguates, so just take the initial
+        # there ("Workshop I" -> "WI", "Workshop 1" -> "W1").
+        acr = sig[0][0].upper() if trailing else sig[0][:4].upper()
+    else:
+        acr = ""
+    return acr + (trailing or "")
+
+
+def _resolve_display_codes_and_ids(data: dict) -> None:
+    """Resolve every session/talk's display `code` (synthesizing where the
+    conference assigns none), then reassign opaque surrogate ids and rewrite
+    the cross-references. Mutates `data` in place. See section header above."""
+    sessions = data.get("sessions") or []
+    talks = data.get("talks") or []
+
+    def _disp_and_flag(item):
+        # (display, needs_synth). "code" absent => legacy conference: show the
+        # id and never synthesize. "code" == "" => synthesize. Else: real code.
+        if "code" in item:
+            c = (item.get("code") or "").strip()
+            return c, (c == "")
+        return (item.get("id") or "").strip(), False
+
+    n_synth_sessions = 0
+    n_synth_talks = 0
+
+    # ---- 1. Sessions: resolve, then synthesize the code-less ones ----------
+    for s in sessions:
+        s["_disp"], s["_needs"] = _disp_and_flag(s)
+
+    # Seed the dedup set with the REAL codes too, so a synthesized code can
+    # never collide with — and visually masquerade as — a real one.
+    used = {s["_disp"] for s in sessions if not s["_needs"] and s["_disp"]}
+    other = 0
+    for s in sorted((x for x in sessions if x["_needs"]),
+                    key=lambda x: (x.get("start_ts") or "", x.get("id") or "")):
+        slug = _slugify_for_code(s.get("title") or "")
+        if slug:
+            code = slug
+            if code in used:
+                k = 2
+                while f"{slug}{k}" in used:
+                    k += 1
+                code = f"{slug}{k}"
+        else:
+            other += 1
+            code = f"EVENT{other}"
+            while code in used:
+                other += 1
+                code = f"EVENT{other}"
+        used.add(code)
+        s["_disp"] = code
+        n_synth_sessions += 1
+
+    # ---- 2. Talks: resolve, then synthesize code-less ones as "<sess>.<n>" -
+    sess_disp = {s.get("id"): s["_disp"] for s in sessions}
+    for t in talks:
+        t["_disp"], t["_needs"] = _disp_and_flag(t)
+    # Group by session and number by chronological position WITHIN the session
+    # (so a talk that's 3rd in its session reads "<sesscode>.3"), assigning only
+    # to the ones that need it; real-coded talks keep their own code. Breaks
+    # ("Coffee Break"/"Break") are sometimes listed as talks — they don't consume
+    # a number slot, so the real talks around them stay correctly numbered; a
+    # break that still needs a code gets a small title acronym instead.
+    by_sess: dict = {}
+    for t in talks:
+        by_sess.setdefault(t.get("session_id"), []).append(t)
+    for sid, group in by_sess.items():
+        group.sort(key=lambda t: (t.get("start_ts") or "", t.get("id") or ""))
+        base = sess_disp.get(sid) or sid or "?"
+        n = 0
+        for t in group:
+            if _is_break_title(t.get("title")):
+                if t["_needs"]:
+                    t["_disp"] = _slugify_for_code(t.get("title") or "") or "BREAK"
+                    n_synth_talks += 1
+                continue                       # breaks don't take a number slot
+            n += 1
+            if t["_needs"]:
+                t["_disp"] = f"{base}.{n}"
+                n_synth_talks += 1
+
+    # ---- 3. Reassign opaque surrogate ids; rewrite cross-references --------
+    # Chronological order so S001/T001 are the earliest — purely cosmetic for an
+    # opaque key, but deterministic across rebuilds.
+    smap = {}
+    for i, s in enumerate(sorted(
+            sessions, key=lambda x: (x.get("start_ts") or "", x.get("id") or "")), 1):
+        smap[s.get("id")] = f"S{i:03d}"
+    tmap = {}
+    for i, t in enumerate(sorted(
+            talks, key=lambda x: (x.get("start_ts") or "", x.get("id") or "")), 1):
+        tmap[t.get("id")] = f"T{i:03d}"
+    for s in sessions:
+        s["id"] = smap.get(s.get("id"), s.get("id"))
+        s["talk_ids"] = [tmap[x] for x in (s.get("talk_ids") or []) if x in tmap]
+        s["code"] = s.pop("_disp", s.get("code", ""))
+        s.pop("_needs", None)
+    for t in talks:
+        t["id"] = tmap.get(t.get("id"), t.get("id"))
+        if t.get("session_id") in smap:
+            t["session_id"] = smap[t["session_id"]]
+        t["code"] = t.pop("_disp", t.get("code", ""))
+        t.pop("_needs", None)
+
+    print(f"[codes] synthesized {n_synth_sessions} session + {n_synth_talks} "
+          f"talk code(s); reassigned {len(smap)} session + {len(tmap)} "
+          f"surrogate ids.")
+
+
 def main() -> None:
     conference_name = (_DATA.get("conference_name") or "").strip() or "Conference"
     print(f"[title] conference name: {conference_name!r}")
@@ -11228,6 +11949,11 @@ def main() -> None:
           f"{len(_DATA.get('talks', []))} talks from data JSON.")
 
     data = enrich_affiliations(_DATA)
+
+    # Resolve each item's human-facing `code` (synthesizing where the conference
+    # assigns none) and reassign opaque surrogate ids. The app DISPLAYS `code`
+    # and KEYS off `id`; this pass is what decouples the two. See the function.
+    _resolve_display_codes_and_ids(data)
 
     # Drop fields the frontend never reads before serializing into the HTML.
     # These are carried through the input JSON (and used by the Python side
@@ -11240,8 +11966,9 @@ def main() -> None:
     #   - talks[].presenter: normalized by normalize_names_in_data for
     #     cleanliness but the app renders "speaker" (and authors), never
     #     "presenter". Verified: no JS path reads t.presenter.
-    #   - talks[].number: not referenced from JS anywhere (the visible "talk
-    #     number" in the top bar comes from item.id via pageTitleFor).
+    #   - talks[].number: not referenced from JS anymore. The visible "talk
+    #     code" in the top bar now comes from item.code (resolved/synthesized in
+    #     _resolve_display_codes_and_ids), not item.id or item.number.
     #   - talks[].institutions_may_dedup: a build-time hint consumed once by
     #     enrich_affiliations to decide whether to collapse duplicate
     #     institutions. It has done its job by this point.
@@ -11280,6 +12007,12 @@ def main() -> None:
         data_init = json_blob.replace("</", r"<\/")
         decoder_block = ""
 
+    # Build the embedded-papers markup for the _papers variant of the build (one
+    # inert element per paper, placed at the end of <body> so the page renders
+    # before the bytes are read). In the normal build PAPERS_MODE is off and the
+    # placeholder collapses to an empty string — no elements, no app change.
+    papers_blobs = _build_papers_blobs(data) if PAPERS_MODE else ""
+
     template = HTML_TEMPLATE.replace("__DECODER_BLOCK__", decoder_block)
 
     # Minify the TEMPLATE (comments only), before the DATA payload is spliced
@@ -11299,10 +12032,14 @@ def main() -> None:
         "__BODY_DATA__",
         ' data-empty-style="hatch"' if SESSIONS_EMPTY_HATCHING else "")
     html = html.replace("__DATA_INIT__", data_init)
+    html = html.replace("__PAPERS_BLOBS__", papers_blobs)
     safe_name = (conference_name.replace("&", "&amp;")
                                  .replace("<", "&lt;")
                                  .replace(">", "&gt;"))
     html = html.replace("__CONFERENCE_NAME__", safe_name)
+    favicon_href = ("data:image/svg+xml;base64,"
+                    + base64.b64encode(FAVICON_SVG.encode("utf-8")).decode("ascii"))
+    html = html.replace("__FAVICON_HREF__", favicon_href)
     OUTPUT_HTML.write_text(html, encoding="utf-8")
     size_kb = OUTPUT_HTML.stat().st_size / 1024
     print(f"[write] {OUTPUT_HTML} ({size_kb:,.1f} KB)")

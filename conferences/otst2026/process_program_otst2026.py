@@ -783,6 +783,16 @@ def build_conference_data() -> dict:
     except Exception as e:  # noqa: BLE001
         print(f"[process] note: HTML enrichment skipped ({e}).", flush=True)
 
+    # Conference-code split: this conference assigns no human-facing session
+    # codes, so leave each session `code` empty — the builder synthesizes a
+    # friendly display code (_resolve_display_codes_and_ids). Talks carry any
+    # real per-talk code through from `number` (empty -> builder synthesizes
+    # "<sessioncode>.<n>").
+    for _s in sessions:
+        _s["code"] = ""
+    for _t in talks:
+        _t["code"] = (_t.get("number") or "").strip()
+
     data = {
         "conference_name": CONFERENCE_NAME,
         "sessions": sessions,

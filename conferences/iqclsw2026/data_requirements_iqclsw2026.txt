@@ -39,3 +39,16 @@ manual_steps_written: 26-May-2026
     fall back to generic "School N"/"Workshop N" titles and a date-based phase.
   manual:      Open https://iqclsw2026.com/index.php/program-overview/ in a
     browser and save the rendered page to data/program_overview.html .
+
+[file: iqclsw2026-book-of-abstracts.pdf]
+  required:    no
+  produced_by: manual
+  description: Book of abstracts (PDF) circulated by the organizers — the only
+    source of per-talk short abstracts (the website carries none). The processor
+    pulls each talk's short-abstract paragraph out of the PDF and attaches it
+    to the matching talk by title. OPTIONAL: missing the file just means talks
+    are emitted without abstracts, exactly as before this file was added.
+  manual:      The book of abstracts is not published online; the organizers
+    circulate it directly to registrants (typically by email). When you receive
+    it, save the PDF into data/ under exactly the filename above
+    (iqclsw2026-book-of-abstracts.pdf). The fetcher does not download it.
